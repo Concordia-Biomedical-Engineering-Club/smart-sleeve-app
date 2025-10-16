@@ -200,7 +200,9 @@ jobs:
 
               // --- Determine the new estimate value from labels ---
               let estimateValue = 0; // Default to 0 if no points label
-              const pointsLabel = issue.labels.find(label => label.name.startsWith("Points: "));
+              // Handle different label structures (webhook vs GraphQL)
+              const labels = issue.labels?.nodes || issue.labels || [];
+              const pointsLabel = labels.find(label => label.name.startsWith("Points: "));
               if (pointsLabel) {
                 estimateValue = parseInt(pointsLabel.name.replace("Points: ", ""), 10);
               }
