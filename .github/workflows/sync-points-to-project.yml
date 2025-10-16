@@ -37,7 +37,7 @@ jobs:
             }
 
             // CONFIGURATION: You must update these three variables
-            const PROJECT_NUMBER = 1; // Find this in your project's URL
+            const PROJECT_NUMBER = 4; // Find this in your project's URL
             const ESTIMATE_FIELD_NAME = "Estimate"; // The exact name of your field
 
             // Get the event payload
