@@ -1,0 +1,186 @@
+name: Sync Story Points to Project Estimate
+
+on:
+  issues:
+    types: [labeled, unlabeled, edited]
+  workflow_dispatch: # Manual trigger for testing
+    inputs:
+      dry_run:
+        description: "Dry run mode (logs only, no changes)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  issues: write
+
+jobs:
+  sync-points:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync Points to Project Estimate Field
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_PAT }}
+          script: |
+            // IMPORTANT: PROJECT_PAT must be a fine-grained Personal Access Token with:
+            // - Repository access: smart-sleeve-app
+            // - Organization access: Concordia-Biomedical-Engineering-Club
+            // - Permissions: Issues (read/write), Projects (read/write)
+            //
+            // If using classic PAT, it needs 'repo', 'project' scopes for the org.
+
+            // Check if this is a dry run
+            const isDryRun = '${{ inputs.dry_run }}' === 'true';
+            if (isDryRun) {
+              console.log('🧪 DRY RUN MODE: No changes will be made to the project');
+            }
+
+            // CONFIGURATION: You must update these three variables
+            const PROJECT_NUMBER = 1; // Find this in your project's URL
+            const ESTIMATE_FIELD_NAME = "Estimate"; // The exact name of your field
+
+            // Get the event payload
+            const payload = context.payload;
+            const issue = payload.issue;
+            const organization = context.repo.owner;
+
+            // --- Find the Project and the Estimate Field ---
+            const projectQuery = `
+              query($org: String!, $number: Int!) {
+                organization(login: $org){
+                  projectV2(number: $number) {
+                    id
+                    fields(first: 20) {
+                      nodes {
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                        }
+                        ... on ProjectV2Field {
+                          id
+                          name
+                        }
+                      }
+                    }
+                  }
+                }
+              }`;
+
+            let project, estimateField;
+            try {
+              const projectData = await github.graphql(projectQuery, { org: organization, number: PROJECT_NUMBER });
+              project = projectData.organization.projectV2;
+              estimateField = project.fields.nodes.find(field => field.name === ESTIMATE_FIELD_NAME);
+
+              if (!estimateField) {
+                console.log(`Field "${ESTIMATE_FIELD_NAME}" not found in Project ${PROJECT_NUMBER}. Exiting.`);
+                return;
+              }
+            } catch (error) {
+              console.error(`Error querying project: ${error.message}`);
+              return;
+            }
+
+            // --- Find the current project item for the issue ---
+            const itemQuery = `
+              query($issueUrl: URI!) {
+                resource(url: $issueUrl) {
+                  ... on Issue {
+                    projectItems(first: 10, includeArchived: false) {
+                      nodes {
+                        id
+                        project {
+                          id
+                        }
+                      }
+                    }
+                  }
+                }
+              }`;
+
+            // Use HTML URL instead of API URL for GraphQL
+            const htmlUrl = issue.html_url || issue.url.replace('api.github.com/repos', 'github.com');
+
+            let itemData;
+            try {
+              itemData = await github.graphql(itemQuery, { issueUrl: htmlUrl });
+            } catch (error) {
+              console.error(`Error querying issue project items: ${error.message}`);
+              return;
+            }
+
+            console.log(`Queried for issue HTML URL: ${htmlUrl}`);
+            console.log(`Response:`, JSON.stringify(itemData, null, 2));
+
+            // Check if the issue was found
+            if (!itemData.resource) {
+              console.log(`Issue #${issue.number} not found. Exiting.`);
+              return;
+            }
+
+            // Check if the issue has any project items
+            if (!itemData.resource.projectItems || itemData.resource.projectItems.nodes.length === 0) {
+              console.log(`Issue #${issue.number} is not in any projects. Please add it to Project ${PROJECT_NUMBER} first.`);
+              return;
+            }
+
+            console.log(`Found ${itemData.resource.projectItems.nodes.length} project item(s) for this issue`);
+
+            // Find the project item for our specific project
+            const projectItem = itemData.resource.projectItems.nodes.find(item => item.project.id === project.id);
+
+            if (!projectItem) {
+              console.log(`Issue #${issue.number} is not in Project ${PROJECT_NUMBER}. Exiting.`);
+              return;
+            }
+
+            // --- Determine the new estimate value from labels ---
+            let estimateValue = 0; // Default to 0 if no points label
+            const pointsLabel = issue.labels.find(label => label.name.startsWith("Points: "));
+            if (pointsLabel) {
+              estimateValue = parseInt(pointsLabel.name.replace("Points: ", ""), 10);
+            }
+
+            // --- Update the project item's estimate field ---
+            const updateMutation = `
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: Float!) {
+                updateProjectV2ItemFieldValue(
+                  input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $fieldId
+                    value: {
+                      number: $value
+                    }
+                  }
+                ) {
+                  projectV2Item {
+                    id
+                  }
+                }
+              }`;
+
+            // Dry run check before making changes
+            if (isDryRun) {
+              console.log('🧪 DRY RUN: Would update project item with:');
+              console.log(`   Project ID: ${project.id}`);
+              console.log(`   Item ID: ${projectItem.id}`);
+              console.log(`   Field ID: ${estimateField.id}`);
+              console.log(`   New Value: ${estimateValue}`);
+              console.log(`   Issue: #${issue.number}`);
+              console.log('🧪 DRY RUN: No actual changes made');
+              return;
+            }
+
+            try {
+              await github.graphql(updateMutation, {
+                projectId: project.id,
+                itemId: projectItem.id,
+                fieldId: estimateField.id,
+                value: estimateValue
+              });
+              console.log(`Successfully updated Estimate for Issue #${issue.number} to ${estimateValue}.`);
+            } catch (error) {
+              console.error(`Error updating project item: ${error.message}`);
+            }

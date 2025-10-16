@@ -1,0 +1,42 @@
+name: "✨ Feature Request"
+description: "Suggest an idea or enhancement for this project."
+title: "feat: [Brief description of the feature]"
+labels: ["feature", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an idea! A well-described feature request helps us understand and implement it faster.
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: "Is your feature request related to a problem?"
+      description: "A clear and concise description of what the problem is. Ex. 'I'm always frustrated when...'"
+      placeholder: "It's difficult to track multiple rehabilitation sessions..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution-description
+    attributes:
+      label: "Describe the solution you'd like"
+      description: "A clear and concise description of what you want to happen."
+      placeholder: "I would like to see a calendar view of all completed exercises..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Describe alternatives you've considered"
+      description: "A clear and concise description of any alternative solutions or features you've considered."
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: "Contribution Checklist"
+      description: "By submitting this issue, you agree to follow our contributing guidelines."
+      options:
+        - label: "I have searched the existing issues and this is not a duplicate."
+          required: true
