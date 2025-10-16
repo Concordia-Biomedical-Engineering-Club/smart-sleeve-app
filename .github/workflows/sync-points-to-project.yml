@@ -108,9 +108,6 @@ jobs:
 
             // Function to process a single issue
             async function processIssue(issue, organization, PROJECT_NUMBER, ESTIMATE_FIELD_NAME, isDryRun) {
-
-            // Function to process a single issue
-            async function processIssue(issue, organization, PROJECT_NUMBER, ESTIMATE_FIELD_NAME, isDryRun) {
               // --- Find the Project and the Estimate Field ---
               const projectQuery = `
                 query($org: String!, $number: Int!) {
