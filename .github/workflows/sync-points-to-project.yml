@@ -13,6 +13,7 @@ on:
 
 permissions:
   issues: write
+  contents: read
 
 jobs:
   sync-points:
@@ -27,7 +28,6 @@ jobs:
             // - Repository access: smart-sleeve-app
             // - Organization access: Concordia-Biomedical-Engineering-Club
             // - Permissions: Issues (read/write), Projects (read/write)
-            //
             // If using classic PAT, it needs 'repo', 'project' scopes for the org.
 
             // Check if this is a dry run
