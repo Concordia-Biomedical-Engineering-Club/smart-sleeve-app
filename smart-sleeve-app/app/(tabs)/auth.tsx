@@ -54,6 +54,15 @@ export default function AuthScreen() {
     }
 
     setLoading(true);
+
+    // Set timeout for request (10 seconds)
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+      setError(
+        "Request taking too long. Please check your connection and try again."
+      );
+    }, 10000);
+
     try {
       if (isLogin) {
         const userCredential = await firebaseLogin(email, password);
@@ -76,6 +85,7 @@ export default function AuthScreen() {
       const message = mapFirebaseError(e);
       setError(message);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -107,6 +117,15 @@ export default function AuthScreen() {
     }
 
     setLoading(true);
+
+    // Set timeout for request (10 seconds)
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+      setError(
+        "Request taking too long. Please check your connection and try again."
+      );
+    }, 10000);
+
     try {
       await sendResetPasswordEmail(resetEmail);
       setResetMessage("Password reset email sent! Check your inbox.");
@@ -116,6 +135,7 @@ export default function AuthScreen() {
         (error as Error).message || "Failed to send reset email.";
       setError(errorMessage);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
