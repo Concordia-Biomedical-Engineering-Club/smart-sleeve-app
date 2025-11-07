@@ -9,19 +9,24 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { login, register, logout } from "../../services/auth";
-import { useAuth } from "../../context/authContext";
+import { useDispatch, useSelector } from "react-redux";
+import { login, signup, logout } from "../../store/userSlice";
+import { RootState } from "../../store/store";
+import { login as firebaseLogin, register as firebaseRegister, logout as firebaseLogout } from "../../services/auth";
 
 export default function AuthScreen() {
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const user = useSelector((state: RootState) => state.user);
+
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [retypePassword, setRetypePassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const { user, isEmailVerified } = useAuth();
 
+  // Clear inputs when screen is focused
   useFocusEffect(
     useCallback(() => {
       setEmail("");
@@ -37,16 +42,26 @@ export default function AuthScreen() {
       setError("Passwords don't match");
       return;
     }
+
     setLoading(true);
     try {
       if (isLogin) {
-        await login(email, password);
-        router.push("/");
+        const userCredential = await firebaseLogin(email, password);
+        const user = userCredential.user;
+
+        if (user.emailVerified) {
+          dispatch(login({ email: user.email, isAuthenticated: true }));
+          router.push("/");
+        } else {
+          dispatch(login({ email: user.email, isAuthenticated: false }));
+          router.push("/email-verification");
+        }
+
       } else {
-        await register(email, password);
-        // After successful registration, the user will be automatically
-        // redirected to the email verification screen by the navigation logic
-        // Don't redirect here as the user needs to verify their email first
+        const userCredential = await firebaseRegister(email, password);
+        const user = userCredential.user;
+        dispatch(signup({ email: user.email, isAuthenticated: false }));
+        router.push("/email-verification");
       }
     } catch (e) {
       let message = "Authentication failed";
@@ -61,7 +76,8 @@ export default function AuthScreen() {
 
   const handleLogout = async () => {
     try {
-      logout();
+      await firebaseLogout();
+      dispatch(logout());
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -74,107 +90,89 @@ export default function AuthScreen() {
     setRetypePassword("");
     setError("");
   };
-  if (user) {
-    if (!isEmailVerified) {
-      return (
-        <View style={styles.container}>
-          <Text style={styles.title}>
-            Please verify your email to continue.
-          </Text>
-          <Text style={styles.subtitle}>
-            Check your email ({user.email}) and click the verification link.
-          </Text>
-          <TouchableOpacity style={styles.button} onPress={handleLogout}>
-            <Text style={styles.buttonText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
+
+  // If already logged in
+  if (user.isLoggedIn) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>
-          You are already logged in as {user.email}
+          You are logged in as {user.email}
         </Text>
         <TouchableOpacity style={styles.button} onPress={handleLogout}>
           <Text style={styles.buttonText}>Logout</Text>
         </TouchableOpacity>
       </View>
     );
-  } else {
-    return (
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.headerContainer}>
-          <Text style={styles.projectTitle}>
-            Smart Rehabilitation Knee Sleeve
-          </Text>
-          <Text style={styles.subtitle}>True North Biomedical 2025–2026</Text>
-        </View>
+  }
 
-        <View style={styles.authBox}>
-          <Text style={styles.title}>
-            {isLogin ? "Welcome Back" : "Create Account"}
-          </Text>
-          <View style={styles.formContainer}>
+  // Default login/register screen
+  return (
+    <View style={styles.container}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.projectTitle}>Smart Rehabilitation Knee Sleeve</Text>
+        <Text style={styles.subtitle}>True North Biomedical 2025–2026</Text>
+      </View>
+
+      <View style={styles.authBox}>
+        <Text style={styles.title}>{isLogin ? "Welcome Back" : "Create Account"}</Text>
+
+        <View style={styles.formContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#aaa"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#aaa"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+          {!isLogin && (
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder="Retype Password"
               placeholderTextColor="#aaa"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="#aaa"
-              value={password}
-              onChangeText={setPassword}
+              value={retypePassword}
+              onChangeText={setRetypePassword}
               secureTextEntry
             />
-            {!isLogin && (
-              <TextInput
-                style={styles.input}
-                placeholder="Retype Password"
-                placeholderTextColor="#aaa"
-                value={retypePassword}
-                onChangeText={setRetypePassword}
-                secureTextEntry
-              />
-            )}
-          </View>
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleAuth}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>
-                {isLogin ? "Login" : "Register"}
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={toggleAuth}>
-            <Text style={styles.switch}>
-              {isLogin
-                ? "Don't have an account? "
-                : "Already have an account? "}
-              <Text style={styles.switchHighlight}>
-                {isLogin ? "Register" : "Login"}
-              </Text>
-            </Text>
-          </TouchableOpacity>
+          )}
         </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleAuth}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {isLogin ? "Login" : "Register"}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={toggleAuth}>
+          <Text style={styles.switch}>
+            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            <Text style={styles.switchHighlight}>
+              {isLogin ? "Register" : "Login"}
+            </Text>
+          </Text>
+        </TouchableOpacity>
       </View>
-    );
-  }
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
