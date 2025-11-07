@@ -48,7 +48,6 @@ export default function RootLayout() {
               name="modal"
               options={{ presentation: "modal", title: "Modal" }}
             />
-            <Stack.Screen name="auth" options={{ title: "Login / Register" }} />
             <Stack.Screen
               name="email-verification"
               options={{ headerShown: false }}
