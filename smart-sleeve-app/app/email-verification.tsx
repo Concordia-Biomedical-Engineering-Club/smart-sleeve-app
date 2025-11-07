@@ -8,16 +8,17 @@ import {
   Alert,
 } from "react-native";
 import { useRouter, Redirect } from "expo-router";
-import { useAuth } from "../context/authContext";
 import { resendVerificationEmail, logout } from "../services/auth";
+import { RootState } from "../store/store";
+import { useSelector } from "react-redux";
 
 export default function EmailVerificationScreen() {
   const [resending, setResending] = useState(false);
   const router = useRouter();
-  const { user, isEmailVerified } = useAuth();
+  const user = useSelector((state: RootState) => state.user);
 
   // If user becomes verified, redirect to tabs
-  if (isEmailVerified) {
+  if (user.isAuthenticated) {
     return <Redirect href="/(tabs)" />;
   }
 
