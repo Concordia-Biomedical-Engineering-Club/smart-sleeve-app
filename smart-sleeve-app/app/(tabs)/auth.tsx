@@ -18,6 +18,7 @@ import {
   register as firebaseRegister,
   logout as firebaseLogout,
   sendResetPasswordEmail,
+  mapFirebaseError,
 } from "../../services/auth";
 
 export default function AuthScreen() {
@@ -72,10 +73,7 @@ export default function AuthScreen() {
         router.push("/email-verification");
       }
     } catch (e) {
-      let message = "Authentication failed";
-      if (typeof e === "object" && e && "message" in e) {
-        message = (e as any).message;
-      }
+      const message = mapFirebaseError(e);
       setError(message);
     } finally {
       setLoading(false);
@@ -94,16 +92,29 @@ export default function AuthScreen() {
   const handlePasswordReset = async () => {
     setResetMessage("");
     setError("");
+
+    // Validate email is not empty
     if (!resetEmail) {
       setError("Please enter your email.");
       return;
     }
+
+    // Validate email format before sending to Firebase
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(resetEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     setLoading(true);
     try {
       await sendResetPasswordEmail(resetEmail);
       setResetMessage("Password reset email sent! Check your inbox.");
-    } catch (e) {
-      setError("Failed to send reset email. Please check your address.");
+      setResetEmail(""); // Clear email field after success
+    } catch (error) {
+      const errorMessage =
+        (error as Error).message || "Failed to send reset email.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
