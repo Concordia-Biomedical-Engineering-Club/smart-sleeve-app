@@ -1,135 +1,128 @@
+/**
+ * MockSleeveConnector.ts
+ * -----------------------------------------------------
+ * Simulates a real-time BLE sleeve device by emitting
+ * EMG and IMU frames at a fixed frequency. Uses the
+ * SleeveDataGenerator to produce realistic mock data
+ * for different movement scenarios.
+ * -----------------------------------------------------
+ */
 
 import {
   ISleeveConnector,
-  EMGPacket,
-  IMUPacket,
+  EMGData,
+  IMUData,
   ConnectionStatus,
+  SleeveScenario,
 } from './ISleeveConnector';
+import { SleeveDataGenerator } from './SleeveDataGenerator';
 
 export class MockSleeveConnector implements ISleeveConnector {
-  private emgSubscribers: ((packet: EMGPacket) => void)[] = [];
-  private imuSubscribers: ((packet: IMUPacket) => void)[] = [];
+  private emgSubscribers: ((frame: EMGData) => void)[] = [];
+  private imuSubscribers: ((frame: IMUData) => void)[] = [];
   private connectionSubscribers: ((status: ConnectionStatus) => void)[] = [];
 
   private isConnected = false;
   private deviceId: string | null = null;
   private timerId: ReturnType<typeof setInterval> | null = null;
-  private scenario: 'REST' | 'FLEX' | 'SQUAT' = 'REST';
-  private startTime = Date.now();
 
-  // Scan for mock devices. //
+  private readonly dataGenerator: SleeveDataGenerator;
+
+  constructor(initialScenario: SleeveScenario = 'REST') {
+    this.dataGenerator = new SleeveDataGenerator(initialScenario);
+  }
+
+  /**
+   * Scan for available devices. In the mock implementation we
+   * simply return two fake device identifiers after a short
+   * artificial delay.
+   */
   async scan(): Promise<string[]> {
-    await new Promise((res) => setTimeout(res, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
     return ['MockSleeve-01', 'MockSleeve-02'];
   }
 
-  // Connect to a mock device and start emitting data at 50Hz. //
+  /**
+   * Connect to a mock device and start emitting EMG + IMU frames
+   * at a fixed frequency (e.g., 50 Hz). Subscribers will begin
+   * receiving data shortly after this resolves.
+   */
   async connect(deviceId: string): Promise<void> {
     this.deviceId = deviceId;
     this.isConnected = true;
     this.emitConnectionStatus(true);
 
-    const intervalMs = 20;
+    const intervalMs = 20; // 50 Hz
     this.timerId = setInterval(() => {
-      const emg = this.generateEMGPacket();
-      const imu = this.generateIMUPacket();
+      const emgFrame = this.dataGenerator.generateEMGFrame();
+      const imuFrame = this.dataGenerator.generateIMUFrame();
 
-      this.emgSubscribers.forEach((cb) => cb(emg));
-      this.imuSubscribers.forEach((cb) => cb(imu));
+      this.emgSubscribers.forEach((callback) => callback(emgFrame));
+      this.imuSubscribers.forEach((callback) => callback(imuFrame));
     }, intervalMs);
   }
 
-  // Disconnect from the mock device. //
+  /**
+   * Disconnect from the mock device and stop emitting frames.
+   * All existing subscribers remain registered but will not
+   * receive any further data until connect() is called again.
+   */
   async disconnect(): Promise<void> {
-    if (this.timerId) clearInterval(this.timerId);
+    if (this.timerId) {
+      clearInterval(this.timerId);
+    }
     this.timerId = null;
     this.isConnected = false;
     this.emitConnectionStatus(false);
   }
 
-  // Subscribe to EMG data. //
-  subscribeToEMG(callback: (packet: EMGPacket) => void): void {
+  /**
+   * Register a callback that will receive EMGData frames as they
+   * are generated. Callbacks are invoked on the timer interval.
+   */
+  subscribeToEMG(callback: (frame: EMGData) => void): void {
     this.emgSubscribers.push(callback);
   }
 
-  // Subscribe to IMU data. //
-  subscribeToIMU(callback: (packet: IMUPacket) => void): void {
+  /**
+   * Register a callback that will receive IMUData frames as they
+   * are generated. Callbacks are invoked on the timer interval.
+   */
+  subscribeToIMU(callback: (frame: IMUData) => void): void {
     this.imuSubscribers.push(callback);
   }
 
-  // Subscribe to connection status changes. //
+  /**
+   * Register a callback for connection status changes so that
+   * the UI can react to connect / disconnect events.
+   */
   onConnectionStatusChange(callback: (status: ConnectionStatus) => void): void {
     this.connectionSubscribers.push(callback);
   }
 
-  // Change mock activity scenario (e.g., REST, FLEX, SQUAT). //
-  setScenario(scenario: 'REST' | 'FLEX' | 'SQUAT'): void {
-    this.scenario = scenario;
+  /**
+   * Update the current scenario (REST, FLEX, SQUAT). This simply
+   * forwards the change to the SleeveDataGenerator so that
+   * subsequent frames reflect the new movement profile.
+   */
+  setScenario(scenario: SleeveScenario): void {
+    this.dataGenerator.setScenario(scenario);
   }
 
   // -----------------------------------------------------
   // Private helpers
   // -----------------------------------------------------
 
+  /**
+   * Emit a ConnectionStatus event to all registered subscribers.
+   */
   private emitConnectionStatus(connected: boolean): void {
     const status: ConnectionStatus = {
       connected,
       deviceId: this.deviceId ?? undefined,
       lastUpdated: Date.now(),
     };
-    this.connectionSubscribers.forEach((cb) => cb(status));
-  }
-
-  private generateEMGPacket(): EMGPacket {
-    const timestamp = Date.now();
-    const numChannels = 8;
-
-    const amplitude =
-      this.scenario === 'REST'
-        ? 0.05
-        : this.scenario === 'FLEX'
-        ? 0.8
-        : this.scenario === 'SQUAT'
-        ? 0.5
-        : 0.1;
-
-    const noise = () => (Math.random() - 0.5) * amplitude * 2;
-
-    const channels = Array.from({ length: numChannels }, () => noise());
-    return { timestamp, channels };
-  }
-
-  private generateIMUPacket(): IMUPacket {
-    const timestamp = Date.now();
-    const t = (timestamp - this.startTime) / 1000; // seconds since start
-
-    let angle = 0;
-    switch (this.scenario) {
-      case 'REST':
-        angle = 90 + Math.sin(t) * 2;
-        break;
-      case 'FLEX':
-        angle = 45 + Math.sin(t * 2) * 45;
-        break;
-      case 'SQUAT':
-        angle = 60 + Math.abs(Math.sin(t)) * 30;
-        break;
-    }
-
-    const acceleration: [number, number, number] = [
-      Math.sin(t) * 0.1,
-      Math.cos(t) * 0.1,
-      9.8,
-    ];
-    const gyro: [number, number, number] = [
-      Math.sin(t) * 5,
-      Math.cos(t) * 5,
-      0,
-    ];
-
-    return { timestamp, angle, acceleration, gyro };
+    this.connectionSubscribers.forEach((callback) => callback(status));
   }
 }
-
-
 
