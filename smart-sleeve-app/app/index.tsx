@@ -1,20 +1,17 @@
-import { useAuth } from "../context/authContext";
+import { RootState } from "../store/store";
+import { useSelector } from "react-redux";
 import { Redirect } from "expo-router";
 
 export default function Index() {
-  const { user, loading, isEmailVerified } = useAuth();
-
-  if (loading) {
-    return null; // or a loading screen
-  }
+  const user = useSelector((state: RootState) => state.user);
 
   // If no user, redirect to auth
-  if (!user) {
+  if (!user.isLoggedIn) {
     return <Redirect href="/auth" />;
   }
 
   // If user exists but email is not verified, redirect to verification
-  if (user && !isEmailVerified) {
+  if (user && !user.isAuthenticated) {
     return <Redirect href="/email-verification" />;
   }
 

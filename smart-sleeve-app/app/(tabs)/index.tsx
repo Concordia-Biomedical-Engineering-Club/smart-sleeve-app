@@ -6,10 +6,11 @@ import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Link } from "expo-router";
-import { useAuth } from "../../context/authContext";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 
 export default function HomeScreen() {
-  const { user } = useAuth();
+  const user = useSelector((state: RootState) => state.user);
 
   return (
     <ParallaxScrollView

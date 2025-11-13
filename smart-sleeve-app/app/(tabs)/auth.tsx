@@ -6,22 +6,37 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { login, register, logout } from "../../services/auth";
-import { useAuth } from "../../context/authContext";
+import { useDispatch, useSelector } from "react-redux";
+import { login, signup, logout } from "../../store/userSlice";
+import { RootState } from "../../store/store";
+import {
+  login as firebaseLogin,
+  register as firebaseRegister,
+  logout as firebaseLogout,
+  sendResetPasswordEmail,
+  mapFirebaseError,
+} from "../../services/auth";
 
 export default function AuthScreen() {
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const user = useSelector((state: RootState) => state.user);
+
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [retypePassword, setRetypePassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const { user, isEmailVerified } = useAuth();
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
 
+  // Clear inputs when screen is focused
   useFocusEffect(
     useCallback(() => {
       setEmail("");
@@ -37,33 +52,91 @@ export default function AuthScreen() {
       setError("Passwords don't match");
       return;
     }
+
     setLoading(true);
+
+    // Set timeout for request (10 seconds)
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+      setError(
+        "Request taking too long. Please check your connection and try again."
+      );
+    }, 10000);
+
     try {
       if (isLogin) {
-        await login(email, password);
-        router.push("/");
+        const userCredential = await firebaseLogin(email, password);
+        const user = userCredential.user;
+
+        if (user.emailVerified) {
+          dispatch(login({ email: user.email, isAuthenticated: true }));
+          router.push("/");
+        } else {
+          dispatch(login({ email: user.email, isAuthenticated: false }));
+          router.push("/email-verification");
+        }
       } else {
-        await register(email, password);
-        // After successful registration, the user will be automatically
-        // redirected to the email verification screen by the navigation logic
-        // Don't redirect here as the user needs to verify their email first
+        const userCredential = await firebaseRegister(email, password);
+        const user = userCredential.user;
+        dispatch(signup({ email: user.email, isAuthenticated: false }));
+        router.push("/email-verification");
       }
     } catch (e) {
-      let message = "Authentication failed";
-      if (typeof e === "object" && e && "message" in e) {
-        message = (e as any).message;
-      }
+      const message = mapFirebaseError(e);
       setError(message);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
 
   const handleLogout = async () => {
     try {
-      logout();
+      await firebaseLogout();
+      dispatch(logout());
     } catch (error) {
       console.error("Logout error:", error);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    setResetMessage("");
+    setError("");
+
+    // Validate email is not empty
+    if (!resetEmail) {
+      setError("Please enter your email.");
+      return;
+    }
+
+    // Validate email format before sending to Firebase
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(resetEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    setLoading(true);
+
+    // Set timeout for request (10 seconds)
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+      setError(
+        "Request taking too long. Please check your connection and try again."
+      );
+    }, 10000);
+
+    try {
+      await sendResetPasswordEmail(resetEmail);
+      setResetMessage("Password reset email sent! Check your inbox.");
+      setResetEmail(""); // Clear email field after success
+    } catch (error) {
+      const errorMessage =
+        (error as Error).message || "Failed to send reset email.";
+      setError(errorMessage);
+    } finally {
+      clearTimeout(timeoutId);
+      setLoading(false);
     }
   };
 
@@ -74,107 +147,134 @@ export default function AuthScreen() {
     setRetypePassword("");
     setError("");
   };
-  if (user) {
-    if (!isEmailVerified) {
-      return (
-        <View style={styles.container}>
-          <Text style={styles.title}>
-            Please verify your email to continue.
-          </Text>
-          <Text style={styles.subtitle}>
-            Check your email ({user.email}) and click the verification link.
-          </Text>
-          <TouchableOpacity style={styles.button} onPress={handleLogout}>
-            <Text style={styles.buttonText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
+
+  // If already logged in
+  if (user.isLoggedIn) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>
-          You are already logged in as {user.email}
-        </Text>
+        <Text style={styles.title}>You are logged in as {user.email}</Text>
         <TouchableOpacity style={styles.button} onPress={handleLogout}>
           <Text style={styles.buttonText}>Logout</Text>
         </TouchableOpacity>
       </View>
     );
-  } else {
-    return (
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.headerContainer}>
-          <Text style={styles.projectTitle}>
-            Smart Rehabilitation Knee Sleeve
-          </Text>
-          <Text style={styles.subtitle}>True North Biomedical 2025–2026</Text>
-        </View>
+  }
 
-        <View style={styles.authBox}>
-          <Text style={styles.title}>
-            {isLogin ? "Welcome Back" : "Create Account"}
-          </Text>
-          <View style={styles.formContainer}>
+  // Default login/register screen
+  return (
+    <View style={styles.container}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.projectTitle}>
+          Smart Rehabilitation Knee Sleeve
+        </Text>
+        <Text style={styles.subtitle}>True North Biomedical 2025–2026</Text>
+      </View>
+
+      <View style={styles.authBox}>
+        <Text style={styles.title}>
+          {isLogin ? "Welcome Back" : "Create Account"}
+        </Text>
+
+        <View style={styles.formContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#aaa"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#aaa"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+
+          {isLogin && (
+            <TouchableOpacity onPress={() => setShowResetModal(true)}>
+              <Text style={styles.forgotPassword}>Forgot Password?</Text>
+            </TouchableOpacity>
+          )}
+
+          {!isLogin && (
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder="Retype Password"
               placeholderTextColor="#aaa"
-              value={email}
-              onChangeText={setEmail}
+              value={retypePassword}
+              onChangeText={setRetypePassword}
+              secureTextEntry
+            />
+          )}
+        </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleAuth}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {isLogin ? "Login" : "Register"}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={toggleAuth}>
+          <Text style={styles.switch}>
+            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            <Text style={styles.switchHighlight}>
+              {isLogin ? "Register" : "Login"}
+            </Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* --- Password Reset Modal --- */}
+      <Modal visible={showResetModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Reset Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your email"
+              placeholderTextColor="#aaa"
+              value={resetEmail}
+              onChangeText={setResetEmail}
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="#aaa"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-            {!isLogin && (
-              <TextInput
-                style={styles.input}
-                placeholder="Retype Password"
-                placeholderTextColor="#aaa"
-                value={retypePassword}
-                onChangeText={setRetypePassword}
-                secureTextEntry
-              />
-            )}
+            {resetMessage ? (
+              <Text style={styles.success}>{resetMessage}</Text>
+            ) : null}
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handlePasswordReset}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Send Reset Link</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowResetModal(false)}>
+              <Text style={styles.switchHighlight}>Cancel</Text>
+            </TouchableOpacity>
           </View>
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleAuth}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>
-                {isLogin ? "Login" : "Register"}
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={toggleAuth}>
-            <Text style={styles.switch}>
-              {isLogin
-                ? "Don't have an account? "
-                : "Already have an account? "}
-              <Text style={styles.switchHighlight}>
-                {isLogin ? "Register" : "Login"}
-              </Text>
-            </Text>
-          </TouchableOpacity>
         </View>
-      </View>
-    );
-  }
+      </Modal>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -188,12 +288,6 @@ const styles = StyleSheet.create({
   headerContainer: {
     alignItems: "center",
     marginBottom: 40,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    resizeMode: "contain",
-    marginBottom: 10,
   },
   projectTitle: {
     color: "#E6F4F1",
@@ -254,6 +348,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: "center",
   },
+  success: {
+    color: "#6CC5C0",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  forgotPassword: {
+    color: "#00B8A9",
+    marginBottom: 12,
+    textAlign: "right",
+  },
   switch: {
     color: "#C7DDE7",
     marginTop: 16,
@@ -262,5 +366,24 @@ const styles = StyleSheet.create({
   switchHighlight: {
     color: "#00B8A9",
     fontWeight: "bold",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalBox: {
+    backgroundColor: "#132E45",
+    borderRadius: 16,
+    padding: 24,
+    width: "85%",
+  },
+  modalTitle: {
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 16,
   },
 });
