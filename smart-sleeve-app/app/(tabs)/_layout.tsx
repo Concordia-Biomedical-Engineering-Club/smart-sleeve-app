@@ -90,7 +90,11 @@ export default function TabLayout() {
         options={{
           title: "Test BLE",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="antenna.radiowaves.left.and.right" color={color} />
+            <IconSymbol
+              size={28}
+              name="antenna.radiowaves.left.and.right"
+              color={color}
+            />
           ),
         }}
       />
