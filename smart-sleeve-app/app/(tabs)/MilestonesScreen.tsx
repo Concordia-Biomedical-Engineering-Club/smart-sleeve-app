@@ -1,7 +1,8 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Text } from "react-native";
 import ProfileStatCard from "../../components/ProfileStatCard";
 import ProfileAvatarCard from "../../components/ProfileAvatarCard";
+import MilestoneListItem from "../../components/MilestoneListItem";
 
 export default function ProfileScreen() {
   return (
@@ -76,6 +77,31 @@ export default function ProfileScreen() {
             bottom: -20,
             right: -25,
           }}
+        />
+      </View>
+      <View style={{ padding: 16 }}>
+        <Text style={{ fontSize: 25, fontWeight: "700", marginBottom: 20, textAlign: "center" }}>
+          Your Milestones
+        </Text>
+
+        <MilestoneListItem
+          title="First Full Extension"
+          achievedDate="Oct 28, 2025"
+          unlocked={true}
+          icon={require("../../assets/images/trophy.png")}
+        />
+
+        <MilestoneListItem
+          title="First Full Extension"
+          achievedDate="Oct 28, 2025"
+          unlocked={true}
+          icon={require("../../assets/images/trophy.png")}
+        />
+
+        <MilestoneListItem
+          title="First Full Extension"
+          unlocked={false}
+          icon={require("../../assets/images/trophy.png")}
         />
       </View>
     </ScrollView>
