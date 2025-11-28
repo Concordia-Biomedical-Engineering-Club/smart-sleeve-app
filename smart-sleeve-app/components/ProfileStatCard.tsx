@@ -1,5 +1,14 @@
 import React from "react";
-import { View, Text, Image, ImageSourcePropType, StyleSheet, ImageStyle, useWindowDimensions } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  ImageSourcePropType,
+  StyleSheet,
+  ImageStyle,
+} from "react-native";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Colors, Typography, Shadows } from "@/constants/theme";
 
 interface ProfileStatCardProps {
   value: string;
@@ -14,20 +23,23 @@ const ProfileStatCard: React.FC<ProfileStatCardProps> = ({
   image,
   imageStyle,
 }) => {
-  const { width } = useWindowDimensions();
-  
-  const isSmallScreen = width < 380;
-  const cardWidth = isSmallScreen ? width * 0.42 : 177;
-  const cardHeight = isSmallScreen ? width * 0.4 : 167;
+  const colorScheme = useColorScheme() ?? "light";
+  const theme = Colors[colorScheme];
 
   return (
-    <View style={[styles.card, { width: cardWidth, height: cardHeight }]}>
-      <View>
-        <Text style={[styles.value, { fontSize: isSmallScreen ? 20 : 24 }]}>{value}</Text>
-        <Text style={[styles.label, { fontSize: isSmallScreen ? 11 : 14 }]}>{label}</Text>
+    <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
+      <View style={styles.content}>
+        <Text style={[styles.value, { color: theme.text }]}>{value}</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>
+          {label}
+        </Text>
       </View>
 
-      <Image source={image} style={[styles.image, imageStyle]} resizeMode="contain" />
+      <Image
+        source={image}
+        style={[styles.image, imageStyle]}
+        resizeMode="contain"
+      />
     </View>
   );
 };
@@ -36,25 +48,25 @@ export default ProfileStatCard;
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    flex: 1,
+    aspectRatio: 1.05,
+    borderRadius: 20,
     padding: 15,
     overflow: "hidden",
     justifyContent: "space-between",
-    backgroundColor: "#F8F9FA",
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 3,
+    ...Shadows.card,
     position: "relative",
+    minWidth: 140,
+  },
+  content: {
+    zIndex: 1,
   },
   value: {
-    fontWeight: "bold",
-    fontFamily: "Lato",
-    color: "#000",
+    ...Typography.heading2,
   },
   label: {
-    color: "#444",
+    ...Typography.caption,
+    marginTop: 4,
   },
   image: {
     position: "absolute",

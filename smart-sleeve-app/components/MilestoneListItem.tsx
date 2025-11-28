@@ -1,5 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, Image } from "react-native";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Colors, Typography, Shadows } from "@/constants/theme";
 
 interface MilestoneCardProps {
   title: string;
@@ -14,17 +16,36 @@ export default function MilestoneListItem({
   unlocked,
   icon,
 }: MilestoneCardProps) {
+  const colorScheme = useColorScheme() ?? "light";
+  const theme = Colors[colorScheme];
+
   return (
-    <View style={[styles.card, !unlocked && styles.lockedCard]}>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: theme.cardBackground },
+        !unlocked && {
+          backgroundColor: colorScheme === "light" ? "#f4f4f4" : "#2a2a2a",
+        },
+      ]}
+    >
       <View style={styles.textContainer}>
-        <Text style={[styles.title, !unlocked && styles.lockedText]}>
+        <Text
+          style={[
+            styles.title,
+            { color: theme.text },
+            !unlocked && { color: theme.textTertiary },
+          ]}
+        >
           {title}
         </Text>
 
         {unlocked ? (
-          <Text style={styles.subtitle}>Achieved on {achievedDate}</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Achieved on {achievedDate}
+          </Text>
         ) : (
-          <Text style={styles.lockedSubtitle}>
+          <Text style={[styles.lockedSubtitle, { color: theme.textTertiary }]}>
             Keep up with your exercises to unlock this next!
           </Text>
         )}
@@ -44,42 +65,29 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 16,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
-    width: 370,
-    height: 84,
-  },
-  lockedCard: {
-    backgroundColor: "#f4f4f4",
+    borderRadius: 20,
+    marginBottom: 16,
+    ...Shadows.card,
+    width: "100%",
+    minHeight: 84,
   },
   textContainer: {
-    width: "75%",
-    alignItems: "center",
+    flex: 1,
+    marginRight: 16,
+    alignItems: "flex-start",
   },
   title: {
-    fontSize: 16,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  lockedText: {
-    color: "#999",
+    ...Typography.heading3,
+    textAlign: "left",
+    marginBottom: 4,
   },
   subtitle: {
-    marginTop: 4,
-    color: "#666",
-    fontSize: 14,
-    textAlign: "center",
+    ...Typography.caption,
+    textAlign: "left",
   },
   lockedSubtitle: {
-    marginTop: 4,
-    color: "#aaa",
-    fontSize: 14,
-    textAlign: "center",
+    ...Typography.caption,
+    textAlign: "left",
   },
   icon: {
     width: 32,

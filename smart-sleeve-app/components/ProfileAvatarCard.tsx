@@ -1,5 +1,13 @@
 import React from "react";
-import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  useWindowDimensions,
+} from "react-native";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Colors, Typography } from "@/constants/theme";
 
 interface ProfileAvatarCardProps {
   name: string;
@@ -14,19 +22,31 @@ const ProfileAvatarCard: React.FC<ProfileAvatarCardProps> = ({
   avatar,
   starIcon,
 }) => {
+  const colorScheme = useColorScheme() ?? "light";
+  const theme = Colors[colorScheme];
+  const { width } = useWindowDimensions();
+
+  // Calculate avatar size based on screen width, maxing out at 274
+  const avatarSize = Math.min(width * 0.6, 274);
+
   return (
     <View style={styles.container}>
       {/* Avatar */}
       <View style={styles.avatarContainer}>
-        <View style={styles.avatarBorder}>
-          <Image source={avatar} style={styles.avatar} />
+        <View style={[styles.avatarBorder, { borderColor: theme.primary }]}>
+          <Image
+            source={avatar}
+            style={[styles.avatar, { width: avatarSize, height: avatarSize }]}
+          />
         </View>
         {starIcon && <Image source={starIcon} style={styles.starIcon} />}
       </View>
 
       {/* Info */}
-      <Text style={styles.name}>{name}</Text>
-      <Text style={styles.membership}>{membership}</Text>
+      <Text style={[styles.name, { color: theme.text }]}>{name}</Text>
+      <Text style={[styles.membership, { color: theme.textSecondary }]}>
+        {membership}
+      </Text>
     </View>
   );
 };
@@ -36,55 +56,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
   },
-  topBar: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  icon: {
-    width: 28,
-    height: 28,
-    resizeMode: "contain",
-  },
   avatarContainer: {
-    marginTop: 60,
+    marginTop: 20,
     position: "relative",
     justifyContent: "center",
     alignItems: "center",
   },
   avatarBorder: {
     borderWidth: 3,
-    borderColor: "#73CFD4",
     borderRadius: 150,
     padding: 10,
   },
   avatar: {
-    width: 274,
-    height: 274,
-    borderRadius: 60,
+    borderRadius: 150,
   },
   starIcon: {
     position: "absolute",
     bottom: 5,
-    right: 45,
-    width: 63,
-    height: 60,
+    right: 10,
+    width: 50,
+    height: 50,
     resizeMode: "contain",
   },
   name: {
-    fontSize: 30,
-    fontWeight: "600",
-    color: "#222",
+    ...Typography.heading1,
     marginTop: 10,
   },
   membership: {
-    fontSize: 14,
-    color: "#888",
+    ...Typography.caption,
   },
 });
 

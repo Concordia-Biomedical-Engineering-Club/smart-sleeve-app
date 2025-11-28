@@ -88,9 +88,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="MilestonesScreen"
         options={{
-          title: "MilestonesScreen",
+          title: "Milestones",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+            <IconSymbol size={28} name="trophy.fill" color={color} />
           ),
         }}
       />
