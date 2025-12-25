@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { LineChart } from "react-native-chart-kit";
+import { Dimensions , View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { MockSleeveConnector } from "@/services/MockBleService/MockSleeveConnector";
+import { SignalProcessor } from "@/services/SignalProcessing/SignalProcessor";
+import { Colors } from "@/constants/theme";
 import type {
   EMGData,
   IMUData,
@@ -11,16 +14,34 @@ import type {
 
 export default function TestBLEScreen() {
   const [connector] = useState(() => new MockSleeveConnector());
+  // SignalProcessor Visual Demo Config:
+  // Sample Rate: 50Hz (Matches Mock)
+  // Notch: 10Hz (Matches simulated 'line noise' alias)
+  // HighPass: 2Hz (Removes slow drift)
+  // LowPass: 20Hz (Allows 'muscle' signal)
+  const [signalProcessor] = useState(() => new SignalProcessor(50, 10, 2, 20)); 
+  
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     connected: false,
   });
   const [latestEMG, setLatestEMG] = useState<EMGData | null>(null);
   const [latestIMU, setLatestIMU] = useState<IMUData | null>(null);
-  const [emgCount, setEmgCount] = useState(0);
-  const [imuCount, setImuCount] = useState(0);
   const [currentScenario, setCurrentScenario] = useState<
     "REST" | "FLEX" | "SQUAT"
   >("REST");
+  
+  const [isFilteringEnabled, setIsFilteringEnabled] = useState(false);
+  const isFilteringEnabledRef = useRef(false);
+  const lastChartUpdateRef = useRef(0);
+  
+  // Chart Data State
+  const [chartData, setChartData] = useState<number[]>(new Array(50).fill(0));
+  const MAX_POINTS = 50;
+
+  // Sync ref with state
+  useEffect(() => {
+    isFilteringEnabledRef.current = isFilteringEnabled;
+  }, [isFilteringEnabled]);
 
   useEffect(() => {
     // Subscribe to connection status changes
@@ -30,20 +51,34 @@ export default function TestBLEScreen() {
 
     // Subscribe to EMG data
     connector.subscribeToEMG((data) => {
-      setLatestEMG(data);
-      setEmgCount((prev) => prev + 1);
+      let processedData = data;
+      if (isFilteringEnabledRef.current) {
+          processedData = signalProcessor.processEMG(data);
+      }
+      
+      setLatestEMG(processedData);
+      
+      // Update Chart Data (Channel 1 only for viz) - Throttled for readability
+      const now = Date.now();
+      if (now - lastChartUpdateRef.current > 100) { // Update chart max every 100ms (10fps)
+          lastChartUpdateRef.current = now;
+          setChartData(prev => {
+              const newData = [...prev, processedData.channels[0]];
+              if (newData.length > MAX_POINTS) return newData.slice(newData.length - MAX_POINTS);
+              return newData;
+          });
+      }
     });
 
     // Subscribe to IMU data
     connector.subscribeToIMU((data) => {
       setLatestIMU(data);
-      setImuCount((prev) => prev + 1);
     });
 
     return () => {
       connector.disconnect();
     };
-  }, [connector]);
+  }, [connector, signalProcessor]);
 
   const handleConnect = async () => {
     try {
@@ -55,14 +90,15 @@ export default function TestBLEScreen() {
 
   const handleDisconnect = () => {
     connector.disconnect();
-    setEmgCount(0);
-    setImuCount(0);
   };
 
   const handleScenarioChange = (scenario: "REST" | "FLEX" | "SQUAT") => {
     connector.setScenario(scenario);
     setCurrentScenario(scenario);
   };
+
+  // Get screen width for chart
+  const screenWidth = Dimensions.get("window").width;
 
   return (
     <ThemedView style={styles.container}>
@@ -76,7 +112,6 @@ export default function TestBLEScreen() {
           <ThemedText type="subtitle">
             Connection Status:{" "}
             {connectionStatus.connected ? "Connected" : "Disconnected"}
-            {connectionStatus.deviceId && ` (${connectionStatus.deviceId})`}
           </ThemedText>
           <View style={styles.buttonRow}>
             <TouchableOpacity
@@ -101,6 +136,67 @@ export default function TestBLEScreen() {
               <ThemedText style={styles.buttonText}>Disconnect</ThemedText>
             </TouchableOpacity>
           </View>
+        </View>
+        
+        {/* Filter Toggle */}
+        <View style={styles.section}>
+             <ThemedText type="subtitle">Signal Processing</ThemedText>
+             <TouchableOpacity
+              style={[
+                styles.button,
+                { marginTop: 12, backgroundColor: isFilteringEnabled ? Colors.light.success : Colors.light.icon }
+              ]}
+              onPress={() => setIsFilteringEnabled(!isFilteringEnabled)}
+            >
+              <ThemedText style={styles.buttonText}>
+                {isFilteringEnabled ? "Filters ON" : "Filters OFF (Raw)"}
+              </ThemedText>
+            </TouchableOpacity>
+        </View>
+
+        {/* Real-time Chart */}
+        <View style={styles.section}>
+            <ThemedText type="subtitle">Live Signal (CH1)</ThemedText>
+            <LineChart
+                data={{
+                labels: [], // No labels for cleaner look
+                datasets: [
+                    {
+                    data: chartData,
+                    strokeWidth: 2, // optional
+                    },
+                ],
+                }}
+                width={screenWidth - 64} // from react-native
+                height={220}
+                yAxisInterval={1} // optional, defaults to 1
+                withDots={false}
+                withInnerLines={false}
+                withOuterLines={false}
+                chartConfig={{
+                    backgroundColor: isFilteringEnabled ? "#0B5345" : "#022173",
+                    backgroundGradientFrom: isFilteringEnabled ? "#0B5345" : "#022173",
+                    backgroundGradientTo: isFilteringEnabled ? "#1D8348" : "#1b3fa0",
+                    decimalPlaces: 2, // optional, defaults to 2dp
+                    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                    style: {
+                        borderRadius: 16
+                    },
+                    propsForDots: {
+                        r: "3",
+                        strokeWidth: "2",
+                        stroke: "#ffa726"
+                    }
+                }}
+                style={{
+                    marginVertical: 8,
+                    borderRadius: 16
+                }}
+            />
+            <ThemedText style={styles.instruction}>
+                {isFilteringEnabled ? "Signal is stabilized (DC/Line noise removed)" : "Signal contains randomized noise + drift"}
+            </ThemedText>
         </View>
 
         {/* Scenario Controls */}
@@ -146,11 +242,7 @@ export default function TestBLEScreen() {
         {/* Data Counters */}
         <View style={styles.section}>
           <ThemedText type="subtitle">Data Received (Live)</ThemedText>
-          <ThemedText>EMG Frames: {emgCount}</ThemedText>
-          <ThemedText>IMU Frames: {imuCount}</ThemedText>
-          <ThemedText style={styles.highlight}>
-            Streaming at: ~50 Hz (1 frame every 20ms)
-          </ThemedText>
+          <ThemedText>Values: {latestEMG?.channels[0].toFixed(3) ?? '0.00'}</ThemedText>
         </View>
 
         {/* Latest EMG Data */}
@@ -229,35 +321,6 @@ export default function TestBLEScreen() {
           ) : (
             <ThemedText>No data yet</ThemedText>
           )}
-        </View>
-
-        {/* Instructions */}
-        <View style={styles.section}>
-          <ThemedText type="subtitle">How to Test</ThemedText>
-          <ThemedText style={styles.instruction}>
-            1. Tap &quot;Connect&quot; to start the mock BLE service
-          </ThemedText>
-          <ThemedText style={styles.instruction}>
-            2. Watch the data counters increase at ~50 Hz
-          </ThemedText>
-          <ThemedText style={styles.instruction}>
-            3. Switch scenarios (REST/FLEX/SQUAT) to see different patterns:
-          </ThemedText>
-          <ThemedText style={styles.instruction}>
-            {" "}
-            • REST: Small gentle oscillations
-          </ThemedText>
-          <ThemedText style={styles.instruction}>
-            {" "}
-            • FLEX: Large muscle activation (0.8 amplitude)
-          </ThemedText>
-          <ThemedText style={styles.instruction}>
-            {" "}
-            • SQUAT: Medium symmetric bouncing
-          </ThemedText>
-          <ThemedText style={styles.instruction}>
-            4. Tap &quot;Disconnect&quot; to stop the data stream
-          </ThemedText>
         </View>
       </ScrollView>
     </ThemedView>
