@@ -55,6 +55,7 @@ export class SleeveDataGenerator {
     const timestamp = Date.now();
     const numChannels = 8;
 
+    // Base amplitude for the envelope
     const amplitude =
       this.scenario === 'REST'
         ? 0.05
@@ -64,9 +65,30 @@ export class SleeveDataGenerator {
         ? 0.5
         : 0.1;
 
-    const noise = () => (Math.random() - 0.5) * amplitude * 2;
+    // Time in seconds for frequency generation
+    const t = (timestamp - this.startTime) / 1000;
 
-    const channels = Array.from({ length: numChannels }, () => noise());
+    // Simulate raw EMG signal components:
+    // 1. High Frequency "Muscle Sizzle" (50Hz - 150Hz white noise bursts) - KEPT by Bandpass
+    const muscleSignal = () => (Math.random() - 0.5) * 2 * amplitude; 
+
+    // 2. Line Interference (60Hz Sine Wave) - REMOVED by Notch
+    const lineNoise = Math.sin(2 * Math.PI * 60 * t) * 0.3; 
+
+    // 3. Motion Artifact (Low Frequency drift < 10Hz) - REMOVED by High Pass
+    const motionArtifact = Math.sin(2 * Math.PI * 2 * t) * 0.5;
+
+    // Combine them
+    const generateValue = () => {
+       // In REST, we mostly see noise and artifacts. In FLEX, we see muscle signal dominating.
+       if (this.scenario === 'REST') {
+           return (Math.random() * 0.05) + lineNoise + motionArtifact;
+       }
+       return muscleSignal() + lineNoise + motionArtifact;
+    };
+
+    const channels = Array.from({ length: numChannels }, () => generateValue());
+
     const checksum = computeChecksum(channels);
 
     return {
