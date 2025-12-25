@@ -44,12 +44,6 @@ export class SignalProcessor {
     // Ensure we have enough filter instances
     if (this.channels.length < rawChannels.length) {
       for (let i = this.channels.length; i < rawChannels.length; i++) {
-        const filter = new ChannelFilter(this.sampleRate);
-        // We need to re-initialize the ChannelFilter with custom freqs.
-        // Since ChannelFilter constructor currently hardcodes them, 
-        // we should refactor ChannelFilter to accept them or just move logic here.
-        // Let's refactor ChannelFilter class below/above to accept options.
-        // But since ChannelFilter is internal, I'll update it now.
          this.channels.push(this.createChannelFilter());
       }
     }

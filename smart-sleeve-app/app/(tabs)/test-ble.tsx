@@ -1,7 +1,6 @@
 import { LineChart } from "react-native-chart-kit";
-import { Dimensions } from "react-native";
+import { Dimensions , View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { MockSleeveConnector } from "@/services/MockBleService/MockSleeveConnector";
@@ -27,8 +26,6 @@ export default function TestBLEScreen() {
   });
   const [latestEMG, setLatestEMG] = useState<EMGData | null>(null);
   const [latestIMU, setLatestIMU] = useState<IMUData | null>(null);
-  const [emgCount, setEmgCount] = useState(0);
-  const [imuCount, setImuCount] = useState(0);
   const [currentScenario, setCurrentScenario] = useState<
     "REST" | "FLEX" | "SQUAT"
   >("REST");
@@ -38,8 +35,8 @@ export default function TestBLEScreen() {
   const lastChartUpdateRef = useRef(0);
   
   // Chart Data State
-  const [chartData, setChartData] = useState<number[]>(new Array(20).fill(0));
-  const MAX_POINTS = 30;
+  const [chartData, setChartData] = useState<number[]>(new Array(50).fill(0));
+  const MAX_POINTS = 50;
 
   // Sync ref with state
   useEffect(() => {
@@ -60,7 +57,6 @@ export default function TestBLEScreen() {
       }
       
       setLatestEMG(processedData);
-      setEmgCount((prev) => prev + 1);
       
       // Update Chart Data (Channel 1 only for viz) - Throttled for readability
       const now = Date.now();
@@ -77,7 +73,6 @@ export default function TestBLEScreen() {
     // Subscribe to IMU data
     connector.subscribeToIMU((data) => {
       setLatestIMU(data);
-      setImuCount((prev) => prev + 1);
     });
 
     return () => {
@@ -95,8 +90,6 @@ export default function TestBLEScreen() {
 
   const handleDisconnect = () => {
     connector.disconnect();
-    setEmgCount(0);
-    setImuCount(0);
   };
 
   const handleScenarioChange = (scenario: "REST" | "FLEX" | "SQUAT") => {
@@ -181,9 +174,9 @@ export default function TestBLEScreen() {
                 withInnerLines={false}
                 withOuterLines={false}
                 chartConfig={{
-                    backgroundColor: "#022173",
-                    backgroundGradientFrom: "#022173",
-                    backgroundGradientTo: "#1b3fa0",
+                    backgroundColor: isFilteringEnabled ? "#0B5345" : "#022173",
+                    backgroundGradientFrom: isFilteringEnabled ? "#0B5345" : "#022173",
+                    backgroundGradientTo: isFilteringEnabled ? "#1D8348" : "#1b3fa0",
                     decimalPlaces: 2, // optional, defaults to 2dp
                     color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
                     labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
@@ -196,7 +189,6 @@ export default function TestBLEScreen() {
                         stroke: "#ffa726"
                     }
                 }}
-                bezier
                 style={{
                     marginVertical: 8,
                     borderRadius: 16

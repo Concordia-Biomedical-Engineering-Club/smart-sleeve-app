@@ -89,22 +89,29 @@ describe("SignalProcessor Service", () => {
         // Let's re-instantiate with higher FS to test LP
         const highResProcessor = new SignalProcessor(2000);
         
-        // Helper inline for high res
-        const runHighRes = (freq: number) => {
+        // Helper inline for high res using RMS
+        const runHighRes = (freq: number): number => {
              const packetGen = (v: number) => ({ header:0, timestamp:0, channels:[v], checksum:0 });
-             let out = 0;
+             const samples: number[] = [];
              for(let i=0; i<2000; i++) {
                  const t = i/2000;
                  const inp = Math.sin(2*Math.PI*freq*t);
-                 out = highResProcessor.processEMG(packetGen(inp)).channels[0];
+                 const out = highResProcessor.processEMG(packetGen(inp)).channels[0];
+                 samples.push(out);
              }
-             return Math.abs(out); // Approximate amplitude at end
+             // RMS of last 100 samples
+             const ss = samples.slice(-100);
+             const rms = Math.sqrt(ss.reduce((a, b) => a + b*b, 0) / ss.length);
+             return rms;
         };
 
         // 800Hz should be blocked by 500Hz LP
-        // Note: Simple magnitude check at end isn't RMS but gives idea
-        // Let's rely on standard logic:
-        // We essentially want to verify valid signals pass.
+        const rmsAt800 = runHighRes(800);
+        expect(rmsAt800).toBeLessThan(0.2); 
+
+        // 100Hz should pass
+        const rmsAt100 = runHighRes(100);
+        expect(rmsAt100).toBeGreaterThan(0.6); // sin wave RMS is ~0.707
     });
 
     it("should have low latency (<20ms)", () => {

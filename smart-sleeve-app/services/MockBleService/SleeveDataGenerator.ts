@@ -73,10 +73,10 @@ export class SleeveDataGenerator {
     const muscleSignal = () => (Math.random() - 0.5) * 2 * amplitude; 
 
     // 2. Line Interference (60Hz Sine Wave) - REMOVED by Notch
-    const lineNoise = Math.sin(2 * Math.PI * 60 * t) * 0.3; 
+    const lineNoise = Math.sin(2 * Math.PI * 60 * t) * 0.5; 
 
     // 3. Motion Artifact (Low Frequency drift < 10Hz) - REMOVED by High Pass
-    const motionArtifact = Math.sin(2 * Math.PI * 2 * t) * 0.5;
+    const motionArtifact = Math.sin(2 * Math.PI * 1.5 * t) * 0.8;
 
     // Combine them
     const generateValue = () => {
