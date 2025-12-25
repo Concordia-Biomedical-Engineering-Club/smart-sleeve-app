@@ -8,6 +8,7 @@ import type {
   IMUData,
   ConnectionStatus,
 } from "@/services/MockBleService/ISleeveConnector";
+import { useSleeveDevice } from "@/hooks/useSleeveDevice";
 
 export default function TestBLEScreen() {
   const [connector] = useState(() => new MockSleeveConnector());
@@ -21,6 +22,8 @@ export default function TestBLEScreen() {
   const [currentScenario, setCurrentScenario] = useState<
     "REST" | "FLEX" | "SQUAT"
   >("REST");
+
+  useSleeveDevice(connector);
 
   useEffect(() => {
     // Subscribe to connection status changes
