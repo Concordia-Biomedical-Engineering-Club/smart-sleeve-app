@@ -10,14 +10,14 @@ import {
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors, Typography, Shadows } from "@/constants/theme";
 
-interface ProfileStatCardProps {
+interface StatCardProps {
   value: string;
   label: string;
-  image: ImageSourcePropType;
+  image?: ImageSourcePropType;
   imageStyle?: ImageStyle;
 }
 
-const ProfileStatCard: React.FC<ProfileStatCardProps> = ({
+const StatCard: React.FC<StatCardProps> = ({
   value,
   label,
   image,
@@ -35,16 +35,18 @@ const ProfileStatCard: React.FC<ProfileStatCardProps> = ({
         </Text>
       </View>
 
-      <Image
-        source={image}
-        style={[styles.image, imageStyle]}
-        resizeMode="contain"
-      />
+      {image && (
+        <Image
+          source={image}
+          style={[styles.image, imageStyle]}
+          resizeMode="contain"
+        />
+      )}
     </View>
   );
 };
 
-export default ProfileStatCard;
+export default StatCard;
 
 const styles = StyleSheet.create({
   card: {
