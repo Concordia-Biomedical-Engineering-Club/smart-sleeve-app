@@ -8,7 +8,7 @@ import {
   Text,
 } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import ProfileStatCard from "../../components/ProfileStatCard";
+import StatCard from "../../components/StatCard";
 import ProfileAvatarCard from "../../components/ProfileAvatarCard";
 import MilestoneListItem from "../../components/MilestoneListItem";
 import { Colors, Typography } from "@/constants/theme";
@@ -74,14 +74,14 @@ export default function MilestonesScreen() {
       {/* Stats Section */}
       <View style={styles.statsContainer}>
         <View style={styles.row}>
-          <ProfileStatCard
+          <StatCard
             value="3/10"
             label="Milestones"
             image={require("../../assets/images/trophy.png")}
             imageStyle={{ width: 72, height: 84, bottom: 10, right: 10 }}
           />
 
-          <ProfileStatCard
+          <StatCard
             value="12 Days"
             label="Current Streak"
             image={require("../../assets/images/fire.png")}
@@ -90,14 +90,14 @@ export default function MilestonesScreen() {
         </View>
 
         <View style={styles.row}>
-          <ProfileStatCard
+          <StatCard
             value="132"
             label="Exercises"
             image={require("../../assets/images/target.png")}
             imageStyle={{ width: 89, height: 100, bottom: 5, right: 5 }}
           />
 
-          <ProfileStatCard
+          <StatCard
             value="94%"
             label={"Average\nCompliance"}
             image={require("../../assets/images/woman.png")}
