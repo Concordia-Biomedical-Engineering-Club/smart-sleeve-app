@@ -1,50 +1,96 @@
-# Welcome to your Expo app 👋
+# Smart Rehabilitation Knee Sleeve App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A professional React Native application developed by the **Concordia Biomedical Engineering Club (BEC)** to interface with a smart knee sleeve for real-time rehabilitation monitoring.
 
-## Get started
+## 📋 Project Overview
+This application tracks 8-channel EMG (muscle activity) and IMU (joint orientation) data from a smart sleeve. It features a robust signal processing pipeline to clean raw data and a modern dashboard to visualize patient progress.
 
-1. Install dependencies
+## 🚀 Key Features
+- **Live Signal Processing**: Built-in DSP engine for real-time data cleaning.
+  - **60Hz Notch Filter**: Removes electrical hum from power outlets.
+  - **20Hz - 500Hz Bandpass Filter**: Isolates muscle action potentials while removing slow motion artifacts.
+- **Hardware Simulation**: Full Mock BLE service allowing development and testing without physical hardware.
+- **Health Dashboard**: Premium UI featuring circular progress trackers, activity segments, and milestone badges.
+- **Test Suite**: Comprehensive unit tests (50+ cases) for signal accuracy and hardware logic.
+- **Diagnostics Screen**: Real-time line graphs to visualize filtered vs. raw EMG signals.
 
-   ```bash
-   npm install
-   ```
+## 🛠 Tech Stack
+- **Framework**: [Expo](https://expo.dev) (SDK 54) / React Native
+- **Language**: TypeScript
+- **State Management**: Redux Toolkit & Redux Persist
+- **Backend/Auth**: Firebase JS SDK (Authentication & Firestore)
+- **Navigation**: Expo Router (File-based navigation)
+- **Charts**: React Native Chart Kit
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## ⚙️ Environment Setup
+Follow these exact steps to get your development environment running in minutes.
 
-In the output, you'll find options to open the app in a
+### 1. Prerequisites
+Ensure you have the following installed:
+- **Node.js**: Version 18.x or higher. [Download here](https://nodejs.org/).
+- **Git**: For cloning the repository.
+- **Expo Go App**: Install the [Expo Go](https://expo.dev/go) app on your physical mobile device.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+### 2. Installation
+Clone the repository and enter the project folder:
 ```bash
-npm run reset-project
+git clone https://github.com/Concordia-Biomedical-Engineering-Club/smart-sleeve-app.git
+cd smart-sleeve-app/smart-sleeve-app
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 3. Environment Variables
+The app uses Firebase for Authentication. You must configure your own keys:
+1. Copy the example file:
+   ```bash
+   cp .env.example .env
+   ```
+2. Open `.env` and replace the placeholder values with your Firebase Project credentials.
 
-## Learn more
+### 4. Running the Development Server
+```bash
+npm start
+```
+- **Physical Device**: Open your camera (iOS) or the Expo Go app (Android) and scan the QR code displayed in your terminal.
+- **Emulator**: Press `a` for Android Emulator or `i` for iOS Simulator.
+- **Web**: Press `w` to open in your browser.
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 🧪 Development Workflows
 
-## Join the community
+### Testing
+We use Jest for unit testing logic and filters. Run tests to ensure everything is stable:
+```bash
+npm test
+```
 
-Join our community of developers creating universal apps.
+### Linting
+To maintain code quality, run the linter before submitting PRs:
+```bash
+npm run lint
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Signal Verification
+To test the signal processing manually:
+1. Navigate to the **Test BLE** tab in the app.
+2. Tap **Connect** to start the mock stream.
+3. Toggle the **Filters ON/OFF** button.
+4. Observe the live `LineChart` and numeric values to see the noise reduction in real-time.
+
+---
+
+## 📁 Project Structure
+- **`/app`**: Routing and screen definitions (Expo Router).
+- **`/services`**: The "brains" of the app.
+  - `SignalProcessing/`: Biquad IIR filter implementations.
+  - `MockBleService/`: Emulates the hardware protocol.
+- **`/components`**: Reusable UI elements, including specialized dashboard cards.
+- **`/constants`**: Design system tokens (colors, topography, shadows).
+- **`/store`**: Redux logic for user data and persistent settings.
+
+---
+**Concordia University - Biomedical Engineering Club**
+Helping you move better, one step at a time.
