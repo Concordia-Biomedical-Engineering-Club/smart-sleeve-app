@@ -1,9 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { initializeAuth } from "firebase/auth";
-// @ts-ignore: getReactNativePersistence is not in the standard types but exists in the React Native build
-import { getReactNativePersistence } from "firebase/auth";
-import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
+import { initializeAuth, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { Platform } from "react-native";
 
 const EXPO_PUBLIC_FIREBASE_API_KEY = process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
 const EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN =
@@ -42,10 +40,34 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with React Native persistence
-const firebaseAuth = initializeAuth(app, {
-  persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-});
+// Initialize Auth with platform-specific persistence
+let firebaseAuth;
+
+try {
+  if (Platform.OS === 'web') {
+    // Web uses browser local storage persistence
+    firebaseAuth = initializeAuth(app, {
+      persistence: browserLocalPersistence,
+    });
+  } else {
+    // React Native uses AsyncStorage persistence
+    // Dynamic import to avoid web bundle issues
+    const { getReactNativePersistence } = require("firebase/auth");
+    const ReactNativeAsyncStorage = require("@react-native-async-storage/async-storage").default;
+    
+    firebaseAuth = initializeAuth(app, {
+      persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+    });
+  }
+} catch (error: any) {
+  // If auth is already initialized (e.g., during hot reload), use getAuth
+  if (error?.code === 'auth/already-initialized') {
+    const { getAuth } = require("firebase/auth");
+    firebaseAuth = getAuth(app);
+  } else {
+    throw error;
+  }
+}
 
 export const auth = firebaseAuth;
 export const db = getFirestore(app);
