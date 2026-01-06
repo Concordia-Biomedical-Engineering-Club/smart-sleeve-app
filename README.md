@@ -81,3 +81,44 @@ The system operates across four integrated layers to ensure high performance and
 ---
 **Concordia University - Biomedical Engineering Club**
 *Transforming ACL recovery through engineering excellence.*
+
+---
+
+## 🤝 Contributing
+
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests to us.
+
+---
+
+## ⚠️ Disclaimer
+
+This project is for educational and portfolio purposes only. The application and data provided by the Smart Rehabilitation Knee Sleeve App are **not a substitute for professional medical advice, diagnosis, or treatment.**
+
+This tool is designed to be an informational aid and a **supplementary tool for qualified healthcare professionals.** It is **not a certified medical device** and should not be used for primary diagnosis or treatment decisions.
+
+**Always consult a qualified healthcare professional for any health concerns.**
+
+---
+
+## ⚖️ License & Commercial Use
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**. See the `LICENSE` file for the full text.
+
+In simple terms, this means you are free to use, modify, and distribute this software, provided that any derivative work you make available over a network is also licensed under the AGPLv3 and you share its source code.
+
+**For inquiries about alternative commercial licensing** for use in proprietary, closed-source applications, please contact the project lead.
+
+---
+
+## 📞 Contact
+
+**Youssef Jedidi** - Project Lead
+
+- **Email:** `youssefjedidi2022 [at] gmail [dot] com`
+- **LinkedIn:** [Youssef Jedidi's Profile](https://www.linkedin.com/in/youssef-jedidi/)
+
+**Concordia Biomedical Engineering Club**
+
+Project Link: [https://github.com/Concordia-Biomedical-Engineering-Club/smart-sleeve-app](https://github.com/Concordia-Biomedical-Engineering-Club/smart-sleeve-app)

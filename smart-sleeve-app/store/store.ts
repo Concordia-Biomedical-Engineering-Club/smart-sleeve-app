@@ -1,13 +1,24 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 import { combineReducers } from "redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { persistReducer, persistStore } from "redux-persist";
 import userReducer from "./userSlice";
 import deviceReducer from "./deviceSlice";
 
+// Fallback storage for SSR (Web)
+const storage =
+  Platform.OS === "web" && typeof window === "undefined"
+    ? {
+        getItem: () => Promise.resolve(null),
+        setItem: () => Promise.resolve(),
+        removeItem: () => Promise.resolve(),
+      }
+    : AsyncStorage;
+
 const rootPersistConfig = {
   key: "root",
-  storage: AsyncStorage,
+  storage,
   whitelist: ["user"], // persist the 'user' reducer
 };
 
