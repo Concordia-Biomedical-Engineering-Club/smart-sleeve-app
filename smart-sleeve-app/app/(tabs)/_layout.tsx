@@ -76,11 +76,11 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="progress"
+        name="MotionAnalyticsScreen"
         options={{
-          title: "Progress",
+          title: "Motion",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+            <IconSymbol size={28} name="waveform.path.ecg" color={color} />
           ),
         }}
       />

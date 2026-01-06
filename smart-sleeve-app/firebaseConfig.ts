@@ -1,9 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, initializeAuth } from "firebase/auth";
-// @ts-ignore: getReactNativePersistence is not in the standard types but exists in the React Native build
-import { getReactNativePersistence } from "firebase/auth";
-import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
+import { initializeAuth, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { Platform } from "react-native";
 
 const EXPO_PUBLIC_FIREBASE_API_KEY = process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
 const EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN =
@@ -42,14 +40,48 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Avoid double initialization of Auth
+/**
+ * Initialize Firebase Auth with platform-specific persistence
+ * 
+ * We use different persistence strategies based on the platform:
+ * - Web: browserLocalPersistence (uses browser's localStorage)
+ * - React Native: getReactNativePersistence with AsyncStorage
+ * 
+ * The React Native modules are dynamically imported to prevent them from
+ * being bundled in the web version, which would cause errors since
+ * getReactNativePersistence is not available in the web Firebase SDK.
+ */
 let firebaseAuth;
+
 try {
-  firebaseAuth = getAuth(app);
-} catch (e) {
-  firebaseAuth = initializeAuth(app, {
-    persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-  });
+  if (Platform.OS === 'web') {
+    // Web: Use browser's localStorage for auth state persistence
+    firebaseAuth = initializeAuth(app, {
+      persistence: browserLocalPersistence,
+    });
+  } else {
+    // React Native: Use AsyncStorage for auth state persistence
+    // Dynamic require() prevents these modules from being included in web bundles
+    const { getReactNativePersistence } = require("firebase/auth");
+    const ReactNativeAsyncStorage = require("@react-native-async-storage/async-storage").default;
+    
+    firebaseAuth = initializeAuth(app, {
+      persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+    });
+  }
+} catch (error: any) {
+  /**
+   * Handle auth/already-initialized error during development hot reloads
+   * When the module is hot-reloaded, Firebase may already be initialized.
+   * In this case, we fall back to getAuth() to retrieve the existing instance.
+   */
+  if (error?.code === 'auth/already-initialized') {
+    const { getAuth } = require("firebase/auth");
+    firebaseAuth = getAuth(app);
+  } else {
+    // Re-throw any other errors
+    throw error;
+  }
 }
 
 export const auth = firebaseAuth;
