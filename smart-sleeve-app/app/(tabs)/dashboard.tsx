@@ -3,12 +3,12 @@ import {
   StyleSheet,
   ScrollView,
   View,
-  SafeAreaView,
   Platform,
   StatusBar,
   TouchableOpacity,
   Text,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
 import { useColorScheme } from "@/hooks/use-color-scheme";
