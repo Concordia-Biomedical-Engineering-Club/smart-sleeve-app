@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { initializeAuth, getReactNativePersistence } from "firebase/auth/react-native";
+import { getAuth, initializeAuth } from "firebase/auth";
+// @ts-ignore: getReactNativePersistence is not in the standard types but exists in the React Native build
+import { getReactNativePersistence } from "firebase/auth";
 import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
 import { getFirestore } from "firebase/firestore";
 
