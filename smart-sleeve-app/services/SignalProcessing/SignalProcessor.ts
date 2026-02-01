@@ -6,7 +6,7 @@
  * ------------------------------------------------------------------
  */
 
-import { EMGData } from "../MockBleService/ISleeveConnector";
+import { EMGData } from "../SleeveConnector/ISleeveConnector";
 import { FilterCoefficients } from "./FilterCoefficients";
 import { BiquadFilter } from "./IIRFilter";
 

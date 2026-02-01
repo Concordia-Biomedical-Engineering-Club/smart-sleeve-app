@@ -1,4 +1,4 @@
-import { ConnectionStatus, EMGData, IMUData } from '@/services/MockBleService/ISleeveConnector';
+import { ConnectionStatus, EMGData, IMUData } from '@/services/SleeveConnector/ISleeveConnector';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface DeviceState {

@@ -101,6 +101,9 @@ export interface ISleeveConnector {
    * can react to connect/disconnect events.
    */
   onConnectionStatusChange(callback: (status: ConnectionStatus) => void): void;
+
+  /**
+   * Update the movement scenario (Mock only, no-op for Real).
+   */
+  setScenario(scenario: SleeveScenario): void;
 }
-
-

@@ -3,18 +3,18 @@ import { Dimensions , View, StyleSheet, ScrollView, TouchableOpacity } from "rea
 import React, { useState, useEffect, useRef } from "react";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { MockSleeveConnector } from "@/services/MockBleService/MockSleeveConnector";
 import { SignalProcessor } from "@/services/SignalProcessing/SignalProcessor";
 import { Colors } from "@/constants/theme";
 import type {
   EMGData,
   IMUData,
   ConnectionStatus,
-} from "@/services/MockBleService/ISleeveConnector";
+} from "@/services/SleeveConnector/ISleeveConnector";
 import { useSleeveDevice } from "@/hooks/useSleeveDevice";
+import { useSleeve } from "@/hooks/useSleeve";
 
 export default function TestBLEScreen() {
-  const [connector] = useState(() => new MockSleeveConnector());
+  const connector = useSleeve();
   // SignalProcessor Visual Demo Config:
   // Sample Rate: 50Hz (Matches Mock)
   // Notch: 10Hz (Matches simulated 'line noise' alias)

@@ -14,7 +14,7 @@ import {
   IMUData,
   ConnectionStatus,
   SleeveScenario,
-} from './ISleeveConnector';
+} from '../SleeveConnector/ISleeveConnector';
 import { SleeveDataGenerator } from './SleeveDataGenerator';
 
 export class MockSleeveConnector implements ISleeveConnector {

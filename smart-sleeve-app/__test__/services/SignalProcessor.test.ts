@@ -1,5 +1,5 @@
 import { SignalProcessor } from "../../services/SignalProcessing/SignalProcessor";
-import { EMGData } from "../../services/MockBleService/ISleeveConnector";
+import { EMGData } from "../../services/SleeveConnector/ISleeveConnector";
 
 describe("SignalProcessor Service", () => {
     let processor: SignalProcessor;

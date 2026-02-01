@@ -9,7 +9,7 @@
  * -----------------------------------------------------
  */
 
-import { EMGData, IMUData, SleeveScenario } from './ISleeveConnector';
+import { EMGData, IMUData, SleeveScenario } from '../SleeveConnector/ISleeveConnector';
 
 /**
  * Computes a simple checksum over a list of numeric values.

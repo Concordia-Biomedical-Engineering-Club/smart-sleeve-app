@@ -20,7 +20,7 @@
  */
 
 import { SleeveDataGenerator } from "../../services/MockBleService/SleeveDataGenerator";
-import type { SleeveScenario } from "../../services/MockBleService/ISleeveConnector";
+import type { SleeveScenario } from "../../services/SleeveConnector/ISleeveConnector";
 
 describe("SleeveDataGenerator", () => {
   let generator: SleeveDataGenerator;

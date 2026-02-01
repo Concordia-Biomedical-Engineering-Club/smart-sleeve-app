@@ -1,4 +1,4 @@
-import { ISleeveConnector } from "@/services/MockBleService/ISleeveConnector";
+import { ISleeveConnector } from "@/services/SleeveConnector/ISleeveConnector";
 import { useAppDispatch } from "./storeHooks";
 import { useEffect } from "react";
 import {

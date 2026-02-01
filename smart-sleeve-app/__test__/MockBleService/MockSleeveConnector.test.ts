@@ -31,7 +31,7 @@ import type {
   EMGData,
   IMUData,
   ConnectionStatus,
-} from "../../services/MockBleService/ISleeveConnector";
+} from "../../services/SleeveConnector/ISleeveConnector";
 
 // Mock timers for controlling setInterval without waiting real time
 jest.useFakeTimers();
