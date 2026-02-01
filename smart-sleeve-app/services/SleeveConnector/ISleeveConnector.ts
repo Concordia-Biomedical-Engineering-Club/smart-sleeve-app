@@ -32,17 +32,31 @@ export interface EMGData {
 /**
  * IMUData
  * -----------------------------------------------------
- * Represents one motion frame coming from the sleeve.
- * Per spec (Section 9.2), we expose orientation as:
- * - roll, pitch, yaw (in degrees)
- * plus header, timestamp and checksum.
+ * Represents one motion/angle frame coming from the sleeve.
+ * 
+ * HARDWARE NOTE (AS5048A Magnetic Encoder):
+ * With the AS5048A magnetic encoder integration, this structure
+ * now primarily represents knee flexion angle measurement:
+ * 
+ * - roll: Knee flexion angle in degrees (0-140°)
+ *   - 0° = Full knee extension (standing straight)
+ *   - 90° = Right angle bend
+ *   - 120-140° = Deep squat position
+ * 
+ * - pitch: Unused (set to 0) - reserved for future multi-axis sensing
+ * - yaw: Unused (set to 0) - reserved for future multi-axis sensing
+ * 
+ * Legacy IMU Support:
+ * If using a traditional IMU (gyro/accelerometer), the fields
+ * retain their original meaning (roll, pitch, yaw orientation).
+ * -----------------------------------------------------
  */
 export interface IMUData {
   header: number;
   timestamp: number;
-  roll: number;
-  pitch: number;
-  yaw: number;
+  roll: number;      // Knee flexion angle (0-140°) with AS5048A encoder
+  pitch: number;     // Unused with encoder (0), or pitch angle with IMU
+  yaw: number;       // Unused with encoder (0), or yaw angle with IMU
   checksum: number;
 }
 

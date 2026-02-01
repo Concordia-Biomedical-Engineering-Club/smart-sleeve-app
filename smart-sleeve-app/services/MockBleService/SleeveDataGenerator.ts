@@ -101,51 +101,66 @@ export class SleeveDataGenerator {
 
   /**
    * Generate a single IMUData frame for the current scenario.
-   * Uses simple sinusoidal patterns to mimic joint motion
-   * over time while remaining deterministic enough for demos.
+   * 
+   * NOTE: With AS5048A magnetic encoder integration, this now
+   * simulates knee flexion angle measurement:
+   * - roll: Knee flexion angle (0-140°, where 0° = full extension)
+   * - pitch: Unused (set to 0)
+   * - yaw: Unused (set to 0)
+   * 
+   * Realistic knee flexion ranges:
+   * - REST: 0-10° (standing/slight bend)
+   * - FLEX: 60-120° (active knee flexion exercise)
+   * - SQUAT: 0-120° (full squat cycle)
    */
   generateIMUFrame(): IMUData {
     const timestamp = Date.now();
     const t = (timestamp - this.startTime) / 1000; // seconds since start
 
-    let roll = 0;
-    let pitch = 0;
-    let yaw = 0;
+    let kneeFlexionAngle = 0; // Replaces 'roll' - represents AS5048A encoder reading
 
     switch (this.scenario) {
       case 'REST':
-        roll = 0 + Math.sin(t) * 2;
-        pitch = 0 + Math.cos(t) * 2;
-        yaw = 0;
+        // Standing position with small natural sway (0-10°)
+        kneeFlexionAngle = 5 + Math.sin(t * 0.5) * 5;
         break;
 
       case 'FLEX':
-        // Larger, faster oscillation to represent active flexion.
-        roll = 20 + Math.sin(t * 2) * 40;
-        pitch = 10 + Math.cos(t * 2) * 30;
-        yaw = 0;
+        // Active knee flexion exercise (60-120° oscillation at ~0.5 Hz)
+        // Simulates controlled flexion/extension cycles
+        kneeFlexionAngle = 90 + Math.sin(t * Math.PI) * 30;
         break;
 
       case 'SQUAT':
-        // Slower symmetric motion for repeated squats.
-        roll = 10 + Math.abs(Math.sin(t)) * 30;
-        pitch = 5 + Math.abs(Math.sin(t)) * 20;
-        yaw = 0;
+        // Full squat cycle (0-120° at ~0.3 Hz)
+        // Simulates standing -> deep squat -> standing
+        // Using abs(sin) to create realistic squat pattern (always positive flexion)
+        const squatCycle = Math.abs(Math.sin(t * 0.6));
+        kneeFlexionAngle = squatCycle * 120;
         break;
 
       default:
+        kneeFlexionAngle = 0;
         break;
     }
 
-    const checksum = computeChecksum([roll, pitch, yaw]);
+    // Add small noise to simulate AS5048A resolution (±0.05° typical accuracy)
+    const encoderNoise = (Math.random() - 0.5) * 0.1;
+    kneeFlexionAngle += encoderNoise;
+
+    // Clamp to realistic knee flexion range (0-140°)
+    kneeFlexionAngle = Math.max(0, Math.min(140, kneeFlexionAngle));
+
+    const checksum = computeChecksum([kneeFlexionAngle, 0, 0]);
 
     return {
-      header: 0xb1, // Arbitrary protocol header for IMU frames
+      header: 0xb1, // Protocol header for angle/IMU frames
       timestamp,
-      roll,
-      pitch,
-      yaw,
+      roll: kneeFlexionAngle,  // AS5048A knee flexion angle (0-140°)
+      pitch: 0,                 // Unused with magnetic encoder
+      yaw: 0,                   // Unused with magnetic encoder
       checksum,
     };
   }
+
 }

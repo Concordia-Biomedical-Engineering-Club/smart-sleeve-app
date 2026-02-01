@@ -2,6 +2,13 @@
  * RealSleeveConnector.ts
  * -----------------------------------------------------
  * Stub for real hardware communication over BLE.
+ * 
+ * HARDWARE INTEGRATION:
+ * - EMG: 8-channel muscle activity data via BLE notifications
+ * - Angle Sensor: AS5048A magnetic encoder for knee flexion (0-140°)
+ *   - Firmware reads AS5048A via SPI at 50 Hz
+ *   - Angle data transmitted via BLE in IMUData.roll field
+ * 
  * Currently just logs activity to prove the factory
  * correctly switches between Mock and Real implementations.
  * -----------------------------------------------------

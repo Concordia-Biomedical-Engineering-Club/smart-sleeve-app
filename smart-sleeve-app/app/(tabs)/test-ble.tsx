@@ -288,7 +288,7 @@ export default function TestBLEScreen() {
         {/* Latest IMU Data */}
         <View style={styles.section}>
           <ThemedText type="subtitle">
-            Latest IMU Data (Orientation angles)
+            Knee Flexion Angle (AS5048A Encoder)
           </ThemedText>
           {latestIMU ? (
             <View style={styles.dataBox}>
@@ -301,21 +301,24 @@ export default function TestBLEScreen() {
               <ThemedText
                 style={[
                   styles.monoText,
-                  Math.abs(latestIMU.roll) > 20 ? styles.activeChannel : {},
+                  styles.highlight,
+                  { fontSize: 18, marginTop: 8 }
                 ]}
               >
-                Roll: {latestIMU.roll.toFixed(2)}° (side tilt)
-              </ThemedText>
-              <ThemedText
-                style={[
-                  styles.monoText,
-                  Math.abs(latestIMU.pitch) > 20 ? styles.activeChannel : {},
-                ]}
-              >
-                Pitch: {latestIMU.pitch.toFixed(2)}° (forward/back)
+                🦵 Knee Flexion: {latestIMU.roll.toFixed(1)}°
               </ThemedText>
               <ThemedText style={styles.monoText}>
-                Yaw: {latestIMU.yaw.toFixed(2)}° (rotation - minimal for knee)
+                {latestIMU.roll < 15 && "  → Standing (Full Extension)"}
+                {latestIMU.roll >= 15 && latestIMU.roll < 45 && "  → Slight Bend"}
+                {latestIMU.roll >= 45 && latestIMU.roll < 90 && "  → Moderate Flexion"}
+                {latestIMU.roll >= 90 && latestIMU.roll < 110 && "  → Deep Flexion (90°+)"}
+                {latestIMU.roll >= 110 && "  → Squat Position (110°+)"}
+              </ThemedText>
+              <ThemedText style={[styles.monoText, { marginTop: 8, opacity: 0.6 }]}>
+                Pitch: {latestIMU.pitch.toFixed(2)}° (unused)
+              </ThemedText>
+              <ThemedText style={[styles.monoText, { opacity: 0.6 }]}>
+                Yaw: {latestIMU.yaw.toFixed(2)}° (unused)
               </ThemedText>
               <ThemedText style={styles.monoText}>
                 Checksum: 0x{latestIMU.checksum.toString(16).padStart(2, "0")}
