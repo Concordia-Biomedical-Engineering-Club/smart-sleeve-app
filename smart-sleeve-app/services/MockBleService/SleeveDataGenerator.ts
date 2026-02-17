@@ -72,19 +72,22 @@ export class SleeveDataGenerator {
     // 1. High Frequency "Muscle Sizzle" (50Hz - 150Hz white noise bursts) - KEPT by Bandpass
     const muscleSignal = () => (Math.random() - 0.5) * 2 * amplitude; 
 
-    // 2. Line Interference (60Hz Sine Wave) - REMOVED by Notch
-    const lineNoise = Math.sin(2 * Math.PI * 60 * t) * 0.5; 
+    // 2. Line Interference (60Hz Sine Wave) - REMOVED by Notch 
+    // DISABLED at 50Hz sampling due to aliasing (aliases to 10Hz, which passes through HPF)
+    const lineNoise = 0; 
 
-    // 3. Motion Artifact (Low Frequency drift < 10Hz) - REMOVED by High Pass
+    // 3. Motion Artifact (Low Frequency drift < 5Hz) - REMOVED by High Pass
     const motionArtifact = Math.sin(2 * Math.PI * 1.5 * t) * 0.8;
 
     // Combine them
     const generateValue = () => {
-       // In REST, we mostly see noise and artifacts. In FLEX, we see muscle signal dominating.
+       // Zero-centered random noise floor
+       const noiseFloor = (Math.random() - 0.5) * 0.1; 
+       
        if (this.scenario === 'REST') {
-           return (Math.random() * 0.05) + lineNoise + motionArtifact;
+           return noiseFloor + motionArtifact;
        }
-       return muscleSignal() + lineNoise + motionArtifact;
+       return muscleSignal() + noiseFloor + motionArtifact;
     };
 
     const channels = Array.from({ length: numChannels }, () => generateValue());

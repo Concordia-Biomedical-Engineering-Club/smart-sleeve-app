@@ -10,10 +10,10 @@ import { EMGData } from "../SleeveConnector/ISleeveConnector";
 import { FilterCoefficients } from "./FilterCoefficients";
 import { BiquadFilter } from "./IIRFilter";
 
-const DEFAULT_SAMPLE_RATE = 1000; // Hz
-const NOTCH_FREQ = 60;
-const HP_FREQ = 20;
-const LP_FREQ = 500;
+const DEFAULT_SAMPLE_RATE = 50; // Hz - Matches BLE / Mock rate
+const NOTCH_FREQ = 0; // Disabled for 50Hz (Nyquist is 25Hz)
+const HP_FREQ = 5; // Standard EMG High Pass
+const LP_FREQ = 24; // Anti-aliasing for 50Hz FS
 
 export class SignalProcessor {
   private channels: ChannelFilter[] = [];
@@ -80,8 +80,10 @@ class ChannelFilter {
   private lowPass: BiquadFilter;
 
   constructor(fs: number, notchFreq: number, hpFreq: number, lpFreq: number) {
-    // 1. Notch Filter 
-    const notchCoeffs = FilterCoefficients.designNotch(notchFreq, fs, 4.0);
+    // 1. Notch Filter (Skip if freq is 0 or exceeds Nyquist)
+    const notchCoeffs = (notchFreq > 0 && notchFreq < fs / 2) 
+      ? FilterCoefficients.designNotch(notchFreq, fs, 4.0)
+      : { b: [1, 0, 0], a: [1, 0, 0] }; // Passthrough
     this.notch = new BiquadFilter(notchCoeffs.b, notchCoeffs.a);
 
     // 2. High Pass (Butterworth Q=0.707)

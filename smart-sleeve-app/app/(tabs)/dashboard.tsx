@@ -13,7 +13,8 @@ import { useSelector } from "react-redux";
 import { 
   selectEmgBuffer, 
   selectKneeAngleBuffer,
-  selectEmgBufferLength 
+  selectEmgBufferLength,
+  selectLatestFeatures 
 } from "../../store/deviceSlice";
 import { RootState } from "../../store/store";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -32,13 +33,17 @@ export default function DashboardScreen() {
   const emgBuffer = useSelector(selectEmgBuffer);
   const kneeAngleBuffer = useSelector(selectKneeAngleBuffer);
   const bufferLength = useSelector(selectEmgBufferLength);
+  const latestFeatures = useSelector(selectLatestFeatures);
 
   // Debug logging to verify data flow
   React.useEffect(() => {
     if (bufferLength > 0) {
       console.log(`[Dashboard] Buffer Size: ${bufferLength}, Latest EMG: ${JSON.stringify(emgBuffer[emgBuffer.length - 1])}`);
     }
-  }, [bufferLength, emgBuffer]);
+    if (latestFeatures) {
+       console.log(`[Dashboard] Features - RMS: ${latestFeatures.rms[0].toFixed(3)}, MAV: ${latestFeatures.mav[0].toFixed(3)}`);
+    }
+  }, [bufferLength, emgBuffer, latestFeatures]);
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
@@ -112,6 +117,12 @@ export default function DashboardScreen() {
           <ThemedText type="defaultSemiBold">Live Data Debug:</ThemedText>
           <Text style={{ color: theme.text }}>EMG Points: {bufferLength}</Text>
           <Text style={{ color: theme.text }}>Latest Angle: {kneeAngleBuffer[kneeAngleBuffer.length - 1]?.toFixed(1) ?? 'N/A'}°</Text>
+          {latestFeatures && (
+            <>
+              <Text style={{ color: theme.text, marginTop: 4 }}>RMS (Ch1): {latestFeatures.rms[0].toFixed(4)}</Text>
+              <Text style={{ color: theme.text }}>MAV (Ch1): {latestFeatures.mav[0].toFixed(4)}</Text>
+            </>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
