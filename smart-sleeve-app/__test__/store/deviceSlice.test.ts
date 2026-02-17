@@ -14,6 +14,7 @@ describe('deviceSlice', () => {
     isScanning: false,
     latestEMG: null,
     latestIMU: null,
+    latestFeatures: null,
     emgBuffer: [],
     kneeAngleBuffer: [],
   };
@@ -82,5 +83,12 @@ describe('deviceSlice', () => {
     };
     // @ts-ignore - partial state for testing, RootState matches this structure
     expect(selectEmgBufferLength(state)).toBe(10);
+  });
+
+  test('should handle featuresUpdated', () => {
+    const mockFeatures = { rms: [0.1, 0.2], mav: [0.05, 0.1] };
+    const action = { type: 'device/featuresUpdated', payload: mockFeatures };
+    const state = deviceReducer(initialState, action);
+    expect(state.latestFeatures).toEqual(mockFeatures);
   });
 });

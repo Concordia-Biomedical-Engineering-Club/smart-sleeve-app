@@ -9,6 +9,10 @@ export interface DeviceState {
   isScanning: boolean;
   latestEMG: EMGData | null;
   latestIMU: IMUData | null;
+  latestFeatures: {
+    rms: number[];
+    mav: number[];
+  } | null;
   emgBuffer: EMGData[];
   kneeAngleBuffer: number[];
 }
@@ -19,6 +23,7 @@ const initialState: DeviceState = {
   isScanning: false,
   latestEMG: null,
   latestIMU: null,
+  latestFeatures: null,
   emgBuffer: [],
   kneeAngleBuffer: [],
 };
@@ -32,6 +37,7 @@ const deviceSlice = createSlice({
       if (!action.payload.connected) {
         state.latestEMG = null;
         state.latestIMU = null;
+        state.latestFeatures = null;
         state.emgBuffer = [];
         state.kneeAngleBuffer = [];
       }
@@ -49,6 +55,9 @@ const deviceSlice = createSlice({
       if (state.emgBuffer.length > 500) {
         state.emgBuffer.shift();
       }
+    },
+    featuresUpdated(state, action: PayloadAction<DeviceState["latestFeatures"]>) {
+      state.latestFeatures = action.payload;
     },
     imuFrameReceived(state, action: PayloadAction<IMUData>) {
       state.latestIMU = action.payload;
@@ -70,6 +79,7 @@ export const {
   scenarioChanged,
   setIsScanning,
   emgFrameReceived,
+  featuresUpdated,
   imuFrameReceived,
   clearBuffers,
 } = deviceSlice.actions;
@@ -90,6 +100,11 @@ export const selectIsScanning = createSelector(
 export const selectEmgBuffer = createSelector(
   [selectDevice],
   (device) => device.emgBuffer
+);
+
+export const selectLatestFeatures = createSelector(
+  [selectDevice],
+  (device) => device.latestFeatures
 );
 
 export const selectKneeAngleBuffer = createSelector(
