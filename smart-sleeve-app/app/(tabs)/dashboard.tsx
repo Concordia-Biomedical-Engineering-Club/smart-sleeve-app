@@ -96,13 +96,24 @@ export default function DashboardScreen() {
           </ThemedText>
           <RMSGraph 
             channelIndex={0} 
-            label="Vastus Medialis (Main)" 
+            label="Vastus Medialis Oblique (VMO)" 
             lineColor={theme.tint} 
           />
           <RMSGraph 
             channelIndex={1} 
-            label="Vastus Lateralis (Outer)" 
-            lineColor="#FF6B6B" // Example secondary color
+            label="Vastus Lateralis (VL)" 
+            lineColor="#FF6B6B"
+          />
+          <RMSGraph 
+            channelIndex={2} 
+            label="Semitendinosus (Medial Hamstring)" 
+            lineColor="#4ECDC4"
+            height={100}
+          />
+          <RMSGraph 
+            channelIndex={3} 
+            label="Biceps Femoris (Lateral Hamstring)" 
+            lineColor="#FFE66D"
             height={100}
           />
         </View>
