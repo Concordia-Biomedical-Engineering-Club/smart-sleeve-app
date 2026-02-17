@@ -10,6 +10,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
+import { 
+  selectEmgBuffer, 
+  selectKneeAngleBuffer,
+  selectEmgBufferLength 
+} from "../../store/deviceSlice";
 import { RootState } from "../../store/store";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
@@ -24,8 +29,16 @@ import StatCard from "@/components/StatCard";
 
 export default function DashboardScreen() {
   const user = useSelector((state: RootState) => state.user);
-  const deviceData = useSelector((state: RootState) => state.device.latestEMG);
-  console.log(`Device data: ${JSON.stringify(deviceData)}`);
+  const emgBuffer = useSelector(selectEmgBuffer);
+  const kneeAngleBuffer = useSelector(selectKneeAngleBuffer);
+  const bufferLength = useSelector(selectEmgBufferLength);
+
+  // Debug logging to verify data flow
+  React.useEffect(() => {
+    if (bufferLength > 0) {
+      console.log(`[Dashboard] Buffer Size: ${bufferLength}, Latest EMG: ${JSON.stringify(emgBuffer[emgBuffer.length - 1])}`);
+    }
+  }, [bufferLength, emgBuffer]);
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
@@ -95,8 +108,10 @@ export default function DashboardScreen() {
             <StatCard value="3/10" label="Pain Level" />
           </View>
         </View>
-        <View>
-          <Text>{deviceData?.timestamp ?? "No data"}</Text>
+        <View style={styles.debugInfo}>
+          <ThemedText type="defaultSemiBold">Live Data Debug:</ThemedText>
+          <Text style={{ color: theme.text }}>EMG Points: {bufferLength}</Text>
+          <Text style={{ color: theme.text }}>Latest Angle: {kneeAngleBuffer[kneeAngleBuffer.length - 1]?.toFixed(1) ?? 'N/A'}°</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -138,4 +153,10 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: 12, // Added gap for row items
   },
+  debugInfo: {
+    marginTop: 20,
+    padding: 12,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 8,
+  }
 });

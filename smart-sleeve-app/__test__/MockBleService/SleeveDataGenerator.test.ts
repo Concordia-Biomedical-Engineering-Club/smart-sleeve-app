@@ -205,17 +205,17 @@ describe("SleeveDataGenerator", () => {
     });
 
     /**
-     * Test: Verify yaw is always 0 for knee movements
-     * Why: Knees don't rotate around vertical axis, only flex/extend
-     * Fails if: Implementation adds yaw rotation (would be incorrect for knee)
-     * Note: This is intentional behavior, not a bug
+     * Test: Verify pitch and yaw are always 0 (Magnetic Encoder constraint)
+     * Why: AS5048A measures a single axis (knee flexion).
+     * Fails if: Implementation adds rotation to unused axes.
      */
-    it("should generate yaw of 0 for all scenarios (knee constraint)", () => {
+    it("should generate pitch and yaw of 0 for all scenarios (single-axis constraint)", () => {
       const scenarios: SleeveScenario[] = ["REST", "FLEX", "SQUAT"];
 
       scenarios.forEach((scenario) => {
         generator.setScenario(scenario);
         const frame = generator.generateIMUFrame();
+        expect(frame.pitch).toBe(0);
         expect(frame.yaw).toBe(0);
       });
     });
@@ -226,18 +226,18 @@ describe("SleeveDataGenerator", () => {
      * Fails if: Amplitude increased or scenario logic changed
      * Note: Checks maximum across 10 frames for statistical confidence
      */
-    it("should generate small roll/pitch for REST scenario", () => {
+    it("should generate small flexion (roll) for REST scenario", () => {
       generator.setScenario("REST");
 
       const frames = Array.from({ length: 10 }, () =>
         generator.generateIMUFrame()
       );
-      const maxRoll = Math.max(...frames.map((f) => Math.abs(f.roll)));
-      const maxPitch = Math.max(...frames.map((f) => Math.abs(f.pitch)));
+      const maxRoll = Math.max(...frames.map((f) => f.roll));
+      const minRoll = Math.min(...frames.map((f) => f.roll));
 
-      // REST should have small movements (±2 degrees)
-      expect(maxRoll).toBeLessThan(5);
-      expect(maxPitch).toBeLessThan(5);
+      // REST (Standing) should be between 0 and 10.5 degrees (including noise)
+      expect(maxRoll).toBeLessThan(11);
+      expect(minRoll).toBeGreaterThanOrEqual(0);
     });
 
     /**
@@ -246,22 +246,32 @@ describe("SleeveDataGenerator", () => {
      * Fails if: Amplitude decreased or time-based math changed
      * Note: Generates 20 frames to capture the sinusoidal peaks
      */
-    it("should generate large roll/pitch for FLEX scenario", () => {
+    it("should generate large flexion (roll) for FLEX scenario over time", () => {
       generator.setScenario("FLEX");
 
-      // Generate multiple frames to capture the oscillation
-      const frames = Array.from({ length: 20 }, () => {
-        const frame = generator.generateIMUFrame();
-        // Small delay to capture time variation
-        return frame;
-      });
+      // We need to simulate time passing to capture the peaks/dips of the oscillation
+      // The FLEX scenario oscillates at ~0.5 Hz (Math.PI in sin function)
+      // We will mock Date.now() to simulate 2 seconds of movement
+      const realDateNow = Date.now;
+      let currentTime = realDateNow();
+      
+      const frames: number[] = [];
+      for (let i = 0; i < 20; i++) {
+        global.Date.now = jest.fn(() => currentTime);
+        frames.push(generator.generateIMUFrame().roll);
+        currentTime += 100; // Advance 100ms each frame
+      }
+      
+      // Restore Date.now
+      global.Date.now = realDateNow;
 
-      const maxRoll = Math.max(...frames.map((f) => Math.abs(f.roll)));
-      const maxPitch = Math.max(...frames.map((f) => Math.abs(f.pitch)));
+      const maxRoll = Math.max(...frames);
+      const minRoll = Math.min(...frames);
 
-      // FLEX should have large movements (20-60° for roll, up to 40° for pitch)
-      expect(maxRoll).toBeGreaterThan(15);
-      expect(maxPitch).toBeGreaterThan(5);
+      // FLEX should oscillate in the 60-120° range
+      // Peaks at 90 + 30 = 120, Dips at 90 - 30 = 60
+      expect(maxRoll).toBeGreaterThan(115); 
+      expect(minRoll).toBeLessThan(65);
     });
   });
 
@@ -347,11 +357,8 @@ describe("SleeveDataGenerator", () => {
       // Timestamps should differ
       expect(frame1.timestamp).not.toBe(frame2.timestamp);
 
-      // Roll/pitch should differ due to time-based sin/cos
-      const hasDifferentOrientation =
-        frame1.roll !== frame2.roll || frame1.pitch !== frame2.pitch;
-
-      expect(hasDifferentOrientation).toBe(true);
+      // Roll should differ due to time-based oscillation
+      expect(frame1.roll).not.toBe(frame2.roll);
     });
 
     /**
