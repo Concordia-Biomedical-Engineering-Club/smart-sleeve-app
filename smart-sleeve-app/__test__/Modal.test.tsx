@@ -2,31 +2,36 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import ModalScreen from '../app/modal'; // adjust path if needed
 
-// Mock expo-router Link component
-jest.mock('expo-router', () => {
-  return {
-    Link: ({ children, ...props }: any) => {
-      return (
-        <div testID="mock-link" {...props}>
-          {children}
-        </div>
-      );
-    },
-  };
-});
+// Mock expo-router
+const mockPush = jest.fn();
+const mockBack = jest.fn();
+
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: mockPush,
+    back: mockBack,
+  }),
+}));
 
 describe('ModalScreen', () => {
-  it('renders the modal title and link', () => {
-    const { getByText, getByTestId } = render(<ModalScreen />);
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders the Settings Menu title and all navigation links', () => {
+    const { getByText } = render(<ModalScreen />);
 
     // Check title text
-    expect(getByText('This is a modal')).toBeTruthy();
+    expect(getByText('Settings Menu')).toBeTruthy();
 
-    // Check link text
-    expect(getByText('Go to home screen')).toBeTruthy();
-
-    // Check the link mock exists
-    const link = getByTestId('mock-link');
-    expect(link.props.href).toBe('/');
+    // Check navigation links
+    expect(getByText('Go to Home (Index)')).toBeTruthy();
+    expect(getByText('Go to Explore')).toBeTruthy();
+    expect(getByText('Go to Auth')).toBeTruthy();
+    expect(getByText('Go to Test BLE')).toBeTruthy();
+    expect(getByText('Go to Progress')).toBeTruthy();
+    
+    // Check dismiss link
+    expect(getByText('Dismiss')).toBeTruthy();
   });
 });
