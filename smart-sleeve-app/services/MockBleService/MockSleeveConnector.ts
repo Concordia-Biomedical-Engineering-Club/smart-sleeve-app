@@ -48,6 +48,11 @@ export class MockSleeveConnector implements ISleeveConnector {
    * receiving data shortly after this resolves.
    */
   async connect(deviceId: string): Promise<void> {
+    if (this.timerId) {
+      clearInterval(this.timerId);
+      this.timerId = null;
+    }
+
     this.deviceId = deviceId;
     this.isConnected = true;
     this.emitConnectionStatus(true);

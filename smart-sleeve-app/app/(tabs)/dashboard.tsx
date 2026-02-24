@@ -6,10 +6,11 @@ import {
   Platform,
   StatusBar,
   TouchableOpacity,
-  // Text removed as it is no longer used directly (we use ThemedText)
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
+import { router } from "expo-router";
 import { 
   selectKneeAngleBuffer,
 } from "../../store/deviceSlice";
@@ -56,13 +57,12 @@ export default function DashboardScreen() {
         <View style={styles.headerContainer}>
           <View style={styles.topRow}>
             <TouchableOpacity
-              onPress={() => console.log("Settings")}
+              onPress={() => router.push("/modal")}
               style={styles.iconButton}
             >
-              <IconSymbol
-                name="slider.horizontal.3"
-                size={24}
-                color={theme.text}
+              <Image
+                source={require("../../assets/images/settings.png")}
+                style={{ width: 24, height: 24, resizeMode: "contain", tintColor: theme.icon ?? theme.text }}
               />
             </TouchableOpacity>
             <TouchableOpacity

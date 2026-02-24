@@ -6,8 +6,10 @@ import {
   Platform,
   StatusBar,
   TouchableOpacity,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors, Typography } from "@/constants/theme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -45,8 +47,11 @@ export default function MotionAnalyticsScreen() {
         {/* Header */}
         <View style={styles.headerContainer}>
           <View style={styles.topRow}>
-            <TouchableOpacity onPress={() => console.log("Settings")} style={styles.iconButton}>
-              <IconSymbol name="slider.horizontal.3" size={24} color={theme.text} />
+            <TouchableOpacity onPress={() => router.push("/modal")} style={styles.iconButton}>
+              <Image 
+                source={require("../../assets/images/settings.png")} 
+                style={{ width: 24, height: 24, resizeMode: "contain", tintColor: theme.icon ?? theme.text }} 
+              />
             </TouchableOpacity>
             <ThemedText style={Typography.heading2}>Motion Analytics</ThemedText>
             <TouchableOpacity onPress={() => console.log("Notification")} style={styles.iconButton}>

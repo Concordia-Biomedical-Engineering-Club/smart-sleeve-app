@@ -37,7 +37,10 @@ export const RMSGraph: React.FC<RMSGraphProps> = ({
   const dataRef = useRef<number[]>(new Array(BUFFER_SIZE).fill(0));
   
   // State to trigger re-render
-  const [pathD, setPathD] = useState<string>("");
+  // Start with a valid straight path at Y=height (0 activation)
+  const initialPoints = new Array(BUFFER_SIZE).fill(0).map((_, i) => `${(i * (width / (BUFFER_SIZE - 1))).toFixed(1)},${height.toFixed(1)}`);
+  const initialPath = `M ${initialPoints.join(" L ")}`;
+  const [pathD, setPathD] = useState<string>(initialPath);
 
   useEffect(() => {
     if (!latestFeatures) return;
@@ -64,7 +67,9 @@ export const RMSGraph: React.FC<RMSGraphProps> = ({
     });
 
     const d = `M ${points.join(" L ")}`;
-    setPathD(d);
+    if (d && d !== `M `) {     
+       setPathD(d);
+    }
 
   }, [latestFeatures, channelIndex, height, width]);
 
@@ -88,7 +93,7 @@ export const RMSGraph: React.FC<RMSGraphProps> = ({
 
             {/* The Data Path */}
             <Path 
-                d={pathD} 
+                d={pathD ? pathD : initialPath} 
                 fill="none" 
                 stroke={strokeColor} 
                 strokeWidth="3" 
@@ -97,7 +102,7 @@ export const RMSGraph: React.FC<RMSGraphProps> = ({
             />
              {/* Filled Area (Optional - nice for "Active" look) */}
             <Path 
-                d={`${pathD} L ${width},${height} L 0,${height} Z`} 
+                d={pathD ? `${pathD} L ${width},${height} L 0,${height} Z` : `${initialPath} L ${width},${height} L 0,${height} Z`} 
                 fill="url(#grad)" 
                 stroke="none"
             />

@@ -12,6 +12,7 @@ import StatCard from "../../components/StatCard";
 import ProfileAvatarCard from "../../components/ProfileAvatarCard";
 import MilestoneListItem from "../../components/MilestoneListItem";
 import { Colors, Typography } from "@/constants/theme";
+import { router } from "expo-router";
 
 // Mock Data
 const MILESTONES = [
@@ -48,7 +49,7 @@ export default function MilestonesScreen() {
     <View style={styles.headerContainer}>
       {/* Top Bar */}
       <View style={styles.topBar}>
-        <TouchableOpacity style={styles.iconButton}>
+        <TouchableOpacity onPress={() => router.push('/modal')} style={styles.iconButton}>
           <Image
             source={require("../../assets/images/settings.png")}
             style={[styles.icon, { tintColor: theme.icon }]}

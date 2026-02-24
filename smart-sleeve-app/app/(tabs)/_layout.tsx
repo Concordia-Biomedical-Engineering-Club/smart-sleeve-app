@@ -23,44 +23,16 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarItemStyle: { paddingVertical: 4 }, // Add some vertical padding for cleaner look
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: "Explore",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="paperplane.fill" color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="auth"
-        options={{
-          title: "Auth",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
-          ),
-        }}
-      />
-
+      {/* Visible Tabs */}
       <Tabs.Screen
         name="dashboard"
         options={{
           title: "Dashboard",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+            <IconSymbol size={28} name="chart.bar.fill" color={color} />
           ),
         }}
       />
@@ -70,7 +42,7 @@ export default function TabLayout() {
         options={{
           title: "Exercises",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+            <IconSymbol size={28} name="figure.run" color={color} />
           ),
         }}
       />
@@ -95,17 +67,39 @@ export default function TabLayout() {
         }}
       />
 
+      {/* Hidden Screens inside (tabs) */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="explore"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="auth"
+        options={{
+          href: null,
+        }}
+      />
+
       <Tabs.Screen
         name="test-ble"
         options={{
-          title: "Test BLE",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol
-              size={28}
-              name="antenna.radiowaves.left.and.right"
-              color={color}
-            />
-          ),
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="progress"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
