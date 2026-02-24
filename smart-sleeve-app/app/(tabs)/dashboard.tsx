@@ -6,15 +6,12 @@ import {
   Platform,
   StatusBar,
   TouchableOpacity,
-  Text,
+  // Text removed as it is no longer used directly (we use ThemedText)
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 import { 
-  selectEmgBuffer, 
   selectKneeAngleBuffer,
-  selectEmgBufferLength,
-  selectLatestFeatures 
 } from "../../store/deviceSlice";
 import { RootState } from "../../store/store";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -25,25 +22,19 @@ import { SegmentedControl } from "@/components/dashboard/SegmentedControl";
 import { CircularDataCard } from "@/components/dashboard/CircularDataCard";
 import StatCard from "@/components/StatCard";
 
+import { RMSGraph } from "@/components/dashboard/RMSGraph";
+
 // Placeholder Assets - in a real app, import these from assets/images
 // For now, we pass undefined to StatCard which will just not render an image.
 
 export default function DashboardScreen() {
   const user = useSelector((state: RootState) => state.user);
-  const emgBuffer = useSelector(selectEmgBuffer);
   const kneeAngleBuffer = useSelector(selectKneeAngleBuffer);
-  const bufferLength = useSelector(selectEmgBufferLength);
-  const latestFeatures = useSelector(selectLatestFeatures);
-
-  // Debug logging to verify data flow
-  React.useEffect(() => {
-    if (bufferLength > 0) {
-      console.log(`[Dashboard] Buffer Size: ${bufferLength}, Latest EMG: ${JSON.stringify(emgBuffer[emgBuffer.length - 1])}`);
-    }
-    if (latestFeatures) {
-       console.log(`[Dashboard] Features - RMS: ${latestFeatures.rms[0].toFixed(3)}, MAV: ${latestFeatures.mav[0].toFixed(3)}`);
-    }
-  }, [bufferLength, emgBuffer, latestFeatures]);
+  
+  // Calculate current knee angle for display
+  const currentKneeAngle = kneeAngleBuffer.length > 0
+    ? Math.round(kneeAngleBuffer[kneeAngleBuffer.length - 1])
+    : 0;
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
@@ -93,10 +84,39 @@ export default function DashboardScreen() {
         {/* Main Chart Section */}
         <CircularDataCard
           title="Flexion"
-          currentValue="115°"
+          currentValue={`${currentKneeAngle}°`}
           goalValue="Goal: 120°"
-          percentage={95.8}
+          percentage={(currentKneeAngle / 120) * 100}
         />
+
+        {/* Live Activation Graphs */}
+        <View style={styles.sectionContainer}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>
+            Live Muscle Activation
+          </ThemedText>
+          <RMSGraph 
+            channelIndex={0} 
+            label="Vastus Medialis Oblique (VMO)" 
+            lineColor={theme.tint} 
+          />
+          <RMSGraph 
+            channelIndex={1} 
+            label="Vastus Lateralis (VL)" 
+            lineColor="#FF6B6B"
+          />
+          <RMSGraph 
+            channelIndex={2} 
+            label="Semitendinosus (Medial Hamstring)" 
+            lineColor="#4ECDC4"
+            height={100}
+          />
+          <RMSGraph 
+            channelIndex={3} 
+            label="Biceps Femoris (Lateral Hamstring)" 
+            lineColor="#FFE66D"
+            height={100}
+          />
+        </View>
 
         {/* Grid Section */}
         <View style={styles.gridContainer}>
@@ -112,17 +132,6 @@ export default function DashboardScreen() {
             <StatCard value="5 of 6" label="Exercises" />
             <StatCard value="3/10" label="Pain Level" />
           </View>
-        </View>
-        <View style={styles.debugInfo}>
-          <ThemedText type="defaultSemiBold">Live Data Debug:</ThemedText>
-          <Text style={{ color: theme.text }}>EMG Points: {bufferLength}</Text>
-          <Text style={{ color: theme.text }}>Latest Angle: {kneeAngleBuffer[kneeAngleBuffer.length - 1]?.toFixed(1) ?? 'N/A'}°</Text>
-          {latestFeatures && (
-            <>
-              <Text style={{ color: theme.text, marginTop: 4 }}>RMS (Ch1): {latestFeatures.rms[0].toFixed(4)}</Text>
-              <Text style={{ color: theme.text }}>MAV (Ch1): {latestFeatures.mav[0].toFixed(4)}</Text>
-            </>
-          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -164,10 +173,11 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: 12, // Added gap for row items
   },
-  debugInfo: {
-    marginTop: 20,
-    padding: 12,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 8,
-  }
+  sectionContainer: {
+    marginVertical: 20,
+  },
+  sectionTitle: {
+    marginBottom: 8,
+    marginLeft: 4,
+  },
 });
