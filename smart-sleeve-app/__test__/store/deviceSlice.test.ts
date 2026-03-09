@@ -17,6 +17,7 @@ describe('deviceSlice', () => {
     latestFeatures: null,
     emgBuffer: [],
     kneeAngleBuffer: [],
+    activeWorkout: null,
   };
 
   test('should handle initial state', () => {
@@ -90,5 +91,50 @@ describe('deviceSlice', () => {
     const action = { type: 'device/featuresUpdated', payload: mockFeatures };
     const state = deviceReducer(initialState, action);
     expect(state.latestFeatures).toEqual(mockFeatures);
+  });
+});
+
+import { startWorkout, endWorkout } from '@/store/deviceSlice';
+
+describe('deviceSlice workout actions', () => {
+  const initialState: DeviceState = {
+    connection: { connected: false },
+    scenario: 'REST',
+    isScanning: false,
+    latestEMG: null,
+    latestIMU: null,
+    latestFeatures: null,
+    emgBuffer: [],
+    kneeAngleBuffer: [],
+    activeWorkout: null,
+  };
+
+  test('should handle startWorkout', () => {
+    const mockWorkout = {
+      exerciseId: 'quad-sets',
+      exerciseName: 'Quadriceps Sets',
+      targetSide: 'LEFT' as const,
+      totalReps: 10,
+      workDurationSec: 5,
+      restDurationSec: 3,
+    };
+    const state = deviceReducer(initialState, startWorkout(mockWorkout));
+    expect(state.activeWorkout).toEqual(mockWorkout);
+  });
+
+  test('should handle endWorkout', () => {
+    const stateWithWorkout = {
+      ...initialState,
+      activeWorkout: {
+        exerciseId: 'quad-sets',
+        exerciseName: 'Quadriceps Sets',
+        targetSide: 'LEFT' as const,
+        totalReps: 10,
+        workDurationSec: 5,
+        restDurationSec: 3,
+      },
+    };
+    const state = deviceReducer(stateWithWorkout, endWorkout());
+    expect(state.activeWorkout).toBeNull();
   });
 });

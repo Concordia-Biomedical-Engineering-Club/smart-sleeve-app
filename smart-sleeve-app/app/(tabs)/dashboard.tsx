@@ -81,6 +81,18 @@ export default function DashboardScreen() {
           onSelect={setTimeframe}
         />
 
+        {/* Action Section */}
+        <TouchableOpacity 
+          style={[styles.libraryAction, { backgroundColor: theme.tint + '15', borderColor: theme.tint }]}
+          onPress={() => router.push('/(tabs)/exercises')}
+        >
+          <View style={styles.actionTextContainer}>
+            <ThemedText style={[styles.actionTitle, { color: theme.tint }]}>Start Exercise Session</ThemedText>
+            <ThemedText style={[styles.actionSubtitle, { color: theme.textSecondary }]}>Choose from your clinical library</ThemedText>
+          </View>
+          <IconSymbol name="chevron.right" size={24} color={theme.tint} />
+        </TouchableOpacity>
+
         {/* Main Chart Section */}
         <CircularDataCard
           title="Flexion"
@@ -179,5 +191,25 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginBottom: 8,
     marginLeft: 4,
+  },
+  libraryAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    justifyContent: 'space-between',
+  },
+  actionTextContainer: {
+    gap: 4,
+  },
+  actionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  actionSubtitle: {
+    fontSize: 13,
   },
 });
