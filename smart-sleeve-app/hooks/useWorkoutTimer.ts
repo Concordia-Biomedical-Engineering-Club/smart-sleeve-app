@@ -16,6 +16,9 @@ export function useWorkoutTimer() {
     prevPhaseRef.current = phase;
 
     switch (phase) {
+      case 'COUNTDOWN':
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        break;
       case 'ACTIVE_WORK':
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         break;
@@ -35,6 +38,10 @@ export function useWorkoutTimer() {
     if (phase === 'IDLE' || phase === 'COMPLETING') return;
 
     const id = setInterval(() => {
+      // Audio/Haptic cue for countdown ticks
+      if (phase === 'COUNTDOWN') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       dispatch(workoutTick());
     }, 1000);
 
