@@ -28,12 +28,18 @@ const storage =
 const rootPersistConfig = {
   key: "root",
   storage,
-  whitelist: ["user"], // persist the 'user' reducer
+  whitelist: ["user"], // user persists via root
+};
+
+const devicePersistConfig = {
+  key: 'device',
+  storage,
+  whitelist: ['isFilteringEnabled'], // ONLY persist preferences, not live buffers
 };
 
 const rootReducer = combineReducers({
   user: userReducer,
-  device: deviceReducer,
+  device: persistReducer(devicePersistConfig, deviceReducer),
 });
 
 const persistedReducer = persistReducer(rootPersistConfig, rootReducer);

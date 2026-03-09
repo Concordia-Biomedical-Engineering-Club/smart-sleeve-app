@@ -1,5 +1,5 @@
 import { Tabs, Redirect } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -8,9 +8,23 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { RootState } from "../../store/store";
 import { useSelector } from "react-redux";
 
+import { useSleeve } from "@/hooks/useSleeve";
+import { useSleeveDevice } from "@/hooks/useSleeveDevice";
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const user = useSelector((state: RootState) => state.user);
+  
+  // Initialize Global BLE Data Flow
+  const connector = useSleeve();
+  useSleeveDevice(connector);
+
+  // Auto-connect in Mock mode if not connected
+  useEffect(() => {
+    if (process.env.EXPO_PUBLIC_USE_MOCK_HARDWARE !== 'false') {
+       connector.connect("GLOBAL_MOCK_DEVICE");
+    }
+  }, [connector]);
 
   // If user is not verified, redirect to verification screen
   if (user.isLoggedIn && !user.isAuthenticated) {
