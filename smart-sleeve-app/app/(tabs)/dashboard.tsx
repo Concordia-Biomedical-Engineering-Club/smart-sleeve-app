@@ -9,10 +9,12 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { router } from "expo-router";
-import { 
+import {
   selectKneeAngleBuffer,
+  selectIsWorkoutActive,
+  startWorkout,
 } from "../../store/deviceSlice";
 import { RootState } from "../../store/store";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -22,28 +24,36 @@ import { ThemedText } from "@/components/themed-text";
 import { SegmentedControl } from "@/components/dashboard/SegmentedControl";
 import { CircularDataCard } from "@/components/dashboard/CircularDataCard";
 import StatCard from "@/components/StatCard";
-
 import { RMSGraph } from "@/components/dashboard/RMSGraph";
-
-// Placeholder Assets - in a real app, import these from assets/images
-// For now, we pass undefined to StatCard which will just not render an image.
+import { WorkoutOverlay } from "@/components/dashboard/WorkoutOverlay";
 
 export default function DashboardScreen() {
+  const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.user);
   const kneeAngleBuffer = useSelector(selectKneeAngleBuffer);
-  
-  // Calculate current knee angle for display
-  const currentKneeAngle = kneeAngleBuffer.length > 0
-    ? Math.round(kneeAngleBuffer[kneeAngleBuffer.length - 1])
-    : 0;
+  const isWorkoutActive = useSelector(selectIsWorkoutActive);
+
+  const currentKneeAngle =
+    kneeAngleBuffer.length > 0
+      ? Math.round(kneeAngleBuffer[kneeAngleBuffer.length - 1])
+      : 0;
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
-
   const [timeframe, setTimeframe] = useState("Daily");
 
-  // Placeholder Data
-  const userName = user?.email ? user.email.split("@")[0] : "Emily"; // Fallback to "Emily" from design if no user
+  const userName = user?.email ? user.email.split("@")[0] : "Emily";
+
+  const handleStartSession = () => {
+    dispatch(
+      startWorkout({
+        exerciseId: "quad-sets",
+        exerciseName: "Quad Sets",
+        targetSide: "LEFT",
+        totalReps: 5,
+      })
+    );
+  };
 
   return (
     <SafeAreaView
@@ -53,7 +63,6 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Dashboard Header */}
         <View style={styles.headerContainer}>
           <View style={styles.topRow}>
             <TouchableOpacity
@@ -62,7 +71,12 @@ export default function DashboardScreen() {
             >
               <Image
                 source={require("../../assets/images/settings.png")}
-                style={{ width: 24, height: 24, resizeMode: "contain", tintColor: theme.icon ?? theme.text }}
+                style={{
+                  width: 24,
+                  height: 24,
+                  resizeMode: "contain",
+                  tintColor: theme.icon ?? theme.text,
+                }}
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -81,7 +95,6 @@ export default function DashboardScreen() {
           onSelect={setTimeframe}
         />
 
-        {/* Main Chart Section */}
         <CircularDataCard
           title="Flexion"
           currentValue={`${currentKneeAngle}°`}
@@ -89,43 +102,46 @@ export default function DashboardScreen() {
           percentage={(currentKneeAngle / 120) * 100}
         />
 
-        {/* Live Activation Graphs */}
+        <TouchableOpacity
+          style={[styles.startButton, { backgroundColor: theme.success }]}
+          onPress={handleStartSession}
+        >
+          <ThemedText style={styles.startButtonText}>
+            ▶  Start Guided Session
+          </ThemedText>
+        </TouchableOpacity>
+
         <View style={styles.sectionContainer}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>
             Live Muscle Activation
           </ThemedText>
-          <RMSGraph 
-            channelIndex={0} 
-            label="Vastus Medialis Oblique (VMO)" 
-            lineColor={theme.tint} 
+          <RMSGraph
+            channelIndex={0}
+            label="Vastus Medialis Oblique (VMO)"
+            lineColor={theme.tint}
           />
-          <RMSGraph 
-            channelIndex={1} 
-            label="Vastus Lateralis (VL)" 
+          <RMSGraph
+            channelIndex={1}
+            label="Vastus Lateralis (VL)"
             lineColor="#FF6B6B"
           />
-          <RMSGraph 
-            channelIndex={2} 
-            label="Semitendinosus (Medial Hamstring)" 
+          <RMSGraph
+            channelIndex={2}
+            label="Semitendinosus (Medial Hamstring)"
             lineColor="#4ECDC4"
             height={100}
           />
-          <RMSGraph 
-            channelIndex={3} 
-            label="Biceps Femoris (Lateral Hamstring)" 
+          <RMSGraph
+            channelIndex={3}
+            label="Biceps Femoris (Lateral Hamstring)"
             lineColor="#FFE66D"
             height={100}
           />
         </View>
 
-        {/* Grid Section */}
         <View style={styles.gridContainer}>
           <View style={styles.gridRow}>
-            <StatCard
-              value="-1°"
-              label="Goal: 0°"
-              // image={require('@/assets/images/leg-placeholder.png')} // Uncomment when assets exist
-            />
+            <StatCard value="-1°" label="Goal: 0°" />
             <StatCard value="12 Days" label="Current Streak" />
           </View>
           <View style={styles.gridRow}>
@@ -134,6 +150,8 @@ export default function DashboardScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {isWorkoutActive && <WorkoutOverlay />}
     </SafeAreaView>
   );
 }
@@ -164,14 +182,16 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
   },
-  gridContainer: {
-    gap: 12, // Increased gap slightly for StatCard spacing
+  startButton: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginBottom: 8,
   },
-  gridRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    gap: 12, // Added gap for row items
+  startButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 16,
   },
   sectionContainer: {
     marginVertical: 20,
@@ -179,5 +199,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginBottom: 8,
     marginLeft: 4,
+  },
+  gridContainer: {
+    gap: 12,
+  },
+  gridRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    gap: 12,
   },
 });
