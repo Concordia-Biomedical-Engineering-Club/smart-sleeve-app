@@ -20,9 +20,11 @@ export default function TestBLEScreen() {
   
   const lastChartUpdateRef = useRef(0);
   
-  // Chart Data State
   const [chartData, setChartData] = useState<number[]>(new Array(50).fill(0));
   const MAX_POINTS = 50;
+  const [devices, setDevices] = useState<string[]>([]);
+  const [isScanning, setIsScanningState] = useState(false);
+  const isMock = process.env.EXPO_PUBLIC_USE_MOCK_HARDWARE !== 'false';
 
   // Update Chart Data (Channel 1 only for viz) - Throttled for readability
   useEffect(() => {
@@ -38,9 +40,20 @@ export default function TestBLEScreen() {
     }
   }, [latestEMG]);
 
-  const handleConnect = async () => {
+  const handleScan = async () => {
+    setIsScanningState(true);
+    setDevices([]);
     try {
-      await connector.connect("mock-device-id");
+      const found = await connector.scan();
+      setDevices(found);
+    } finally {
+      setIsScanningState(false);
+    }
+  };
+
+  const handleConnect = async (deviceId: string) => {
+    try {
+      await connector.connect(deviceId);
     } catch (error) {
       console.error("Connection failed:", error);
     }
@@ -48,6 +61,7 @@ export default function TestBLEScreen() {
 
   const handleDisconnect = () => {
     connector.disconnect();
+    setDevices([]);
   };
 
   const handleScenarioChange = (newScenario: "REST" | "FLEX" | "SQUAT") => {
@@ -61,38 +75,82 @@ export default function TestBLEScreen() {
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <ThemedText type="title" style={styles.title}>
-          Mock BLE Service Test
+          {isMock ? "Mock BLE Service Test" : "Real Hardware BLE Test"}
         </ThemedText>
 
-        {/* Connection Controls */}
+        {/* Device Discovery (Real Mode Only) */}
+        {!isMock && (
+          <View style={styles.section}>
+            <ThemedText type="subtitle">Device Discovery</ThemedText>
+            <TouchableOpacity
+              style={[styles.button, isScanning && styles.buttonDisabled, { marginTop: 12 }]}
+              onPress={handleScan}
+              disabled={isScanning || connectionStatus.connected}
+            >
+              <ThemedText style={styles.buttonText}>
+                {isScanning ? "Scanning..." : "Scan for Devices"}
+              </ThemedText>
+            </TouchableOpacity>
+
+            {!connectionStatus.connected && devices.length > 0 && (
+              <View style={styles.deviceList}>
+                {devices.map((id) => (
+                  <TouchableOpacity
+                    key={id}
+                    style={styles.deviceItem}
+                    onPress={() => handleConnect(id)}
+                  >
+                    <ThemedText style={styles.deviceItemText}>Connect to: {id}</ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Connection Status & Mock Connect */}
         <View style={styles.section}>
           <ThemedText type="subtitle">
-            Connection Status:{" "}
-            {connectionStatus.connected ? "Connected" : "Disconnected"}
+            Status:{" "}
+            <ThemedText style={{ color: connectionStatus.connected ? Colors.light.success : Colors.light.warning }}>
+               {connectionStatus.connected ? "Connected" : "Disconnected"}
+            </ThemedText>
           </ThemedText>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={[
-                styles.button,
-                connectionStatus.connected && styles.buttonDisabled,
-              ]}
-              onPress={handleConnect}
-              disabled={connectionStatus.connected}
-            >
-              <ThemedText style={styles.buttonText}>Connect</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.button,
-                styles.disconnectButton,
-                !connectionStatus.connected && styles.buttonDisabled,
-              ]}
-              onPress={handleDisconnect}
-              disabled={!connectionStatus.connected}
-            >
-              <ThemedText style={styles.buttonText}>Disconnect</ThemedText>
-            </TouchableOpacity>
-          </View>
+          
+          {isMock && (
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  connectionStatus.connected && styles.buttonDisabled,
+                ]}
+                onPress={() => handleConnect("mock-device-id")}
+                disabled={connectionStatus.connected}
+              >
+                <ThemedText style={styles.buttonText}>Connect Mock</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.disconnectButton,
+                  !connectionStatus.connected && styles.buttonDisabled,
+                ]}
+                onPress={handleDisconnect}
+                disabled={!connectionStatus.connected}
+              >
+                <ThemedText style={styles.buttonText}>Disconnect</ThemedText>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {!isMock && connectionStatus.connected && (
+             <TouchableOpacity
+                style={[styles.button, styles.disconnectButton, { marginTop: 12 }]}
+                onPress={handleDisconnect}
+              >
+                <ThemedText style={styles.buttonText}>Force Disconnect</ThemedText>
+              </TouchableOpacity>
+          )}
         </View>
         
         {/* Filter Toggle */}
@@ -354,5 +412,20 @@ const styles = StyleSheet.create({
   activeChannel: {
     color: "#E94B3C",
     fontWeight: "bold",
+  },
+  deviceList: {
+    marginTop: 16,
+    gap: 8,
+  },
+  deviceItem: {
+    padding: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  deviceItemText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

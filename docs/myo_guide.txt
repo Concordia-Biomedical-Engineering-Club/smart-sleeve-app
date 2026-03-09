@@ -1,0 +1,511 @@
+How MyoWare works
+Advanced Guide
+The MyoWare measures muscle activity through the
+electric potential of the muscle, commonly referred to
+as surface electromyography (EMG or sEMG for short).
+When your brain tells your muscle to flex, it sends an
+electrical signal to your muscle to start recruiting motor
+units (the bundles of muscle fibers that generate the force
+behind your muscles).
+The harder you flex, the more motor units are
+recruited to generate greater muscle force.
+The greater the number of motor units, the more
+the electrical activity of your muscle increases.
+The MyoWare will analyze this electrical activity and
+output an analog signal that represents how hard the
+muscle is being flexed. The harder you flex, the higher
+the MyoWare output voltage will go.
+Raw EMG
+Weak Flexion
+GAIN
+REF
+END
+MID
+VNI
+DNG
+VNE
+RAW
+RECT
+Circuit Workflow
+Sensor Parts
+E
+B
+A F
+C
+D
+4
+5
+G H
+6 1 2 3 7
+FRONT BACK
+A - Ground (GND) snap for shields
+B - Envelope (ENV) output snap for shields
+C - Input Voltage (VIN) snap for shields
+D - Gain potentiometer (clockwise turn)
+E - Reference electrode port (optional)
+F - Reference electrode snap socket
+G - Mid-muscle (MID) electrode snap socket
+H - End-muscle (END) electrode snap socket
+Primary Pins
+1 - Input Voltage (VIN)
+2 - Ground (GND)
+3 - Envelope (ENV) output
+Optional Pins
+4 - Rectified (RECT) output
+5 - Raw (RAW output
+6 - Mid-muscle (MID) electrode
+7 - End-muscle (END) electrode
+8 - Reference (REF) electrode
+Instrumentation
+Amplifier
+Gain = 200x 20 HZ - 498 Hz
+Gain = 1x - 100x
+3.6 Hz
+Offset
+Removal
+Circuit
+Envelope
+Detection
+Circuit
+RECTIFIED OUTPUT
+ENVELOPE
+OUTPUT
+RAW OUTPUT
+Bandpass
+Filter
+Rectification
+Circuit
+Analogto-digital
+converter
+(ADC)
+Adjustable Gain
+Amplifier
+Strong Flexion
+Raw EMG
+EMG
+Envelope
+EMG
+Envelope
+GAIN
+GAIN
+GAIN
+GAIN
+REF
+END
+MID
+VNI
+DNG
+VNE
+RAW
+RECT
+REF
+END
+MID
+VNI
+DNG
+VNE
+RAW
+RECT
+The MyoWare has embedded electrode snaps right on the sensor board
+itself, replacing the need for a cable. However, if the on board snaps do
+not fit a user’s specific application, an external cable can be connected to
+the board through three through hole pads shown above.
+ PLEASE NOTE: MyoWare 2.0 Cable Shield is recommended.
+GAIN
+Connecting Optional External Cables Connecting Optional Reference Cable
+For certain applications where the reference electrode snap socket is poorly
+positioned, the v2.0 can still accept a MyoWare Reference Cable.
+Setting up Envelope (ENV) Output
+To output the ENV signal, simply connect the ENV pin to one of your measuring
+device’s analog input. Unlike the other two outputs, the ENV output has an
+additional gain stage that is adjustable via the gain potentiometer.
+To adjust the gain, locate the gain potentiometer in the upper left corner of the
+sensor (marked as “GAIN”). Using a Phillips screwdriver, turn the potentiometer
+clockwise to increase the output gain; turn the potentiometer counterclockwise
+to reduce the gain.
+Setting up Rectified (RECT) Output
+MyoWare 2.0 now has the ability to output the amplified and full-wave
+rectified signal.
+To output the rectified signal, simply connect the RECT pin to your measuring
+device instead of the ENV pin.
+Setting up Raw (RAW) Output
+Like the previous version, MyoWare 2.0 has the ability to output
+an amplified raw EMG signal.
+To output the raw EMG signal, simply connect the RAW pin
+to your measuring device instead of the ENV pin.
+Technical Specifications Dimensions
+Supply Voltage:
+min. = 2.27V,
+typ. = +3.3V or +5V,
+max. = +5.47V
+Input Bias Current:
+250 pA, max 1 nA
+Input Impedance:
+800
+Common Mode Rejection
+Ratio (CMMR):
+140 dB
+References
+eeeee
+QUICK TIP
+We recommend for users to get their sensor setup working reliably prior to adjusting
+the gain. The default gain setting should be appropriate for most applications.
+QUICK TIP
+The RAW output is centered about an offset violtage of +Vs/2, see above. It is important
+to ensure +Vs is the max voltage of the MCU’s analog to digital converter. This will
+assure that you completely see both positive and negative portions of the waveform.
+The amplification for the RAW output is not adjustable via the GAIN potentiometer.
+QUICK TIP
+The amplification for the RECT output is not adjustable via the GAIN potentiometer.
+Ideal Gain Equation:
+Raw (RAW): G = 200
+Rectified (RECT): G= 200
+Envelope (ENV): G = 200 * R / 1 kOhm
+ R is the resistance of the gain
+ potentiometer in kOhm
+Filters:
+High-pass Filter: Active 1st order,
+fc = 20.8 Hz,2
+ -20dB
+Low-pass Filter: Active 1st order,
+fc = 498.4 Hz,2
+ -20dB
+Envelope Detection:
+Linear, Passive 1st order,
+fc = 3.6 Hz,3 -20 dB
+Rectification Method:
+Full-wave
+Sample Rate:
+Not applicable - MyoWare Sensor is
+analog. See measuring device
+specifications.
+Overview
+The MyoWare is designed to be used directly with a microcontroller.
+It’s primary output is not the raw EMG signal but rather the envelope
+of the amplified and rectified signal that is ideal to work with a
+microcontroller’s analog-to-digital converter (ADC). However,
+MyoWare 2.0 also provides the raw and rectified signals.
+Power Spectrum
+Surface EMG signals typically have an amplitude of 0 - 10 mV
+(peak to peak) and a frequency band of 10 - 500 Hz. MyoWare has
+a first-order passband of 20 - 500 Hz which is ideal for capturing
+the bulk of the power spectrum while removing unwanted signal
+sources such as motion artifacts.2
+Raw EMG Output (RAW)
+Rectified Output (RECT)
+Envelope Output (ENV)
+Vin
+Vin/2
+0
+Vin
+Vin/2
+0
+Vin
+Vin/2
+0
+Insert the MyoWare Reference
+Cable into the female connector
+located on the left side of the
+sensor.
+Remove the cable by pressing
+down on the tab on top.
+The reference electrode socket remains
+active even with the cable inserted. Disable
+the socket by cutting the jumper trace on the
+top side of the sensor. Re-enable the socket
+by shorting the jumper pads with solder.
+GAIN
+Reference Cable
+Female Connector
+Cable Disconnect Tab
+Cut here
+Reference Electrode
+Socket Disconnect Jumper
+MyoWare
+Reference Cable
+Middle
+Connect this pad to the cable leading to
+an electrode placed in the middle of the
+muscle body
+End
+Connect this to the cable leading to an
+electrode placed adjacent to the middle
+electrode towards the end of the
+muscle body
+Ref
+Connect this to the reference electrode.
+The reference electrode should be
+placed on an separate section of the
+body, such as the bony portion of the
+elbow or a nonadjacent muscle
+5V
+A0 ANALOG IN
+IOREF
+RESET
+3.V3
+VIN
+IC3P
+PWR
+1
+USB
+EXT
+PWR SEL
+AREF
+PWR
+PWR
+PWR
+PWR
+PWR
+PWR
+TX
+RX
+6ND3 2 1 0 9 8 7 6 5 4 3 2 1 0
+1 1 1 1 DIGITAL
+L
+TX
+RX
+A1
+A2
+A3
+A4
+A5
+POWER
+GND
+GAIN
+ENV
+5V
+A0 ANALOG IN
+IOREF
+RESET
+3.V3
+VIN
+IC3P
+PWR
+1
+USB
+EXT
+PWR SEL
+AREF
+PWR
+PWR
+PWR
+PWR
+PWR
+PWR
+TX
+RX
+6ND3 2 1 0 9 8 7 6 5 4 3 2 1 0
+1 1 1 1 DIGITAL
+L
+TX
+RX
+A1
+A2
+A3
+A4
+A5
+POWER
+GND
+RAW
+RECT
+5V
+A0 ANALOG IN
+IOREF
+RESET
+3.V3
+VIN
+IC3P
+PWR
+1
+USB
+EXT
+PWR SEL
+AREF
+PWR
+PWR
+PWR
+PWR
+PWR
+PWR
+TX
+RX
+6ND3 2 1 0 9 8 7 6 5 4 3 2 1 0
+1 1 1 1 DIGITAL
+L
+TX
+RX
+A1
+A2
+A3
+A4
+A5
+POWER
+GND
+1.41″ (35.90)
+0.93″ (23.62)
+1.00″ (25.40)
+1.48″ (37.57)
+In (MM)
+0 20 100 200 300 400 500
+Frequency (Hz)
+600
+[1]
+[2]
+[3]
+REF
+END
+MID
+VNI
+DNG
+VNE
+RAW
+RECT
+DISCLAIMER: Data show is for illustration purposes only; not actual data DISCLAIMER: Data show is for illustration purposes only; not actual data
+Proper electrode placement and orientation is essential to acquire consistent and
+quality signals with the MyoWare. For the best possible signal, place the electrodes on
+the belly of the target muscle between the nearest innervation zone and the myotendon junction where the muscle fibers are most dense. Orientation-wise, the electrodes
+should form a line longitudinally parallel to the muscle fibers. This ensures the detecting surfaces intersect the same muscle fibers creating a better superimposed signal.1
+Why is electrode placement important?
+Raw EMG output
+Innervation Zone
+Correct Placement
+Midline Offset
+Myotendon Junction
+C7 proc. spinosus
+Acromion
+Scapula trigonum spinae
+TH 3 proc. spinosus
+Medial border of scapula
+Scapula angulus inferior
+TH 8 proc. spinosus
+Epicondylus lateralis / medialis
+Olecranum
+L1/L5 proc. spinosus
+Spina iliaca superior
+Processus styloideus ulnae
+Processes styloideus radii
+Trochanter major
+Deltoideus p. scapularis infraspinatus
+Trapezius p. ascendenz
+Trapezius p. ascendenz
+Triceps brachii (c. long/lat.)
+Latissimus dorsi
+Erector spinae (thoracic region)
+Erector spinae (lumbar region)
+Smaller forearm extensors
+Multifiduus lumbar region
+Glutateus medius
+Glutateus maximus
+Trapezius p. transversus
+Trapezius p. descendenz
+Biceps femoris
+Semitendinosus/membranosus
+Gastrocnemius lat.
+Gastrocemius med.
+Soleus
+Epicondylus lateralis/medialis
+Heel / calcaneum
+Frontalis
+Masseter
+Sternocleidomastoideus
+Deltoideus p. acromialis
+Deltoideus p. clavicularis
+Pectoralis major
+Biceps brachii
+Serratus anterior
+Rectus abdominis
+Brachioradialis
+Flexor carpum radialis
+Flexor carpum ulnaris
+Obliquus externus abdominis
+Interosseus
+Internus / Transversus abd.
+Tensor fascia latae
+Adductores
+Rectus femoris
+Vastus lateralis
+Vastus medialis
+Tibialis anterior
+Peroneus longus
+Medial clavicula head
+Sternum
+Fossa cubitalis
+Rib cage
+Umbicilus
+Christa iliaca
+Spina iliaca
+anterior superior
+Malleolus medialis/lateralis
+Patella
+Head of Fibula
+Circumference Point
+Tibia Bone
+Acromion
+Midline of the muscle belly
+between an innervation zone
+and a myotendon junction
+Worst Placement -
+Signal travels multi-directionally
+causing the frequency spectrum
+to skew higher
+Signal degrades from crosstalk
+(activity of other nearby muscles).
+Signal decreases due to so few
+and thinner muscle fibers
+Muscle Group Sensor Placement
+GAIN
+GAIN
+GAIN GAIN
+GAIN
+Reference Electrode Positions
+LEFT SIDE RIGHT SIDE
+sEMG Electrode Positions
+NOTE: The positions in this image are approximate
+Next extensors
+2
+DISCLAIMER: Data show is for illustration purposes only; not actual data
+De Luca, C. J. (1997). The use of surface electromyography in Biomechanics. Journal of Applied Biomechanics, 13(2), 135–163. https://doi.org/10.1123/jab.13.2.135
+Hermens, H. J., Freriks, B., Merletti, R., Stegeman, D., Blok, J., Rau, G., Disselhorst-Klug, C., Hägg, G. (1999). SENIAM 8: European Recommendations for Surface ElectroMyoGraphy (2nd ed.).
+Roessingh Research and Development b.v., ISBN 90-75452-15-2.
+[3] Winter, D. A. (2009). Biomechanics and motor control of human movement (4th ed.). Wiley. ISBN 978-0-470-39818-0.
+Bipolar Configuration
+The difference in voltage between the two electrodes is amplified
+with respect to the reference electrode. The advantage of this configuration is the common noise between the two electrodes is removed
+due to the amplifier’s common mode rejection ratio (CMRR).
+A bipolar EMG sensor, like the MyoWare, produces a much cleaner
+EMG signal with a much greater signal-to-noise ratio (SNR).
+Two input electrodes (e.g. MID and END) are placed on the body of the targeted muscle group. The first electrode is placed near the middle of the muscle
+body and the second electrode is placed 1-3 cm from the first electrode.
+A reference electrode is placed in an adjacent electrically neutral location.
+A single input electrode is placed over the body of the targeted
+muscle group. A reference electrode is placed in an adjacent
+electrically neutral location.
+Monopolar Configuration
+EMG Output
+Skin Surface
+Nerve Axon
+Motor Neuron
+Reference
+Electrode
++
+-
+Why three electrodes?
+Mono vs. Bipolar
+EMG sensors can either have a two electrode (monopolar) or three electrode (bipolar) configuration.
+EMG
+Output
+Skin Surface
+Electrode
+Amplifier
+Nerve Axon
+Motor Neuron
+Reference
+Electrode
++
+-
+2
+Frequency
+Spectrum Raw EMG
+www.myoware.com/patents
+2022 Advancer Technologies LLC
+8
