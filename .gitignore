@@ -1,4 +1,5 @@
 .agent/
+.agents/
 node_modules/
 .DS_Store
 
@@ -6,3 +7,4 @@ ml/venv/
 *.csv
 models/
 requirements.txt
+skills-lock.json
