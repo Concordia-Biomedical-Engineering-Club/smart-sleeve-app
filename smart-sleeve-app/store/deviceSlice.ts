@@ -3,6 +3,15 @@ import { ConnectionStatus, EMGData, IMUData } from '@/services/SleeveConnector/I
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from './store';
 
+export interface ActiveWorkout {
+  exerciseId: string;
+  exerciseName: string;
+  targetSide: 'LEFT' | 'RIGHT';
+  totalReps: number;
+  workDurationSec: number;
+  restDurationSec: number;
+}
+
 export interface DeviceState {
   connection: ConnectionStatus;
   scenario: "REST" | "FLEX" | "SQUAT";
@@ -15,6 +24,7 @@ export interface DeviceState {
   } | null;
   emgBuffer: EMGData[];
   kneeAngleBuffer: number[];
+  activeWorkout: ActiveWorkout | null;
 }
 
 const initialState: DeviceState = {
@@ -26,6 +36,7 @@ const initialState: DeviceState = {
   latestFeatures: null,
   emgBuffer: [],
   kneeAngleBuffer: [],
+  activeWorkout: null,
 };
 
 const deviceSlice = createSlice({
@@ -71,6 +82,12 @@ const deviceSlice = createSlice({
       state.emgBuffer = [];
       state.kneeAngleBuffer = [];
     },
+    startWorkout(state, action: PayloadAction<ActiveWorkout>) {
+      state.activeWorkout = action.payload;
+    },
+    endWorkout(state) {
+      state.activeWorkout = null;
+    },
   },
 });
 
@@ -82,6 +99,8 @@ export const {
   featuresUpdated,
   imuFrameReceived,
   clearBuffers,
+  startWorkout,
+  endWorkout,
 } = deviceSlice.actions;
 
 // Selectors
