@@ -17,6 +17,16 @@ describe('deviceSlice', () => {
     latestFeatures: null,
     emgBuffer: [],
     kneeAngleBuffer: [],
+    workout: {
+      phase: 'IDLE',
+      exerciseId: null,
+      exerciseName: null,
+      targetSide: null,
+      startTime: null,
+      currentRep: 0,
+      totalReps: 0,
+      phaseSecondsRemaining: 0,
+    },
   };
 
   test('should handle initial state', () => {
@@ -32,14 +42,13 @@ describe('deviceSlice', () => {
       checksum: 0,
     };
 
-    // Add 505 points
     for (let i = 0; i < 505; i++) {
       state = deviceReducer(state, emgFrameReceived({ ...mockEMG, timestamp: i }));
     }
 
     expect(state.emgBuffer.length).toBe(500);
     expect(state.latestEMG?.timestamp).toBe(504);
-    expect(state.emgBuffer[0].timestamp).toBe(5); // First 5 should be shifted out
+    expect(state.emgBuffer[0].timestamp).toBe(5);
   });
 
   test('should append IMU roll to kneeAngleBuffer and maintain 500 max length', () => {
