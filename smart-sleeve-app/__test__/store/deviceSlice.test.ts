@@ -118,4 +118,34 @@ describe('deviceSlice', () => {
     expect(state.workout.phase).toBe('COUNTDOWN');
     expect(state.workout.workDurationSec).toBe(5);
   });
+
+  test('should handle cancelWorkout', () => {
+    const stateWithWorkout: DeviceState = {
+      ...initialState,
+      workout: {
+        ...initialState.workout,
+        phase: 'ACTIVE_WORK',
+        exerciseId: 'quad-sets',
+      },
+    };
+    const action = { type: 'device/cancelWorkout' };
+    const state = deviceReducer(stateWithWorkout, action);
+    expect(state.workout.phase).toBe('IDLE');
+    expect(state.workout.exerciseId).toBeNull();
+  });
+
+  test('should handle completeWorkout', () => {
+    const stateWithWorkout: DeviceState = {
+      ...initialState,
+      workout: {
+        ...initialState.workout,
+        phase: 'COMPLETING',
+        exerciseId: 'quad-sets',
+      },
+    };
+    const action = { type: 'device/completeWorkout' };
+    const state = deviceReducer(stateWithWorkout, action);
+    expect(state.workout.phase).toBe('IDLE');
+    expect(state.workout.exerciseId).toBeNull();
+  });
 });
