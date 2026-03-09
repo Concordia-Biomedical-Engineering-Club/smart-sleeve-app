@@ -51,6 +51,8 @@ export default function DashboardScreen() {
         exerciseName: "Quad Sets",
         targetSide: "LEFT",
         totalReps: 5,
+        workDurationSec: 5,
+        restDurationSec: 3,
       })
     );
   };
@@ -95,6 +97,19 @@ export default function DashboardScreen() {
           onSelect={setTimeframe}
         />
 
+        {/* Action Section */}
+        <TouchableOpacity 
+          style={[styles.libraryAction, { backgroundColor: theme.tint + '15', borderColor: theme.tint }]}
+          onPress={() => router.push('/(tabs)/exercises')}
+        >
+          <View style={styles.actionTextContainer}>
+            <ThemedText style={[styles.actionTitle, { color: theme.tint }]}>Start Exercise Session</ThemedText>
+            <ThemedText style={[styles.actionSubtitle, { color: theme.textSecondary }]}>Choose from your clinical library</ThemedText>
+          </View>
+          <IconSymbol name="chevron.right" size={24} color={theme.tint} />
+        </TouchableOpacity>
+
+        {/* Main Chart Section */}
         <CircularDataCard
           title="Flexion"
           currentValue={`${currentKneeAngle}°`}
@@ -107,7 +122,7 @@ export default function DashboardScreen() {
           onPress={handleStartSession}
         >
           <ThemedText style={styles.startButtonText}>
-            ▶  Start Guided Session
+            ▶  Quick Start (Quad Sets)
           </ThemedText>
         </TouchableOpacity>
 
@@ -208,5 +223,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     width: "100%",
     gap: 12,
+  },
+  libraryAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    justifyContent: 'space-between',
+  },
+  actionTextContainer: {
+    gap: 4,
+  },
+  actionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  actionSubtitle: {
+    fontSize: 13,
   },
 });

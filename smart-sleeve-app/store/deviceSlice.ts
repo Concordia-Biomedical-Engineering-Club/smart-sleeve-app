@@ -18,6 +18,8 @@ export interface WorkoutSession {
   currentRep: number;
   totalReps: number;
   phaseSecondsRemaining: number;
+  workDurationSec: number;
+  restDurationSec: number;
 }
 
 export interface DeviceState {
@@ -44,6 +46,8 @@ const initialWorkout: WorkoutSession = {
   currentRep: 0,
   totalReps: 0,
   phaseSecondsRemaining: 0,
+  workDurationSec: 0,
+  restDurationSec: 0,
 };
 
 const initialState: DeviceState = {
@@ -106,9 +110,11 @@ const deviceSlice = createSlice({
         exerciseName: string;
         targetSide: 'LEFT' | 'RIGHT';
         totalReps: number;
+        workDurationSec: number;
+        restDurationSec: number;
       }>
     ) {
-      const { exerciseId, exerciseName, targetSide, totalReps } = action.payload;
+      const { exerciseId, exerciseName, targetSide, totalReps, workDurationSec, restDurationSec } = action.payload;
       state.workout = {
         phase: 'COUNTDOWN',
         exerciseId,
@@ -118,6 +124,8 @@ const deviceSlice = createSlice({
         currentRep: 0,
         totalReps,
         phaseSecondsRemaining: 3,
+        workDurationSec,
+        restDurationSec,
       };
     },
     workoutTick(state) {
@@ -131,12 +139,12 @@ const deviceSlice = createSlice({
       switch (w.phase) {
         case 'COUNTDOWN':
           w.phase = 'ACTIVE_WORK';
-          w.phaseSecondsRemaining = 5;
+          w.phaseSecondsRemaining = w.workDurationSec;
           w.currentRep = 1;
           break;
         case 'ACTIVE_WORK':
           w.phase = 'ACTIVE_REST';
-          w.phaseSecondsRemaining = 3;
+          w.phaseSecondsRemaining = w.restDurationSec;
           break;
         case 'ACTIVE_REST':
           if (w.currentRep >= w.totalReps) {
@@ -144,7 +152,7 @@ const deviceSlice = createSlice({
             w.phaseSecondsRemaining = 0;
           } else {
             w.phase = 'ACTIVE_WORK';
-            w.phaseSecondsRemaining = 5;
+            w.phaseSecondsRemaining = w.workDurationSec;
             w.currentRep += 1;
           }
           break;

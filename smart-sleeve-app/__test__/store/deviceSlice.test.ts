@@ -4,6 +4,7 @@ import deviceReducer, {
   clearBuffers,
   selectEmgBufferLength,
   DeviceState,
+  startWorkout,
 } from '@/store/deviceSlice';
 import { EMGData, IMUData } from '@/services/SleeveConnector/ISleeveConnector';
 
@@ -26,6 +27,8 @@ describe('deviceSlice', () => {
       currentRep: 0,
       totalReps: 0,
       phaseSecondsRemaining: 0,
+      workDurationSec: 0,
+      restDurationSec: 0,
     },
   };
 
@@ -99,5 +102,20 @@ describe('deviceSlice', () => {
     const action = { type: 'device/featuresUpdated', payload: mockFeatures };
     const state = deviceReducer(initialState, action);
     expect(state.latestFeatures).toEqual(mockFeatures);
+  });
+
+  test('should handle startWorkout', () => {
+    const mockWorkout = {
+      exerciseId: 'quad-sets',
+      exerciseName: 'Quadriceps Sets',
+      targetSide: 'LEFT' as const,
+      totalReps: 10,
+      workDurationSec: 5,
+      restDurationSec: 3,
+    };
+    const state = deviceReducer(initialState, startWorkout(mockWorkout));
+    expect(state.workout.exerciseId).toBe(mockWorkout.exerciseId);
+    expect(state.workout.phase).toBe('COUNTDOWN');
+    expect(state.workout.workDurationSec).toBe(5);
   });
 });
