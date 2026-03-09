@@ -14,7 +14,8 @@
  *
  * BLE Protocol (Little Endian):
  *   EMG: [Header(1) | Timestamp(4) | CH0-CH7 x int16(16) | Checksum(1)] = 22 bytes
- *   IMU: [Header(1) | Timestamp(4) | Roll(2) | Pitch(2) | Yaw(2) | CRC(1)]  = 12 bytes
+ *   IMU: [Header(1) | Timestamp(4) | Angle(2) | Pitch(2) | Yaw(2) | CRC(1)]  = 12 bytes
+ *        Angle is raw 14-bit (0-16383). Error state is 0x7FFF.
  *
  * ─────────────────────────── WIRING GUIDE ────────────────────────────────────
  *
@@ -91,6 +92,8 @@ static uint16_t as5048a_spiTransfer(uint16_t command) {
     uint8_t hi = (command >> 8) & 0xFF;
     uint8_t lo = command & 0xFF;
 
+    // Correct pattern: begin -> transfer -> end per operation
+    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));
     digitalWrite(AS5048A_CS, LOW);
     delayMicroseconds(1);
 
@@ -99,6 +102,7 @@ static uint16_t as5048a_spiTransfer(uint16_t command) {
 
     delayMicroseconds(1);
     digitalWrite(AS5048A_CS, HIGH);
+    SPI.endTransaction();
     delayMicroseconds(1);  // t_dis gap between frames
 
     return ((uint16_t)hiRx << 8) | loRx;
@@ -140,11 +144,7 @@ static int32_t as5048a_readAngle() {
  * For a knee sleeve, usable range is approximately 0–140°.
  * We clamp the output to [0, 140].
  */
-static float as5048a_toDegrees(int32_t rawAngle) {
-    if (rawAngle < 0) return 0.0f;
-    const float degrees = (rawAngle * 360.0f) / 16384.0f;
-    return degrees > 140.0f ? 140.0f : degrees;
-}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BLE Server Callbacks  (NimBLE-Arduino v1.4.x API)
@@ -174,9 +174,10 @@ void setup() {
     pinMode(AS5048A_CS, OUTPUT);
     digitalWrite(AS5048A_CS, HIGH);  // De-select by default
 
-    // VSPI, Mode 1 (CPOL=0, CPHA=1), 1 MHz (safe; AS5048A supports up to 10 MHz)
-    SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI, AS5048A_CS);
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));
+    // VSPI, Mode 1 (CPOL=0, CPHA=1), 1 MHz
+    // We pass -1 for CS because we manage GPIO 5 manually via digitalWrite
+    SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI, -1);
+
 
     // Warm-up read (discards first frame which is undefined)
     as5048a_readAngle();
@@ -206,54 +207,69 @@ void setup() {
 // loop()
 // ─────────────────────────────────────────────────────────────────────────────
 void loop() {
+    static uint32_t lastSampleTime = 0;
+    static uint32_t lastSerialTime = 0;
+    const uint32_t sampleInterval = 20;  // 50 Hz
+    const uint32_t debugInterval  = 500; // 2 Hz
+
     if (!deviceConnected) return;
 
-    const uint32_t now = millis();
+    // Use non-blocking timer for sampling
+    uint32_t now = millis();
+    if (now - lastSampleTime < sampleInterval) return;
+    lastSampleTime = now;
 
     // ── 1. Read sensors ───────────────────────────────────────────────────────
     const int16_t emgRaw = (int16_t)analogRead(EMG_PIN);  // 0–4095
-
-    const int32_t angleRaw    = as5048a_readAngle();       // 0–16383, or -1 on error
-    const float   angleDeg    = as5048a_toDegrees(angleRaw);
-    const int16_t angleInt    = (int16_t)angleDeg;         // Integer degrees sent over BLE
+    const int32_t angleResult = as5048a_readAngle();      // 0–16383, or -1 on error
+    
+    // Convert to protocol-safe sentinel (0x7FFF) if sensor error
+    const int16_t angleToSend = (angleResult < 0) ? (int16_t)0x7FFF : (int16_t)angleResult;
 
     // ── 2. Build EMG packet (22 bytes) ───────────────────────────────────────
-    // Channel 0 = real MyoWare data (0–4095)
-    // Channels 1–7 = 0 (reserved for future sensors)
     emgBuffer[0] = EMG_HEADER;
     memcpy(&emgBuffer[1], &now, 4);
 
-    uint8_t checksum = EMG_HEADER;
+    uint8_t emgChecksum = EMG_HEADER;
+    for (int i = 0; i < 4; i++) emgChecksum ^= emgBuffer[1 + i];
+
     for (int i = 0; i < 8; i++) {
         const int16_t val = (i == 0) ? emgRaw : (int16_t)0;
         memcpy(&emgBuffer[5 + i * 2], &val, 2);
-        checksum ^= (uint8_t)(val & 0xFF) ^ (uint8_t)(val >> 8);
+        emgChecksum ^= (uint8_t)(val & 0xFF) ^ (uint8_t)(val >> 8);
     }
-    emgBuffer[21] = checksum;
+    emgBuffer[21] = emgChecksum;
 
     pEmgChar->setValue(emgBuffer, 22);
     pEmgChar->notify();
 
     // ── 3. Build IMU/Angle packet (12 bytes) ─────────────────────────────────
-    // Roll = knee flexion angle in integer degrees (0–140)
     const int16_t pitch = 0;
     const int16_t yaw   = 0;
 
     imuBuffer[0] = IMU_HEADER;
-    memcpy(&imuBuffer[1],  &now,      4);
-    memcpy(&imuBuffer[5],  &angleInt, 2);
-    memcpy(&imuBuffer[7],  &pitch,    2);
-    memcpy(&imuBuffer[9],  &yaw,      2);
-    imuBuffer[11] = IMU_HEADER ^ (uint8_t)(angleInt & 0xFF) ^ (uint8_t)(angleInt >> 8);
+    memcpy(&imuBuffer[1],  &now,         4);
+    memcpy(&imuBuffer[5],  &angleToSend, 2);
+    memcpy(&imuBuffer[7],  &pitch,       2);
+    memcpy(&imuBuffer[9],  &yaw,         2);
+
+    uint8_t imuChecksum = IMU_HEADER;
+    for (int i = 0; i < 4; i++) imuChecksum ^= imuBuffer[1 + i];
+    imuChecksum ^= (uint8_t)(angleToSend & 0xFF) ^ (uint8_t)(angleToSend >> 8);
+    imuChecksum ^= (uint8_t)(pitch & 0xFF) ^ (uint8_t)(pitch >> 8);
+    imuChecksum ^= (uint8_t)(yaw & 0xFF)   ^ (uint8_t)(yaw >> 8);
+    
+    imuBuffer[11] = imuChecksum;
 
     pImuChar->setValue(imuBuffer, 12);
     pImuChar->notify();
 
-    // ── 4. Debug output ───────────────────────────────────────────────────────
-    Serial.printf("[DATA] EMG_raw=%d  Angle=%.1f deg (%s)\n",
-        emgRaw,
-        angleDeg,
-        angleRaw < 0 ? "ERR" : "OK");
-
-    delay(20);  // 50 Hz
+    // ── 4. Debug output (Throttled) ───────────────────────────────────────────
+    if (now - lastSerialTime >= debugInterval) {
+        lastSerialTime = now;
+        Serial.printf("[DATA] EMG=%d  AngleRaw=%d (%s)\n",
+            emgRaw,
+            angleResult,
+            angleResult < 0 ? "SENSOR_ERROR" : "OK");
+    }
 }

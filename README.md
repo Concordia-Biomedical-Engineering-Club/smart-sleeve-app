@@ -118,6 +118,39 @@ The Expo app lives in the nested `smart-sleeve-app/` folder. Run Android command
   npx expo run:android --device "SM_S921W"
   ```
 
+### Running On iOS
+
+The same nested app directory rule applies on iOS. Run iOS commands from `smart-sleeve-app/smart-sleeve-app`.
+
+1.  **Open the app directory**:
+    ```bash
+    cd smart-sleeve-app/smart-sleeve-app
+    npm install
+    ```
+2.  **Make sure Xcode is installed** and open it once to finish first-run setup.
+3.  **List available iOS targets**:
+    ```bash
+    xcrun devicectl list devices
+    ```
+    If your Xcode version does not provide `devicectl`, use:
+    ```bash
+    xcrun xctrace list devices
+    ```
+4.  **Run on the iOS Simulator**:
+    ```bash
+    npx expo run:ios
+    ```
+5.  **Run on a connected iPhone**:
+    ```bash
+    npx expo run:ios --device
+    ```
+    For a physical iPhone, you also need a valid Apple signing setup in Xcode and Developer Mode enabled on the device.
+
+### iOS Notes
+
+- The app already includes the iOS Bluetooth usage descriptions required for BLE access.
+- Because this app uses native BLE libraries, prefer a native Expo dev build with `npx expo run:ios` instead of relying on Expo Go for full device testing.
+
 ---
 
 ## 🧪 Testing & Quality

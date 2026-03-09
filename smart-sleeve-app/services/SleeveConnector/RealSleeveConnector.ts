@@ -46,7 +46,10 @@ export class RealSleeveConnector implements ISleeveConnector {
    * Request Bluetooth permissions for Android.
    */
   private async requestPermissions(): Promise<boolean> {
-    if (Platform.OS === 'android' && Platform.Version >= 23) {
+    if (Platform.OS !== 'android') return true;
+
+    // Android 12 (API 31) and above requires specific BT permissions
+    if (Platform.Version >= 31) {
       const granted = await PermissionsAndroid.requestMultiple([
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
@@ -58,7 +61,16 @@ export class RealSleeveConnector implements ISleeveConnector {
         granted[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === PermissionsAndroid.RESULTS.GRANTED &&
         granted[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED
       );
+    } 
+    
+    // Android 10/11 (API 23-30) legacy Bluetooth scanning via Location
+    if (Platform.Version >= 23) {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
     }
+
     return true;
   }
 
@@ -184,13 +196,29 @@ export class RealSleeveConnector implements ISleeveConnector {
         channels.push(scaledValue);
     }
 
-    const checksum = buf.readUInt8(21);
+    // Checksum verification
+    let computedChecksum = header;
+    // Include 4 bytes of timestamp
+    for (let i = 0; i < 4; i++) {
+      computedChecksum ^= buf.readUInt8(1 + i);
+    }
+    // Include 16 bytes of data (8 channels x 2 bytes)
+    for (let i = 0; i < 16; i++) {
+      computedChecksum ^= buf.readUInt8(5 + i);
+    }
+
+    const checksumReceived = buf.readUInt8(21);
+    if (computedChecksum !== checksumReceived) {
+      console.warn(`[RealSleeveConnector] EMG checksum mismatch: calc=${computedChecksum}, recv=${checksumReceived}`);
+      // Drop corrupted frames if we want to be strict
+      if (false) return; 
+    }
 
     const frame: EMGData = {
       header,
       timestamp,
       channels,
-      checksum
+      checksum: checksumReceived
     };
 
     this.emgSubscribers.forEach(cb => cb(frame));
@@ -209,20 +237,41 @@ export class RealSleeveConnector implements ISleeveConnector {
     const header = buf.readUInt8(0);
     const timestamp = buf.readUInt32LE(1);
     
-    // Scale int16_t to Degrees (Assuming fixed point or direct degrees * 100 etc)
-    // For now we assume the firmware sends degrees (0-140) as int16
-    const roll = buf.readInt16LE(5);
-    const pitch = buf.readInt16LE(7);
-    const yaw = buf.readInt16LE(9);
-    const checksum = buf.readUInt8(11);
+    // Receive data from bytes 5-10
+    const rawValue = buf.readInt16LE(5);
+    const pitchRaw = buf.readInt16LE(7);
+    const yawRaw = buf.readInt16LE(9);
+    const checksumReceived = buf.readUInt8(11);
+
+    // Checksum verification (XOR bytes 1 through 10)
+    let computedChecksum = header;
+    for (let i = 0; i < 10; i++) {
+      computedChecksum ^= buf.readUInt8(1 + i);
+    }
+
+    if (computedChecksum !== checksumReceived) {
+       console.warn(`[RealSleeveConnector] IMU checksum mismatch: calc=${computedChecksum}, recv=${checksumReceived}`);
+       if (false) return; // Drop frame
+    }
+
+    // Convert raw 14-bit encoder (0-16383) to degrees (0-140)
+    let roll = 0;
+    // Protocol sentinel: 0x7FFF (32767) indicates sensor fault
+    if (rawValue === 0x7FFF) {
+      console.warn('[RealSleeveConnector] Angle sensor reported FAULT');
+      roll = 0; // Error state
+    } else {
+      const degrees = (rawValue * 360.0) / 16384.0;
+      roll = Math.max(0, Math.min(140, degrees));
+    }
 
     const frame: IMUData = {
       header,
       timestamp,
       roll,
-      pitch,
-      yaw,
-      checksum
+      pitch: pitchRaw,
+      yaw: yawRaw,
+      checksum: checksumReceived
     };
 
     this.imuSubscribers.forEach(cb => cb(frame));
@@ -236,16 +285,25 @@ export class RealSleeveConnector implements ISleeveConnector {
     }
   }
 
-  subscribeToEMG(callback: (data: EMGData) => void): void {
+  subscribeToEMG(callback: (data: EMGData) => void): () => void {
     this.emgSubscribers.push(callback);
+    return () => {
+      this.emgSubscribers = this.emgSubscribers.filter(cb => cb !== callback);
+    };
   }
 
-  subscribeToIMU(callback: (data: IMUData) => void): void {
+  subscribeToIMU(callback: (data: IMUData) => void): () => void {
     this.imuSubscribers.push(callback);
+    return () => {
+      this.imuSubscribers = this.imuSubscribers.filter(cb => cb !== callback);
+    };
   }
 
-  onConnectionStatusChange(callback: (status: ConnectionStatus) => void): void {
+  onConnectionStatusChange(callback: (status: ConnectionStatus) => void): () => void {
     this.connectionSubscribers.push(callback);
+    return () => {
+      this.connectionSubscribers = this.connectionSubscribers.filter(cb => cb !== callback);
+    };
   }
 
   setScenario(scenario: SleeveScenario): void {
