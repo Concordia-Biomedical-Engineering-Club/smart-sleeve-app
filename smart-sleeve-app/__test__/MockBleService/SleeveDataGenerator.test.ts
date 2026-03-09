@@ -110,8 +110,11 @@ describe("SleeveDataGenerator", () => {
      */
     it("should generate larger amplitude for FLEX scenario", () => {
       generator.setScenario("FLEX");
+      
+      // FLEX target is 0.8, but smoothed transition takes time
+      for (let i = 0; i < 40; i++) generator.generateEMGFrame();
 
-      const frames = Array.from({ length: 10 }, () =>
+      const frames = Array.from({ length: 50 }, () =>
         generator.generateEMGFrame()
       );
       const maxValues = frames.map((f) =>
@@ -119,8 +122,8 @@ describe("SleeveDataGenerator", () => {
       );
       const avgMax = maxValues.reduce((a, b) => a + b, 0) / maxValues.length;
 
-      // FLEX amplitude is 0.8, should see values around that range
-      expect(avgMax).toBeGreaterThan(0.5);
+      // With smoothing and 8 channels, the mean peak should be > 0.4 easily
+      expect(avgMax).toBeGreaterThan(0.4);
     });
 
     /**
@@ -152,6 +155,9 @@ describe("SleeveDataGenerator", () => {
      */
     it("should generate medium amplitude for SQUAT scenario", () => {
       generator.setScenario("SQUAT");
+
+      // Need to generate enough frames for the "Glide" to reach the target amplitude
+      for (let i = 0; i < 20; i++) generator.generateEMGFrame();
 
       const frames = Array.from({ length: 10 }, () =>
         generator.generateEMGFrame()
@@ -256,10 +262,10 @@ describe("SleeveDataGenerator", () => {
       let currentTime = realDateNow();
       
       const frames: number[] = [];
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 150; i++) { // Generate 3 seconds of data at 50Hz equivalent (20ms steps)
         global.Date.now = jest.fn(() => currentTime);
         frames.push(generator.generateIMUFrame().roll);
-        currentTime += 100; // Advance 100ms each frame
+        currentTime += 20; // Advance 20ms each frame (realistic frequency)
       }
       
       // Restore Date.now
@@ -301,6 +307,9 @@ describe("SleeveDataGenerator", () => {
       const restMax = Math.max(...restFrame.channels.map(Math.abs));
 
       generator.setScenario("FLEX");
+
+      // Need to generate enough frames for the "Glide" to reach the target amplitude
+      for (let i = 0; i < 20; i++) generator.generateEMGFrame();
 
       // FLEX should generally produce larger values than REST
       // Note: Due to randomness, we check multiple frames

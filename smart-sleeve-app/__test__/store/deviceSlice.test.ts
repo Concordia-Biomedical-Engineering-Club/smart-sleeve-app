@@ -30,6 +30,7 @@ describe('deviceSlice', () => {
       workDurationSec: 0,
       restDurationSec: 0,
     },
+    isFilteringEnabled: true,
   };
 
   test('should handle initial state', () => {
@@ -147,5 +148,11 @@ describe('deviceSlice', () => {
     const state = deviceReducer(stateWithWorkout, action);
     expect(state.workout.phase).toBe('IDLE');
     expect(state.workout.exerciseId).toBeNull();
+  });
+
+  test('should handle setFilteringEnabled', () => {
+    const action = { type: 'device/setFilteringEnabled', payload: false };
+    const state = deviceReducer(initialState, action);
+    expect(state.isFilteringEnabled).toBe(false);
   });
 });

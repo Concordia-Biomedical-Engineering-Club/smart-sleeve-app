@@ -31,10 +31,18 @@ function computeChecksum(values: number[]): number {
 export class SleeveDataGenerator {
   private scenario: SleeveScenario;
   private readonly startTime: number;
+  
+  // Smoothing state for "Target Glide"
+  private currentEMGAmplitude: number = 0.05;
+  private currentKneeAngle: number = 0;
 
   constructor(initialScenario: SleeveScenario = 'REST') {
     this.scenario = initialScenario;
     this.startTime = Date.now();
+    
+    // Set initial values based on scenario
+    this.currentEMGAmplitude = initialScenario === 'REST' ? 0.05 : 0.5;
+    this.currentKneeAngle = initialScenario === 'REST' ? 0 : 45;
   }
 
   /**
@@ -56,7 +64,7 @@ export class SleeveDataGenerator {
     const numChannels = 8;
 
     // Base amplitude for the envelope
-    const amplitude =
+    const targetAmplitude =
       this.scenario === 'REST'
         ? 0.05
         : this.scenario === 'FLEX'
@@ -64,6 +72,12 @@ export class SleeveDataGenerator {
         : this.scenario === 'SQUAT'
         ? 0.5
         : 0.1;
+
+    // Smoothly transition the current amplitude toward the target
+    const smoothingFactor = 0.15; // Adjusted for human contraction speed (~200ms)
+    this.currentEMGAmplitude += (targetAmplitude - this.currentEMGAmplitude) * smoothingFactor;
+    
+    const amplitude = this.currentEMGAmplitude;
 
     // Time in seconds for frequency generation
     const t = (timestamp - this.startTime) / 1000;
@@ -80,17 +94,34 @@ export class SleeveDataGenerator {
     const motionArtifact = Math.sin(2 * Math.PI * 1.5 * t) * 0.8;
 
     // Combine them
-    const generateValue = () => {
+    const generateValue = (channelIdx: number) => {
        // Zero-centered random noise floor
        const noiseFloor = (Math.random() - 0.5) * 0.1; 
+       
+       // CLINICAL WEIGHTING:
+       // CH0, CH1 = Quads (VMO, VL)
+       // CH2, CH3 = Hamstrings (Semi, Biceps Fem)
+       let channelWeight = 1.0;
+       
+       if (this.scenario === 'FLEX') {
+         // Quad-focused exercises: Quads are high, Hamstrings are low (antagonist)
+         if (channelIdx >= 2) channelWeight = 0.2; 
+       } else if (this.scenario === 'SQUAT') {
+         // Squatting: Co-contraction of both Quads and Hamstrings for stability
+         channelWeight = 0.7 + (Math.random() * 0.3);
+       } else if (this.scenario === 'REST') {
+         channelWeight = 1.0; // All low anyway
+       }
+
+       const signal = muscleSignal() * channelWeight;
        
        if (this.scenario === 'REST') {
            return noiseFloor + motionArtifact;
        }
-       return muscleSignal() + noiseFloor + motionArtifact;
+       return signal + noiseFloor + motionArtifact;
     };
 
-    const channels = Array.from({ length: numChannels }, () => generateValue());
+    const channels = Array.from({ length: numChannels }, (_, idx) => generateValue(idx));
 
     const checksum = computeChecksum(channels);
 
@@ -120,32 +151,36 @@ export class SleeveDataGenerator {
     const timestamp = Date.now();
     const t = (timestamp - this.startTime) / 1000; // seconds since start
 
-    let kneeFlexionAngle = 0; // Replaces 'roll' - represents AS5048A encoder reading
+    let targetKneeAngle = 0;
 
     switch (this.scenario) {
       case 'REST':
         // Standing position with small natural sway (0-10°)
-        kneeFlexionAngle = 5 + Math.sin(t * 0.5) * 5;
+        targetKneeAngle = 5 + Math.sin(t * 0.5) * 5;
         break;
 
       case 'FLEX':
         // Active knee flexion exercise (60-120° oscillation at ~0.5 Hz)
-        // Simulates controlled flexion/extension cycles
-        kneeFlexionAngle = 90 + Math.sin(t * Math.PI) * 30;
+        targetKneeAngle = 90 + Math.sin(t * Math.PI) * 30;
         break;
 
       case 'SQUAT':
         // Full squat cycle (0-120° at ~0.3 Hz)
-        // Simulates standing -> deep squat -> standing
-        // Using abs(sin) to create realistic squat pattern (always positive flexion)
         const squatCycle = Math.abs(Math.sin(t * 0.6));
-        kneeFlexionAngle = squatCycle * 120;
+        targetKneeAngle = squatCycle * 120;
         break;
 
       default:
-        kneeFlexionAngle = 0;
+        targetKneeAngle = 0;
         break;
     }
+
+    // Smoothly transition the current angle toward the target
+    // Factor of 0.1 at 50Hz gives a nice organic movement
+    const angleSmoothingFactor = 0.1;
+    this.currentKneeAngle += (targetKneeAngle - this.currentKneeAngle) * angleSmoothingFactor;
+    
+    let kneeFlexionAngle = this.currentKneeAngle;
 
     // Add small noise to simulate AS5048A resolution (±0.05° typical accuracy)
     const encoderNoise = (Math.random() - 0.5) * 0.1;

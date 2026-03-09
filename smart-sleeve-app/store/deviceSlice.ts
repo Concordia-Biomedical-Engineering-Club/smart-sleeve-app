@@ -35,6 +35,7 @@ export interface DeviceState {
   emgBuffer: EMGData[];
   kneeAngleBuffer: number[];
   workout: WorkoutSession;
+  isFilteringEnabled: boolean;
 }
 
 const initialWorkout: WorkoutSession = {
@@ -60,6 +61,23 @@ const initialState: DeviceState = {
   emgBuffer: [],
   kneeAngleBuffer: [],
   workout: initialWorkout,
+  isFilteringEnabled: true,
+};
+
+const syncScenario = (state: DeviceState) => {
+  const { phase, exerciseId } = state.workout;
+  
+  if (phase === 'ACTIVE_WORK') {
+    // Logic to select best mock scenario for the exercise
+    if (exerciseId === 'wall-slides') {
+      state.scenario = 'SQUAT';
+    } else {
+      state.scenario = 'FLEX';
+    }
+  } else {
+    // Rest during REST phases, COUNTDOWN, and IDLE
+    state.scenario = 'REST';
+  }
 };
 
 const deviceSlice = createSlice({
@@ -127,6 +145,7 @@ const deviceSlice = createSlice({
         workDurationSec,
         restDurationSec,
       };
+      syncScenario(state);
     },
     workoutTick(state) {
       const w = state.workout;
@@ -157,12 +176,18 @@ const deviceSlice = createSlice({
           }
           break;
       }
+      syncScenario(state);
     },
     cancelWorkout(state) {
       state.workout = initialWorkout;
+      syncScenario(state);
     },
     completeWorkout(state) {
       state.workout = initialWorkout;
+      syncScenario(state);
+    },
+    setFilteringEnabled(state, action: PayloadAction<boolean>) {
+      state.isFilteringEnabled = action.payload;
     },
   },
 });
@@ -179,6 +204,7 @@ export const {
   workoutTick,
   cancelWorkout,
   completeWorkout,
+  setFilteringEnabled,
 } = deviceSlice.actions;
 
 const selectDevice = (state: RootState) => state.device;

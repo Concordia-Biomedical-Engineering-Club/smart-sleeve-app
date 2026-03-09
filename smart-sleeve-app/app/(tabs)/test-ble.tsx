@@ -3,85 +3,40 @@ import { Dimensions , View, StyleSheet, ScrollView, TouchableOpacity } from "rea
 import React, { useState, useEffect, useRef } from "react";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { SignalProcessor } from "@/services/SignalProcessing/SignalProcessor";
 import { Colors } from "@/constants/theme";
-import type {
-  EMGData,
-  IMUData,
-  ConnectionStatus,
-} from "@/services/SleeveConnector/ISleeveConnector";
-import { useSleeveDevice } from "@/hooks/useSleeveDevice";
 import { useSleeve } from "@/hooks/useSleeve";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { scenarioChanged, setFilteringEnabled } from "@/store/deviceSlice";
 
 export default function TestBLEScreen() {
+  const dispatch = useDispatch();
   const connector = useSleeve();
-  // SignalProcessor Visual Demo Config:
-  // Sample Rate: 50Hz (Matches Mock)
-  // Notch: 10Hz (Matches simulated 'line noise' alias)
-  // HighPass: 2Hz (Removes slow drift)
-  // LowPass: 20Hz (Allows 'muscle' signal)
-  const [signalProcessor] = useState(() => new SignalProcessor(50, 10, 2, 20)); 
+  const latestEMG = useSelector((state: RootState) => state.device.latestEMG);
+  const latestIMU = useSelector((state: RootState) => state.device.latestIMU);
+  const scenario = useSelector((state: RootState) => state.device.scenario);
+  const connectionStatus = useSelector((state: RootState) => state.device.connection);
+  const isFilteringEnabled = useSelector((state: RootState) => state.device.isFilteringEnabled);
   
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
-    connected: false,
-  });
-  const [latestEMG, setLatestEMG] = useState<EMGData | null>(null);
-  const [latestIMU, setLatestIMU] = useState<IMUData | null>(null);
-  const [currentScenario, setCurrentScenario] = useState<
-    "REST" | "FLEX" | "SQUAT"
-  >("REST");
-  
-  const [isFilteringEnabled, setIsFilteringEnabled] = useState(false);
-  const isFilteringEnabledRef = useRef(false);
   const lastChartUpdateRef = useRef(0);
   
   // Chart Data State
   const [chartData, setChartData] = useState<number[]>(new Array(50).fill(0));
   const MAX_POINTS = 50;
 
-  // Sync ref with state
+  // Update Chart Data (Channel 1 only for viz) - Throttled for readability
   useEffect(() => {
-    isFilteringEnabledRef.current = isFilteringEnabled;
-  }, [isFilteringEnabled]);
-
-  useSleeveDevice(connector);
-
-  useEffect(() => {
-    // Subscribe to connection status changes
-    connector.onConnectionStatusChange((status) => {
-      setConnectionStatus(status);
-    });
-
-    // Subscribe to EMG data
-    connector.subscribeToEMG((data) => {
-      let processedData = data;
-      if (isFilteringEnabledRef.current) {
-          processedData = signalProcessor.processEMG(data);
-      }
-      
-      setLatestEMG(processedData);
-      
-      // Update Chart Data (Channel 1 only for viz) - Throttled for readability
-      const now = Date.now();
-      if (now - lastChartUpdateRef.current > 100) { // Update chart max every 100ms (10fps)
-          lastChartUpdateRef.current = now;
-          setChartData(prev => {
-              const newData = [...prev, processedData.channels[0]];
-              if (newData.length > MAX_POINTS) return newData.slice(newData.length - MAX_POINTS);
-              return newData;
-          });
-      }
-    });
-
-    // Subscribe to IMU data
-    connector.subscribeToIMU((data) => {
-      setLatestIMU(data);
-    });
-
-    return () => {
-      connector.disconnect();
-    };
-  }, [connector, signalProcessor]);
+    if (!latestEMG) return;
+    const now = Date.now();
+    if (now - lastChartUpdateRef.current > 100) {
+      lastChartUpdateRef.current = now;
+      setChartData(prev => {
+        const newData = [...prev, latestEMG.channels[0]];
+        if (newData.length > MAX_POINTS) return newData.slice(newData.length - MAX_POINTS);
+        return newData;
+      });
+    }
+  }, [latestEMG]);
 
   const handleConnect = async () => {
     try {
@@ -95,9 +50,8 @@ export default function TestBLEScreen() {
     connector.disconnect();
   };
 
-  const handleScenarioChange = (scenario: "REST" | "FLEX" | "SQUAT") => {
-    connector.setScenario(scenario);
-    setCurrentScenario(scenario);
+  const handleScenarioChange = (newScenario: "REST" | "FLEX" | "SQUAT") => {
+    dispatch(scenarioChanged(newScenario));
   };
 
   // Get screen width for chart
@@ -149,7 +103,7 @@ export default function TestBLEScreen() {
                 styles.button,
                 { marginTop: 12, backgroundColor: isFilteringEnabled ? Colors.light.success : Colors.light.icon }
               ]}
-              onPress={() => setIsFilteringEnabled(!isFilteringEnabled)}
+              onPress={() => dispatch(setFilteringEnabled(!isFilteringEnabled))}
             >
               <ThemedText style={styles.buttonText}>
                 {isFilteringEnabled ? "Filters ON" : "Filters OFF (Raw)"}
@@ -204,13 +158,13 @@ export default function TestBLEScreen() {
 
         {/* Scenario Controls */}
         <View style={styles.section}>
-          <ThemedText type="subtitle">Scenario: {currentScenario}</ThemedText>
+          <ThemedText type="subtitle">Scenario: {scenario}</ThemedText>
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={[
                 styles.button,
                 styles.scenarioButton,
-                currentScenario === "REST" && styles.activeScenario,
+                scenario === "REST" && styles.activeScenario,
               ]}
               onPress={() => handleScenarioChange("REST")}
               disabled={!connectionStatus.connected}
@@ -221,7 +175,7 @@ export default function TestBLEScreen() {
               style={[
                 styles.button,
                 styles.scenarioButton,
-                currentScenario === "FLEX" && styles.activeScenario,
+                scenario === "FLEX" && styles.activeScenario,
               ]}
               onPress={() => handleScenarioChange("FLEX")}
               disabled={!connectionStatus.connected}
@@ -232,7 +186,7 @@ export default function TestBLEScreen() {
               style={[
                 styles.button,
                 styles.scenarioButton,
-                currentScenario === "SQUAT" && styles.activeScenario,
+                scenario === "SQUAT" && styles.activeScenario,
               ]}
               onPress={() => handleScenarioChange("SQUAT")}
               disabled={!connectionStatus.connected}
