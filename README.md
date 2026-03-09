@@ -5,6 +5,7 @@ A professional, data-driven rehabilitation platform developed by the **Concordia
 ---
 
 ## 🌟 Vision Statement
+
 To create an intelligent, data-driven rehabilitation platform that transforms subjective recovery assessment into objective, measurable progress tracking through advanced EMG signal processing and machine learning algorithms.
 
 ---
@@ -33,12 +34,14 @@ The system operates across four integrated layers to ensure high performance and
 ## 🚧 Development Status & Roadmap
 
 ### ✅ Phase 1: Foundation (Completed)
+
 - [x] Initial React Native & Expo setup.
 - [x] Core state management (Redux) and Navigation architecture.
 - [x] Static UI layouts for Dashboard and Milestones.
 - [x] Authentication flow (Firebase).
 
 ### 🔄 Phase 2: Signal Processing & Integration (Current)
+
 - [x] **Mock BLE Service**: Full hardware simulation for development.
 - [x] **DSP Pipeline**: 60Hz Notch and 20-500Hz Bandpass filters active.
 - [x] **Real-time Visualization**: High-frequency graphing in the Test BLE diagnostics.
@@ -46,11 +49,13 @@ The system operates across four integrated layers to ensure high performance and
 - [ ] **Bilateral Comparison**: Implementing side-by-side leg activation analytics.
 
 ### 📅 Phase 3: ML Intelligence (Upcoming)
+
 - [ ] On-device rep counting via 1D-CNN.
 - [ ] Exercise recognition (LSTM-based).
 - [ ] Real-time fatigue detection algorithms.
 
 ### 🚀 Phase 4: Refinement (Future)
+
 - [ ] Automatic cloud backup & Clinical portal.
 - [ ] PDF report generation for physiotherapists.
 - [ ] HIPAA/Health Canada compliance hardening.
@@ -72,15 +77,58 @@ The system operates across four integrated layers to ensure high performance and
     ```
     Scan the QR code with **Expo Go** to test on your device.
 
+### Running On Android Over USB
+
+The Expo app lives in the nested `smart-sleeve-app/` folder. Run Android commands from there, not from the repository root.
+
+1.  **Open the app directory**:
+    ```bash
+    cd smart-sleeve-app/smart-sleeve-app
+    npm install
+    ```
+2.  **Verify your phone is detected over USB**:
+    ```bash
+    adb devices -l
+    ```
+    Look for your device in the output. Example:
+    ```text
+    R3CXB02V58B  device  usb:1-1 product:e1qcsx model:SM_S921W device:e1q
+    ```
+3.  **Run the app on a specific connected phone**:
+    ```bash
+    npx expo run:android --device "SM_S921W"
+    ```
+    If you have multiple devices connected, you can use the model name shown by `adb devices -l`.
+4.  **If you just want the default Android target**:
+    ```bash
+    npx expo run:android
+    ```
+
+### Android Troubleshooting
+
+- If `npx expo run:android` fails from the repository root with a missing `package.json` error, run it from `smart-sleeve-app/smart-sleeve-app`.
+- If Gradle reports that the NDK path `27.1.12297006` is incomplete or `does not contain 'platforms'`, reinstall that NDK version:
+  ```bash
+  yes | "$HOME/Library/Android/sdk/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$HOME/Library/Android/sdk" "ndk;27.1.12297006"
+  ```
+- After repairing the NDK, clean and rebuild:
+  ```bash
+  cd smart-sleeve-app/smart-sleeve-app
+  rm -rf android/.cxx android/app/.cxx android/build android/app/build
+  npx expo run:android --device "SM_S921W"
+  ```
+
 ---
 
 ## 🧪 Testing & Quality
+
 - **Unit Tests**: `npm test` runs 50+ cases covering signal accuracy and hardware logic.
 - **Diagnostics**: Use the **Test BLE** tab to manually verify the signal processor's effect on simulated noise and motion artifacts.
 
 ---
+
 **Concordia University - Biomedical Engineering Club**
-*Transforming ACL recovery through engineering excellence.*
+_Transforming ACL recovery through engineering excellence._
 
 ---
 
