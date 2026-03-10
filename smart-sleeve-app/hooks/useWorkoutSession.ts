@@ -1,4 +1,4 @@
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector } from "react-redux";
 import {
   startSession,
   endSession,
@@ -9,8 +9,8 @@ import {
   selectRecordingKneeAngles,
   selectSessionStartTime,
   selectWorkout,
-} from '@/store/deviceSlice';
-import { saveSession, SaveSessionResult } from '@/services/SessionService';
+} from "@/store/deviceSlice";
+import { saveSession, SaveSessionResult } from "@/services/SessionService";
 
 /**
  * Custom hook to manage the lifecycle of a workout recording session.
@@ -34,10 +34,16 @@ export function useWorkoutSession() {
    * @param userId The ID of the user performing the workout
    * @returns The result of the save operation, or throws an error
    */
-  const endAndSave = async (userId: string): Promise<SaveSessionResult | null> => {
-    console.log(`[useWorkoutSession] endAndSave called. Current status: ${sessionStatus}`);
-    if (sessionStatus !== 'RECORDING') {
-      console.warn(`[useWorkoutSession] Cancelled save because status is not RECORDING`);
+  const endAndSave = async (
+    userId: string,
+  ): Promise<SaveSessionResult | null> => {
+    console.log(
+      `[useWorkoutSession] endAndSave called. Current status: ${sessionStatus}`,
+    );
+    if (sessionStatus !== "RECORDING") {
+      console.warn(
+        `[useWorkoutSession] Cancelled save because status is not RECORDING`,
+      );
       return null;
     }
 
@@ -48,13 +54,15 @@ export function useWorkoutSession() {
       // 2. Perform the heavy SQLite write off the main UI interactions
       const result = await saveSession({
         userId,
-        exerciseId: workout.exerciseId ?? 'unknown_exercise',
-        exerciseName: workout.exerciseName ?? 'Unknown',
-        side: workout.targetSide ?? 'LEFT',
+        exerciseId: workout.exerciseId ?? "unknown_exercise",
+        exerciseName: workout.exerciseName ?? "Unknown",
+        side: workout.targetSide ?? "LEFT",
         startTime: sessionStartTime ?? Date.now() - 60000,
         endTime: Date.now(),
         emgBuffer: recordingBuffer,
         kneeAngleBuffer: kneeAngles,
+        completedReps: workout.currentRep,
+        targetReps: workout.totalReps,
       });
 
       // 3. Notify Redux of success (clears buffers and resets to IDLE)

@@ -8,25 +8,34 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { EMGData } from '@/services/SleeveConnector/ISleeveConnector';
+import { EMGData, IMUData } from "@/services/SleeveConnector/ISleeveConnector";
 import {
-  insertSession,
   bulkInsertEMGSamples,
+  bulkInsertEMGSamplesWithDatabase,
   insertUser,
+  insertSession,
   getDatabase,
   Session,
   EMGSample,
-} from '@/services/Database';
+} from "@/services/Database";
+import { EXERCISE_LIBRARY } from "@/constants/exercises";
+import {
+  computeCompletionRate,
+  computeDeficitPercentageFromEMGFrames,
+  computeIntensityScore,
+} from "@/services/ProgressAnalysis";
 
 export interface SaveSessionParams {
   userId: string;
   exerciseId: string;
   exerciseName: string;
-  side: 'LEFT' | 'RIGHT';
+  side: "LEFT" | "RIGHT";
   startTime: number;
   endTime: number;
   emgBuffer: EMGData[];
-  kneeAngleBuffer: number[];
+  kneeAngleBuffer: IMUData[];
+  completedReps?: number;
+  targetReps?: number;
 }
 
 export interface SaveSessionResult {
@@ -35,39 +44,104 @@ export interface SaveSessionResult {
   durationMs: number;
 }
 
+export function alignKneeAnglesToEMGFrames(
+  emgBuffer: EMGData[],
+  kneeAngleBuffer: Pick<IMUData, "timestamp" | "roll">[],
+): number[] {
+  if (emgBuffer.length === 0) return [];
+  if (kneeAngleBuffer.length === 0) return emgBuffer.map(() => 0);
+
+  const sortedKneeAngles = [...kneeAngleBuffer].sort(
+    (left, right) => left.timestamp - right.timestamp,
+  );
+  let imuIndex = 0;
+
+  return emgBuffer.map((frame) => {
+    while (
+      imuIndex < sortedKneeAngles.length - 1 &&
+      sortedKneeAngles[imuIndex + 1].timestamp <= frame.timestamp
+    ) {
+      imuIndex += 1;
+    }
+
+    const current = sortedKneeAngles[imuIndex];
+    const next = sortedKneeAngles[imuIndex + 1];
+
+    if (!next) {
+      return current.roll;
+    }
+
+    const currentDistance = Math.abs(frame.timestamp - current.timestamp);
+    const nextDistance = Math.abs(next.timestamp - frame.timestamp);
+
+    return currentDistance <= nextDistance ? current.roll : next.roll;
+  });
+}
+
 /**
  * Persists a completed workout session and all its EMG samples to SQLite.
  *
  * Steps:
  *  1. Build Session metadata row
  *  2. Insert session row
- *  3. Map EMGData[] + kneeAngleBuffer[] → EMGSample[]
+ *  3. Map EMGData[] + IMUData[] → EMGSample[] via timestamp alignment
  *  4. Bulk insert all samples in a single transaction
  *
  * @returns sessionId, sample count, and total save duration in ms
  */
-export async function saveSession(params: SaveSessionParams): Promise<SaveSessionResult> {
+export async function saveSession(
+  params: SaveSessionParams,
+): Promise<SaveSessionResult> {
   const {
-    userId, exerciseId, exerciseName, side,
-    startTime, endTime, emgBuffer, kneeAngleBuffer,
+    userId,
+    exerciseId,
+    exerciseName,
+    side,
+    startTime,
+    endTime,
+    emgBuffer,
+    kneeAngleBuffer,
+    completedReps,
+    targetReps,
   } = params;
 
   const sessionId = `session_${startTime}_${Math.random().toString(36).slice(2, 7)}`;
   const duration = Math.round((endTime - startTime) / 1000);
+  const exercise = EXERCISE_LIBRARY.find((item) => item.id === exerciseId);
+  const recordedAngles = kneeAngleBuffer.map((frame) => frame.roll);
+  const alignedKneeAngles = alignKneeAnglesToEMGFrames(
+    emgBuffer,
+    kneeAngleBuffer,
+  );
 
   // ── Compute analytics from buffer ──────────────────────────────────────────
-  const rmsValues = emgBuffer.map(frame => frame.channels.slice(0, 4));
-  const avgActivation = rmsValues.length > 0 
-    ? rmsValues.reduce((sum, ch) => sum + average(ch), 0) / rmsValues.length 
-    : 0;
-  const maxActivation = Math.max(...rmsValues.map(ch => Math.max(...ch)), 0);
-  
-  const minFlexion = kneeAngleBuffer.length > 0 ? Math.min(...kneeAngleBuffer) : 0;
-  const maxFlexion = kneeAngleBuffer.length > 0 ? Math.max(...kneeAngleBuffer) : 0;
+  const rmsValues = emgBuffer.map((frame) => frame.channels.slice(0, 4));
+  const avgActivation =
+    rmsValues.length > 0
+      ? rmsValues.reduce((sum, ch) => sum + average(ch), 0) / rmsValues.length
+      : 0;
+  const maxActivation = Math.max(...rmsValues.map((ch) => Math.max(...ch)), 0);
+
+  const minFlexion =
+    recordedAngles.length > 0 ? Math.min(...recordedAngles) : 0;
+  const maxFlexion =
+    recordedAngles.length > 0 ? Math.max(...recordedAngles) : 0;
   const romDegrees = maxFlexion - minFlexion;
-  
+  const deficitPercentage = computeDeficitPercentageFromEMGFrames(emgBuffer);
+  const resolvedTargetReps = targetReps ?? exercise?.targetReps ?? 0;
+  const resolvedCompletedReps =
+    resolvedTargetReps > 0
+      ? Math.min(
+          Math.max(completedReps ?? resolvedTargetReps, 0),
+          resolvedTargetReps,
+        )
+      : Math.max(completedReps ?? 0, 0);
+
   // Heuristic for quality: Combination of activation level and session duration consistency
-  const exerciseQuality = Math.min(0.98, (avgActivation / 0.5) * 0.7 + (duration > 30 ? 0.3 : 0.1));
+  const exerciseQuality = Math.min(
+    0.98,
+    (avgActivation / 0.5) * 0.7 + (duration > 30 ? 0.3 : 0.1),
+  );
 
   // ── Build session row ──────────────────────────────────────────────────────
   const session: Session = {
@@ -78,17 +152,24 @@ export async function saveSession(params: SaveSessionParams): Promise<SaveSessio
     timestamp: startTime,
     duration,
     avgFlexion: maxFlexion, // Storing max as the primary flexion metric
+    completedReps: resolvedCompletedReps,
+    targetReps: resolvedTargetReps,
     exerciseIds: [exerciseId],
     synced: false,
     analytics: {
       avgActivation,
       maxActivation,
-      deficitPercentage: 0,
+      deficitPercentage,
       fatigueScore: duration > 60 ? 6 : 3,
       romDegrees,
       exerciseQuality: exerciseQuality > 0 ? exerciseQuality : 0.85, // fallback to a good score
+      completionRate: 0,
+      intensityScore: 0,
     },
   };
+
+  session.analytics.completionRate = computeCompletionRate(session);
+  session.analytics.intensityScore = computeIntensityScore(session);
 
   // ── Build EMG samples ──────────────────────────────────────────────────────
   const samples: EMGSample[] = emgBuffer.map((frame, i) => ({
@@ -98,34 +179,44 @@ export async function saveSession(params: SaveSessionParams): Promise<SaveSessio
     vl_rms: frame.channels[1] ?? 0,
     st_rms: frame.channels[2] ?? 0,
     bf_rms: frame.channels[3] ?? 0,
-    kneeAngle: kneeAngleBuffer[i] ?? 0,
+    kneeAngle: alignedKneeAngles[i] ?? 0,
   }));
 
   // ── Write to SQLite ────────────────────────────────────────────────────────
   const t0 = Date.now();
-  console.log(`[SessionService] Preparing to save session ${sessionId} for user ${userId}...`);
-  
+  console.log(
+    `[SessionService] Preparing to save session ${sessionId} for user ${userId}...`,
+  );
+  const db = await getDatabase();
+
   try {
-    // 1. Ensure user exists in local DB (required for foreign key)
-    await insertUser({
-      id: userId,
-      email: userId,
-      createdAt: Date.now()
+    await db.withTransactionAsync(async () => {
+      await insertUser(
+        {
+          id: userId,
+          email: userId,
+          createdAt: Date.now(),
+        },
+        db,
+      );
+
+      console.log(
+        `[SessionService] Writing ${samples.length} samples to SQLite...`,
+      );
+      await insertSession(session, db);
+
+      const verify = await db.getFirstAsync(
+        "SELECT id FROM sessions WHERE id = ?",
+        [String(sessionId)],
+      );
+      if (!verify) {
+        throw new Error(
+          `Session ${sessionId} failed to persist in metadata table.`,
+        );
+      }
+
+      await bulkInsertEMGSamplesWithDatabase(samples, db);
     });
-
-    // 2. Insert session metadata
-    console.log(`[SessionService] Writing ${samples.length} samples to SQLite...`);
-    await insertSession(session);
-
-    // Verify session was actually inserted (sanity check)
-    const db = await getDatabase();
-    const verify = await db.getFirstAsync('SELECT id FROM sessions WHERE id = ?', [String(sessionId)]);
-    if (!verify) {
-      throw new Error(`Session ${sessionId} failed to persist in metadata table.`);
-    }
-
-    // 3. Insert bulk EMG data
-    await bulkInsertEMGSamples(samples);
 
     const durationMs = Date.now() - t0;
     console.log(`[SessionService] ✅ Save complete! Time: ${durationMs}ms`);

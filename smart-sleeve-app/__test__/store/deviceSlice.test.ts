@@ -5,13 +5,13 @@ import deviceReducer, {
   selectEmgBufferLength,
   DeviceState,
   startWorkout,
-} from '@/store/deviceSlice';
-import { EMGData, IMUData } from '@/services/SleeveConnector/ISleeveConnector';
+} from "@/store/deviceSlice";
+import { EMGData, IMUData } from "@/services/SleeveConnector/ISleeveConnector";
 
-describe('deviceSlice', () => {
+describe("deviceSlice", () => {
   const initialState: DeviceState = {
     connection: { connected: false },
-    scenario: 'REST',
+    scenario: "REST",
     isScanning: false,
     latestEMG: null,
     latestIMU: null,
@@ -19,7 +19,7 @@ describe('deviceSlice', () => {
     emgBuffer: [],
     kneeAngleBuffer: [],
     workout: {
-      phase: 'IDLE',
+      phase: "IDLE",
       exerciseId: null,
       exerciseName: null,
       targetSide: null,
@@ -31,27 +31,30 @@ describe('deviceSlice', () => {
       restDurationSec: 0,
     },
     isFilteringEnabled: true,
-    sessionStatus: 'IDLE',
-sessionStartTime: null,
-recordingBuffer: [],
-recordingKneeAngles: [],
+    sessionStatus: "IDLE",
+    sessionStartTime: null,
+    recordingBuffer: [],
+    recordingKneeAngles: [],
   };
 
-  test('should handle initial state', () => {
-    expect(deviceReducer(undefined, { type: 'unknown' })).toEqual(initialState);
+  test("should handle initial state", () => {
+    expect(deviceReducer(undefined, { type: "unknown" })).toEqual(initialState);
   });
 
-  test('should append EMG data to buffer and maintain 500 max length', () => {
+  test("should append EMG data to buffer and maintain 500 max length", () => {
     let state: DeviceState = initialState;
     const mockEMG: EMGData = {
-      header: 0xAA,
+      header: 0xaa,
       timestamp: Date.now(),
       channels: [100, 200, 300, 400],
       checksum: 0,
     };
 
     for (let i = 0; i < 505; i++) {
-      state = deviceReducer(state, emgFrameReceived({ ...mockEMG, timestamp: i }));
+      state = deviceReducer(
+        state,
+        emgFrameReceived({ ...mockEMG, timestamp: i }),
+      );
     }
 
     expect(state.emgBuffer.length).toBe(500);
@@ -59,10 +62,10 @@ recordingKneeAngles: [],
     expect(state.emgBuffer[0].timestamp).toBe(5);
   });
 
-  test('should append IMU roll to kneeAngleBuffer and maintain 500 max length', () => {
+  test("should append IMU roll to kneeAngleBuffer and maintain 500 max length", () => {
     let state: DeviceState = initialState;
     const mockIMU: IMUData = {
-      header: 0xBB,
+      header: 0xbb,
       timestamp: Date.now(),
       roll: 45,
       pitch: 0,
@@ -79,7 +82,7 @@ recordingKneeAngles: [],
     expect(state.kneeAngleBuffer[0]).toBe(5);
   });
 
-  test('should clear buffers', () => {
+  test("should clear buffers", () => {
     let state: DeviceState = {
       ...initialState,
       emgBuffer: [{ header: 0, timestamp: 0, channels: [1, 2], checksum: 0 }],
@@ -91,71 +94,104 @@ recordingKneeAngles: [],
     expect(state.kneeAngleBuffer).toEqual([]);
   });
 
-  test('selectEmgBufferLength should return correct length', () => {
+  test("selectEmgBufferLength should return correct length", () => {
     const state = {
       device: {
         ...initialState,
-        emgBuffer: new Array(10).fill({ header: 0, timestamp: 0, channels: [], checksum: 0 }),
-      }
+        emgBuffer: new Array(10).fill({
+          header: 0,
+          timestamp: 0,
+          channels: [],
+          checksum: 0,
+        }),
+      },
     };
     // @ts-ignore - partial state for testing, RootState matches this structure
     expect(selectEmgBufferLength(state)).toBe(10);
   });
 
-  test('should handle featuresUpdated', () => {
+  test("should handle featuresUpdated", () => {
     const mockFeatures = { rms: [0.1, 0.2], mav: [0.05, 0.1] };
-    const action = { type: 'device/featuresUpdated', payload: mockFeatures };
+    const action = { type: "device/featuresUpdated", payload: mockFeatures };
     const state = deviceReducer(initialState, action);
     expect(state.latestFeatures).toEqual(mockFeatures);
   });
 
-  test('should handle startWorkout', () => {
+  test("should handle startWorkout", () => {
     const mockWorkout = {
-      exerciseId: 'quad-sets',
-      exerciseName: 'Quadriceps Sets',
-      targetSide: 'LEFT' as const,
+      exerciseId: "quad-sets",
+      exerciseName: "Quadriceps Sets",
+      targetSide: "LEFT" as const,
       totalReps: 10,
       workDurationSec: 5,
       restDurationSec: 3,
     };
     const state = deviceReducer(initialState, startWorkout(mockWorkout));
     expect(state.workout.exerciseId).toBe(mockWorkout.exerciseId);
-    expect(state.workout.phase).toBe('COUNTDOWN');
+    expect(state.workout.phase).toBe("COUNTDOWN");
     expect(state.workout.workDurationSec).toBe(5);
+    expect(state.sessionStatus).toBe("RECORDING");
+    expect(state.recordingKneeAngles).toEqual([]);
   });
 
-  test('should handle cancelWorkout', () => {
+  test("should record full IMU frames while a session is recording", () => {
+    const recordingState = deviceReducer(
+      initialState,
+      startWorkout({
+        exerciseId: "quad-sets",
+        exerciseName: "Quadriceps Sets",
+        targetSide: "LEFT",
+        totalReps: 10,
+        workDurationSec: 5,
+        restDurationSec: 3,
+      }),
+    );
+
+    const imuFrame: IMUData = {
+      header: 0xbb,
+      timestamp: 1234,
+      roll: 42,
+      pitch: 0,
+      yaw: 0,
+      checksum: 0,
+    };
+
+    const nextState = deviceReducer(recordingState, imuFrameReceived(imuFrame));
+    expect(nextState.recordingKneeAngles).toEqual([imuFrame]);
+  });
+
+  test("should handle cancelWorkout", () => {
     const stateWithWorkout: DeviceState = {
       ...initialState,
       workout: {
         ...initialState.workout,
-        phase: 'ACTIVE_WORK',
-        exerciseId: 'quad-sets',
+        phase: "ACTIVE_WORK",
+        exerciseId: "quad-sets",
       },
     };
-    const action = { type: 'device/cancelWorkout' };
+    const action = { type: "device/cancelWorkout" };
     const state = deviceReducer(stateWithWorkout, action);
-    expect(state.workout.phase).toBe('IDLE');
+    expect(state.workout.phase).toBe("IDLE");
     expect(state.workout.exerciseId).toBeNull();
   });
 
-  test('should handle completeWorkout', () => {
+  test("should handle completeWorkout", () => {
     const stateWithWorkout: DeviceState = {
       ...initialState,
       workout: {
         ...initialState.workout,
-        phase: 'COMPLETING',
-        exerciseId: 'quad-sets',
+        phase: "COMPLETING",
+        exerciseId: "quad-sets",
       },
     };
-    const action = { type: 'device/completeWorkout' };
+    const action = { type: "device/completeWorkout" };
     const state = deviceReducer(stateWithWorkout, action);
-    expect(state.workout.phase).toBe('IDLE');
+    expect(state.workout.phase).toBe("IDLE");
     expect(state.workout.exerciseId).toBeNull();
   });
 
-  test('should handle setFilteringEnabled', () => {
-    const action = { type: 'device/setFilteringEnabled', payload: false };
+  test("should handle setFilteringEnabled", () => {
+    const action = { type: "device/setFilteringEnabled", payload: false };
     const state = deviceReducer(initialState, action);
     expect(state.isFilteringEnabled).toBe(false);
   });

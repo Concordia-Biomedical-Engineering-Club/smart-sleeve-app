@@ -19,9 +19,15 @@ interface TrendChartProps {
   };
   title: string;
   subtitle: string;
+  height?: number;
 }
 
-export function TrendChart({ data, title, subtitle }: TrendChartProps) {
+export function TrendChart({
+  data,
+  title,
+  subtitle,
+  height = 260,
+}: TrendChartProps) {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
 
@@ -47,9 +53,19 @@ export function TrendChart({ data, title, subtitle }: TrendChartProps) {
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.cardBackground }, Shadows.card]}>
-      <ThemedText style={[Typography.heading3, styles.cardTitle]}>{title}</ThemedText>
-      <ThemedText style={[Typography.caption, styles.cardSubtitle]}>{subtitle}</ThemedText>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: theme.cardBackground },
+        Shadows.card,
+      ]}
+    >
+      <ThemedText style={[Typography.heading3, styles.cardTitle]}>
+        {title}
+      </ThemedText>
+      <ThemedText style={[Typography.caption, styles.cardSubtitle]}>
+        {subtitle}
+      </ThemedText>
 
       <View style={styles.chartContainer}>
         <LineChart
@@ -58,7 +74,7 @@ export function TrendChart({ data, title, subtitle }: TrendChartProps) {
             datasets: data.datasets,
           }}
           width={screenWidth - 80}
-          height={260}
+          height={height}
           chartConfig={chartConfig}
           style={styles.chart}
           bezier
@@ -75,19 +91,21 @@ export function TrendChart({ data, title, subtitle }: TrendChartProps) {
       </View>
 
       {/* Legend */}
-      <View style={styles.legendContainer}>
-        {data.legend.map((item, index) => (
-          <View key={item} style={styles.legendItem}>
-            <View
-              style={[
-                styles.legendIndicator,
-                { backgroundColor: data.datasets[index].color() },
-              ]}
-            />
-            <ThemedText style={Typography.label}>{item}</ThemedText>
-          </View>
-        ))}
-      </View>
+      {data.legend.length > 0 ? (
+        <View style={styles.legendContainer}>
+          {data.legend.map((item, index) => (
+            <View key={item} style={styles.legendItem}>
+              <View
+                style={[
+                  styles.legendIndicator,
+                  { backgroundColor: data.datasets[index].color() },
+                ]}
+              />
+              <ThemedText style={Typography.label}>{item}</ThemedText>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }

@@ -1,21 +1,25 @@
-import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { ConnectionStatus, EMGData, IMUData } from '@/services/SleeveConnector/ISleeveConnector';
-import { RootState } from './store';
+import { createSelector, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import {
+  ConnectionStatus,
+  EMGData,
+  IMUData,
+} from "@/services/SleeveConnector/ISleeveConnector";
+import { RootState } from "./store";
 
 export type WorkoutPhase =
-  | 'IDLE'
-  | 'COUNTDOWN'
-  | 'ACTIVE_WORK'
-  | 'ACTIVE_REST'
-  | 'COMPLETING';
+  | "IDLE"
+  | "COUNTDOWN"
+  | "ACTIVE_WORK"
+  | "ACTIVE_REST"
+  | "COMPLETING";
 
-export type SessionStatus = 'IDLE' | 'RECORDING' | 'SAVING';
+export type SessionStatus = "IDLE" | "RECORDING" | "SAVING";
 
 export interface WorkoutSession {
   phase: WorkoutPhase;
   exerciseId: string | null;
   exerciseName: string | null;
-  targetSide: 'LEFT' | 'RIGHT' | null;
+  targetSide: "LEFT" | "RIGHT" | null;
   startTime: number | null;
   currentRep: number;
   totalReps: number;
@@ -26,7 +30,7 @@ export interface WorkoutSession {
 
 export interface DeviceState {
   connection: ConnectionStatus;
-  scenario: 'REST' | 'FLEX' | 'SQUAT';
+  scenario: "REST" | "FLEX" | "SQUAT";
   isScanning: boolean;
   latestEMG: EMGData | null;
   latestIMU: IMUData | null;
@@ -43,11 +47,11 @@ export interface DeviceState {
   sessionStartTime: number | null;
   /** Time-series recording buffer — flushed to SQLite on endSession */
   recordingBuffer: EMGData[];
-  recordingKneeAngles: number[];
+  recordingKneeAngles: IMUData[];
 }
 
 const initialWorkout: WorkoutSession = {
-  phase: 'IDLE',
+  phase: "IDLE",
   exerciseId: null,
   exerciseName: null,
   targetSide: null,
@@ -61,7 +65,7 @@ const initialWorkout: WorkoutSession = {
 
 const initialState: DeviceState = {
   connection: { connected: false },
-  scenario: 'REST',
+  scenario: "REST",
   isScanning: false,
   latestEMG: null,
   latestIMU: null,
@@ -70,7 +74,7 @@ const initialState: DeviceState = {
   kneeAngleBuffer: [],
   workout: initialWorkout,
   isFilteringEnabled: true,
-  sessionStatus: 'IDLE',
+  sessionStatus: "IDLE",
   sessionStartTime: null,
   recordingBuffer: [],
   recordingKneeAngles: [],
@@ -78,15 +82,15 @@ const initialState: DeviceState = {
 
 const syncScenario = (state: DeviceState) => {
   const { phase, exerciseId } = state.workout;
-  if (phase === 'ACTIVE_WORK') {
-    state.scenario = exerciseId === 'wall-slides' ? 'SQUAT' : 'FLEX';
+  if (phase === "ACTIVE_WORK") {
+    state.scenario = exerciseId === "wall-slides" ? "SQUAT" : "FLEX";
   } else {
-    state.scenario = 'REST';
+    state.scenario = "REST";
   }
 };
 
 const deviceSlice = createSlice({
-  name: 'device',
+  name: "device",
   initialState,
   reducers: {
     connectionChanged(state, action: PayloadAction<ConnectionStatus>) {
@@ -99,7 +103,7 @@ const deviceSlice = createSlice({
         state.kneeAngleBuffer = [];
       }
     },
-    scenarioChanged(state, action: PayloadAction<DeviceState['scenario']>) {
+    scenarioChanged(state, action: PayloadAction<DeviceState["scenario"]>) {
       state.scenario = action.payload;
     },
     setIsScanning(state, action: PayloadAction<boolean>) {
@@ -112,11 +116,14 @@ const deviceSlice = createSlice({
         state.emgBuffer.shift();
       }
       // Append to recording buffer while session is active
-      if (state.sessionStatus === 'RECORDING') {
+      if (state.sessionStatus === "RECORDING") {
         state.recordingBuffer.push(action.payload);
       }
     },
-    featuresUpdated(state, action: PayloadAction<DeviceState['latestFeatures']>) {
+    featuresUpdated(
+      state,
+      action: PayloadAction<DeviceState["latestFeatures"]>,
+    ) {
       state.latestFeatures = action.payload;
     },
     imuFrameReceived(state, action: PayloadAction<IMUData>) {
@@ -126,8 +133,8 @@ const deviceSlice = createSlice({
         state.kneeAngleBuffer.shift();
       }
       // Append knee angle to recording buffer while session is active
-      if (state.sessionStatus === 'RECORDING') {
-        state.recordingKneeAngles.push(action.payload.roll);
+      if (state.sessionStatus === "RECORDING") {
+        state.recordingKneeAngles.push(action.payload);
       }
     },
     clearBuffers(state) {
@@ -142,7 +149,7 @@ const deviceSlice = createSlice({
      * sessionStatus to RECORDING so incoming frames are captured.
      */
     startSession(state) {
-      state.sessionStatus = 'RECORDING';
+      state.sessionStatus = "RECORDING";
       state.sessionStartTime = Date.now();
       state.recordingBuffer = [];
       state.recordingKneeAngles = [];
@@ -153,7 +160,7 @@ const deviceSlice = createSlice({
      * The actual SQLite write happens in SessionService (async, outside Redux).
      */
     endSession(state) {
-      state.sessionStatus = 'SAVING';
+      state.sessionStatus = "SAVING";
     },
 
     /**
@@ -161,7 +168,7 @@ const deviceSlice = createSlice({
      * Clears the recording buffer and resets session state.
      */
     sessionSaved(state) {
-      state.sessionStatus = 'IDLE';
+      state.sessionStatus = "IDLE";
       state.sessionStartTime = null;
       state.recordingBuffer = [];
       state.recordingKneeAngles = [];
@@ -172,7 +179,7 @@ const deviceSlice = createSlice({
      * so the caller can retry if needed.
      */
     sessionSaveFailed(state) {
-      state.sessionStatus = 'IDLE';
+      state.sessionStatus = "IDLE";
     },
 
     // ── Workout actions (unchanged) ─────────────────────────────────────────
@@ -182,15 +189,22 @@ const deviceSlice = createSlice({
       action: PayloadAction<{
         exerciseId: string;
         exerciseName: string;
-        targetSide: 'LEFT' | 'RIGHT';
+        targetSide: "LEFT" | "RIGHT";
         totalReps: number;
         workDurationSec: number;
         restDurationSec: number;
-      }>
+      }>,
     ) {
-      const { exerciseId, exerciseName, targetSide, totalReps, workDurationSec, restDurationSec } = action.payload;
+      const {
+        exerciseId,
+        exerciseName,
+        targetSide,
+        totalReps,
+        workDurationSec,
+        restDurationSec,
+      } = action.payload;
       state.workout = {
-        phase: 'COUNTDOWN',
+        phase: "COUNTDOWN",
         exerciseId,
         exerciseName,
         targetSide,
@@ -201,39 +215,39 @@ const deviceSlice = createSlice({
         workDurationSec,
         restDurationSec,
       };
-      
+
       // ── Automatically start SQLite recording session ──
-      state.sessionStatus = 'RECORDING';
+      state.sessionStatus = "RECORDING";
       state.sessionStartTime = Date.now();
       state.recordingBuffer = [];
       state.recordingKneeAngles = [];
-      
+
       syncScenario(state);
     },
     workoutTick(state) {
       const w = state.workout;
-      if (w.phase === 'IDLE' || w.phase === 'COMPLETING') return;
+      if (w.phase === "IDLE" || w.phase === "COMPLETING") return;
       const next = w.phaseSecondsRemaining - 1;
       if (next > 0) {
         w.phaseSecondsRemaining = next;
         return;
       }
       switch (w.phase) {
-        case 'COUNTDOWN':
-          w.phase = 'ACTIVE_WORK';
+        case "COUNTDOWN":
+          w.phase = "ACTIVE_WORK";
           w.phaseSecondsRemaining = w.workDurationSec;
           w.currentRep = 1;
           break;
-        case 'ACTIVE_WORK':
-          w.phase = 'ACTIVE_REST';
+        case "ACTIVE_WORK":
+          w.phase = "ACTIVE_REST";
           w.phaseSecondsRemaining = w.restDurationSec;
           break;
-        case 'ACTIVE_REST':
+        case "ACTIVE_REST":
           if (w.currentRep >= w.totalReps) {
-            w.phase = 'COMPLETING';
+            w.phase = "COMPLETING";
             w.phaseSecondsRemaining = 0;
           } else {
-            w.phase = 'ACTIVE_WORK';
+            w.phase = "ACTIVE_WORK";
             w.phaseSecondsRemaining = w.workDurationSec;
             w.currentRep += 1;
           }
@@ -279,46 +293,60 @@ export const {
 const selectDevice = (state: RootState) => state.device;
 
 export const selectConnectionStatus = createSelector(
-  [selectDevice], (device) => device.connection.connected
+  [selectDevice],
+  (device) => device.connection.connected,
 );
 export const selectIsScanning = createSelector(
-  [selectDevice], (device) => device.isScanning
+  [selectDevice],
+  (device) => device.isScanning,
 );
 export const selectEmgBuffer = createSelector(
-  [selectDevice], (device) => device.emgBuffer
+  [selectDevice],
+  (device) => device.emgBuffer,
 );
 export const selectLatestFeatures = createSelector(
-  [selectDevice], (device) => device.latestFeatures
+  [selectDevice],
+  (device) => device.latestFeatures,
 );
 export const selectKneeAngleBuffer = createSelector(
-  [selectDevice], (device) => device.kneeAngleBuffer
+  [selectDevice],
+  (device) => device.kneeAngleBuffer,
 );
 export const selectEmgBufferLength = createSelector(
-  [selectEmgBuffer], (buffer) => buffer.length
+  [selectEmgBuffer],
+  (buffer) => buffer.length,
 );
 export const selectWorkout = createSelector(
-  [selectDevice], (device) => device.workout
+  [selectDevice],
+  (device) => device.workout,
 );
 export const selectWorkoutPhase = createSelector(
-  [selectWorkout], (workout) => workout.phase
+  [selectWorkout],
+  (workout) => workout.phase,
 );
 export const selectIsWorkoutActive = createSelector(
-  [selectWorkoutPhase], (phase) => phase !== 'IDLE'
+  [selectWorkoutPhase],
+  (phase) => phase !== "IDLE",
 );
 export const selectSessionStatus = createSelector(
-  [selectDevice], (device) => device.sessionStatus
+  [selectDevice],
+  (device) => device.sessionStatus,
 );
 export const selectIsRecording = createSelector(
-  [selectDevice], (device) => device.sessionStatus === 'RECORDING'
+  [selectDevice],
+  (device) => device.sessionStatus === "RECORDING",
 );
 export const selectRecordingBuffer = createSelector(
-  [selectDevice], (device) => device.recordingBuffer
+  [selectDevice],
+  (device) => device.recordingBuffer,
 );
 export const selectRecordingKneeAngles = createSelector(
-  [selectDevice], (device) => device.recordingKneeAngles
+  [selectDevice],
+  (device) => device.recordingKneeAngles,
 );
 export const selectSessionStartTime = createSelector(
-  [selectDevice], (device) => device.sessionStartTime
+  [selectDevice],
+  (device) => device.sessionStartTime,
 );
 
 export default deviceSlice.reducer;
