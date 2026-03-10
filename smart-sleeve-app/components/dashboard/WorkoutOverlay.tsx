@@ -1,8 +1,9 @@
 import React, { useMemo, useEffect } from 'react';
 import {
-  View,
   StyleSheet,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, { 
   useSharedValue, 
@@ -13,7 +14,8 @@ import Animated, {
   Easing
 } from 'react-native-reanimated';
 import { useAppDispatch, useAppSelector } from '@/hooks/storeHooks';
-import { cancelWorkout, completeWorkout, selectWorkoutPhase } from '@/store/deviceSlice';
+import { cancelWorkout, completeWorkout, selectWorkoutPhase, sessionSaveFailed } from '@/store/deviceSlice';
+import { useWorkoutSession } from '@/hooks/useWorkoutSession';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { EXERCISE_LIBRARY } from '@/constants/exercises';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -121,13 +123,41 @@ function CoachingCard({ tip, theme, phaseColor }: { tip: string, theme: any, pha
 export function WorkoutOverlay() {
   const dispatch = useAppDispatch();
   const phase = useAppSelector(selectWorkoutPhase);
-  const workout = useWorkoutTimer();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
+  const user = useAppSelector((state) => state.user);
+
+  const { endAndSave, sessionStatus } = useWorkoutSession();
+  const workout = useWorkoutTimer();
 
   const activeExerciseData = useMemo(() => {
     return EXERCISE_LIBRARY.find((ex) => ex.id === workout.exerciseId);
   }, [workout.exerciseId]);
+
+  const handleFinishSession = async () => {
+    try {
+      // 1. Save to SQLite via our orchestrated hook
+      const userId = user.email || 'guest_user';
+      const result = await endAndSave(userId);
+      
+      if (result) {
+        Alert.alert("Session Saved", `Your workout was successfully stored locally.`);
+      }
+      
+      // 2. Clear UI state
+      dispatch(completeWorkout());
+    } catch (e: any) {
+      console.error("Save failed", e);
+      Alert.alert("Save Error", "We couldn't save your workout data locally.");
+      dispatch(completeWorkout()); // still finish the UI even if save fails for now
+    }
+  };
+
+  const handleCancel = () => {
+    // If we cancel, we reset the session recording without saving
+    dispatch(sessionSaveFailed()); 
+    dispatch(cancelWorkout());
+  };
 
   if (phase === 'IDLE') return null;
 
@@ -180,14 +210,19 @@ export function WorkoutOverlay() {
           {phase === 'COMPLETING' ? (
             <TouchableOpacity
               style={[styles.mainButton, { backgroundColor: phaseColor }]}
-              onPress={() => dispatch(completeWorkout())}
+              onPress={handleFinishSession}
+              disabled={sessionStatus === 'SAVING'}
             >
-              <ThemedText type="defaultSemiBold" style={{ color: '#fff' }}>Finish Session</ThemedText>
+              {sessionStatus === 'SAVING' ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <ThemedText type="defaultSemiBold" style={{ color: '#fff' }}>Finish Session</ThemedText>
+              )}
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
               style={[styles.outlineButton, { borderColor: theme.warning, backgroundColor: theme.warning + '1A' }]}
-              onPress={() => dispatch(cancelWorkout())}
+              onPress={handleCancel}
             >
               <ThemedText type="defaultSemiBold" style={{ color: theme.warning }}>Cancel</ThemedText>
             </TouchableOpacity>

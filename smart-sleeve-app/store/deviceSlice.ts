@@ -201,6 +201,13 @@ const deviceSlice = createSlice({
         workDurationSec,
         restDurationSec,
       };
+      
+      // ── Automatically start SQLite recording session ──
+      state.sessionStatus = 'RECORDING';
+      state.sessionStartTime = Date.now();
+      state.recordingBuffer = [];
+      state.recordingKneeAngles = [];
+      
       syncScenario(state);
     },
     workoutTick(state) {
