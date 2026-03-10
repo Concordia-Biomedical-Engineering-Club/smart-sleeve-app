@@ -4,6 +4,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  View,
 } from 'react-native';
 import Animated, { 
   useSharedValue, 
@@ -13,6 +14,7 @@ import Animated, {
   withSequence,
   Easing
 } from 'react-native-reanimated';
+import { router } from 'expo-router';
 import { useAppDispatch, useAppSelector } from '@/hooks/storeHooks';
 import { cancelWorkout, completeWorkout, selectWorkoutPhase, sessionSaveFailed } from '@/store/deviceSlice';
 import { useWorkoutSession } from '@/hooks/useWorkoutSession';
@@ -139,13 +141,19 @@ export function WorkoutOverlay() {
       // 1. Save to SQLite via our orchestrated hook
       const userId = user.email || 'guest_user';
       const result = await endAndSave(userId);
+      console.log(`[WorkoutOverlay] endAndSave result:`, result);
       
-      if (result) {
-        Alert.alert("Session Saved", `Your workout was successfully stored locally.`);
-      }
-      
+      const sessionId = result?.sessionId;
+
       // 2. Clear UI state
       dispatch(completeWorkout());
+
+      // 3. Navigate to Summary
+      if (sessionId) {
+        router.push(`/session-summary/${sessionId}`);
+      } else {
+        Alert.alert("Session Saved", `Your workout was stored locally.`);
+      }
     } catch (e: any) {
       console.error("Save failed", e);
       Alert.alert("Save Error", "We couldn't save your workout data locally.");
@@ -220,12 +228,26 @@ export function WorkoutOverlay() {
               )}
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity
-              style={[styles.outlineButton, { borderColor: theme.warning, backgroundColor: theme.warning + '1A' }]}
-              onPress={handleCancel}
-            >
-              <ThemedText type="defaultSemiBold" style={{ color: theme.warning }}>Cancel</ThemedText>
-            </TouchableOpacity>
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity
+                style={[styles.outlineButton, { flex: 1, borderColor: theme.success, backgroundColor: theme.success + '1A' }]}
+                onPress={handleFinishSession}
+                disabled={sessionStatus === 'SAVING'}
+              >
+                {sessionStatus === 'SAVING' ? (
+                  <ActivityIndicator color={theme.success} />
+                ) : (
+                  <ThemedText type="defaultSemiBold" style={{ color: theme.success }}>Stop & Save</ThemedText>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.outlineButton, { flex: 0.4, borderColor: theme.warning, backgroundColor: theme.warning + '1A' }]}
+                onPress={handleCancel}
+              >
+                <ThemedText type="defaultSemiBold" style={{ color: theme.warning }}>Cancel</ThemedText>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </View>
@@ -322,6 +344,11 @@ const styles = StyleSheet.create({
   actionRow: {
     width: '100%',
     marginTop: 8,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
   },
   mainButton: {
     paddingVertical: 14,

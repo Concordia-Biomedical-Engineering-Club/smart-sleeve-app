@@ -35,7 +35,11 @@ export function useWorkoutSession() {
    * @returns The result of the save operation, or throws an error
    */
   const endAndSave = async (userId: string): Promise<SaveSessionResult | null> => {
-    if (sessionStatus !== 'RECORDING') return null;
+    console.log(`[useWorkoutSession] endAndSave called. Current status: ${sessionStatus}`);
+    if (sessionStatus !== 'RECORDING') {
+      console.warn(`[useWorkoutSession] Cancelled save because status is not RECORDING`);
+      return null;
+    }
 
     // 1. Notify Redux we are transitioning to the SAVING state
     dispatch(endSession());

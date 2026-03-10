@@ -55,6 +55,10 @@ export default function RootLayout() {
               name="email-verification"
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="session-summary/[id]"
+              options={{ headerShown: false }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

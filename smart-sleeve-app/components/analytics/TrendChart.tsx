@@ -69,17 +69,8 @@ export function TrendChart({ data, title, subtitle }: TrendChartProps) {
           withHorizontalLabels={true}
           fromZero={true}
           yAxisLabel=""
-          yAxisSuffix="°"
-          formatXLabel={(label) => {
-            const map: { [key: string]: string } = {
-              Sunday: "Sunday",
-              Tuesday: "Tuesday",
-              Thursday: "Thursday",
-              Saturday: "Saturday",
-            };
-            // Match Figma labels
-            return map[label] || "";
-          }}
+          yAxisSuffix=""
+          formatXLabel={(label) => label}
         />
       </View>
 
