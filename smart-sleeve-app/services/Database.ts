@@ -1,26 +1,24 @@
 /**
  * Database.ts
  * ─────────────────────────────────────────────────────────────────────────────
- * Issue #54 — Chore: Setup Local Database (expo-sqlite)
+ * Issue #54 — Setup Local Database (expo-sqlite)
+ * Issue #7  — Save Session Data for Offline Review
  *
- * Initialises the local SQLite database and exposes typed CRUD helpers.
- * Schema is derived from Section 8.1 of the project documentation.
- *
- * Storage strategy (Section 8.2):
- *   - Recent 30 days of raw data
- *   - All processed analytics
- *   - Offline queue for Firebase sync
+ * Schema (Section 8.1 + Issue #7 requirements):
+ *   users        — user accounts
+ *   sessions     — workout session metadata
+ *   emg_samples  — time-series EMG + knee angle (bulk inserted)
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import * as SQLite from 'expo-sqlite';
 
-// ── TypeScript interfaces (Section 8.1) ───────────────────────────────────────
+// ── TypeScript interfaces ─────────────────────────────────────────────────────
 
 export interface User {
   id: string;
   email: string;
-  createdAt: number; // Unix ms
+  createdAt: number;
 }
 
 export interface SessionAnalytics {
@@ -35,11 +33,25 @@ export interface SessionAnalytics {
 export interface Session {
   id: string;
   userId: string;
-  timestamp: number;      // Unix ms
-  duration: number;       // seconds
-  exerciseIds: string[];  // JSON-serialised in DB
-  analytics: SessionAnalytics; // JSON-serialised in DB
-  synced: boolean;        // false = in offline queue
+  exerciseType: string;
+  side: 'LEFT' | 'RIGHT';
+  timestamp: number;
+  duration: number;
+  avgFlexion: number;
+  exerciseIds: string[];
+  analytics: SessionAnalytics;
+  synced: boolean;
+}
+
+/** One time-series sample — maps to emg_samples table */
+export interface EMGSample {
+  sessionId: string;
+  timestamp: number;
+  vmo_rms: number;   // CH0
+  vl_rms: number;    // CH1
+  st_rms: number;    // CH2
+  bf_rms: number;    // CH3
+  kneeAngle: number;
 }
 
 // ── DB singleton ──────────────────────────────────────────────────────────────
@@ -54,10 +66,6 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 
 // ── Schema initialisation ─────────────────────────────────────────────────────
 
-/**
- * Must be called once at app startup (e.g. in App.tsx or a top-level provider).
- * Uses CREATE TABLE IF NOT EXISTS so it is safe to call on every launch.
- */
 export async function initDatabase(): Promise<void> {
   const db = await getDatabase();
 
@@ -73,8 +81,11 @@ export async function initDatabase(): Promise<void> {
     CREATE TABLE IF NOT EXISTS sessions (
       id                  TEXT PRIMARY KEY NOT NULL,
       user_id             TEXT NOT NULL,
+      exercise_type       TEXT NOT NULL DEFAULT '',
+      side                TEXT NOT NULL DEFAULT 'LEFT',
       timestamp           INTEGER NOT NULL,
       duration            INTEGER NOT NULL DEFAULT 0,
+      avg_flexion         REAL NOT NULL DEFAULT 0,
       exercise_ids        TEXT NOT NULL DEFAULT '[]',
       avg_activation      REAL NOT NULL DEFAULT 0,
       max_activation      REAL NOT NULL DEFAULT 0,
@@ -86,11 +97,26 @@ export async function initDatabase(): Promise<void> {
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS emg_samples (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id  TEXT NOT NULL,
+      timestamp   INTEGER NOT NULL,
+      vmo_rms     REAL NOT NULL DEFAULT 0,
+      vl_rms      REAL NOT NULL DEFAULT 0,
+      st_rms      REAL NOT NULL DEFAULT 0,
+      bf_rms      REAL NOT NULL DEFAULT 0,
+      knee_angle  REAL NOT NULL DEFAULT 0,
+      FOREIGN KEY (session_id) REFERENCES sessions(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_sessions_user_id
       ON sessions(user_id);
 
     CREATE INDEX IF NOT EXISTS idx_sessions_timestamp
       ON sessions(timestamp);
+
+    CREATE INDEX IF NOT EXISTS idx_emg_samples_session_id
+      ON emg_samples(session_id);
   `);
 }
 
@@ -119,25 +145,27 @@ export async function insertSession(session: Session): Promise<void> {
   const { analytics: a } = session;
   await db.runAsync(
     `INSERT INTO sessions (
-      id, user_id, timestamp, duration, exercise_ids,
-      avg_activation, max_activation, deficit_percentage,
+      id, user_id, exercise_type, side, timestamp, duration, avg_flexion,
+      exercise_ids, avg_activation, max_activation, deficit_percentage,
       fatigue_score, rom_degrees, exercise_quality, synced
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      session.id,
-      session.userId,
-      session.timestamp,
-      session.duration,
+      session.id, session.userId, session.exerciseType, session.side,
+      session.timestamp, session.duration, session.avgFlexion,
       JSON.stringify(session.exerciseIds),
-      a.avgActivation,
-      a.maxActivation,
-      a.deficitPercentage,
-      a.fatigueScore,
-      a.romDegrees,
-      a.exerciseQuality,
+      a.avgActivation, a.maxActivation, a.deficitPercentage,
+      a.fatigueScore, a.romDegrees, a.exerciseQuality,
       session.synced ? 1 : 0,
     ]
   );
+}
+
+export async function fetchAllSessions(): Promise<Session[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<any>(
+    `SELECT * FROM sessions ORDER BY timestamp DESC`
+  );
+  return rows.map(rowToSession);
 }
 
 export async function fetchSessionsByUser(userId: string): Promise<Session[]> {
@@ -149,15 +177,6 @@ export async function fetchSessionsByUser(userId: string): Promise<Session[]> {
   return rows.map(rowToSession);
 }
 
-export async function fetchAllSessions(): Promise<Session[]> {
-  const db = await getDatabase();
-  const rows = await db.getAllAsync<any>(
-    `SELECT * FROM sessions ORDER BY timestamp DESC`
-  );
-  return rows.map(rowToSession);
-}
-
-/** Returns sessions not yet synced to Firebase — the offline queue */
 export async function fetchUnsyncedSessions(): Promise<Session[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<any>(
@@ -171,14 +190,68 @@ export async function markSessionSynced(sessionId: string): Promise<void> {
   await db.runAsync(`UPDATE sessions SET synced = 1 WHERE id = ?`, [sessionId]);
 }
 
+// ── EMG sample bulk insert ────────────────────────────────────────────────────
+
+/**
+ * Bulk-inserts all EMG samples for a session in a single atomic transaction.
+ * Critical for performance: a 1-minute session at 50Hz = ~3,000 rows.
+ * Uses db.withTransactionAsync() to avoid UI freeze.
+ *
+ * @param samples - full recording buffer from deviceSlice
+ */
+export async function bulkInsertEMGSamples(samples: EMGSample[]): Promise<void> {
+  if (samples.length === 0) return;
+  const db = await getDatabase();
+
+  await db.withTransactionAsync(async () => {
+    for (const s of samples) {
+      await db.runAsync(
+        `INSERT INTO emg_samples
+          (session_id, timestamp, vmo_rms, vl_rms, st_rms, bf_rms, knee_angle)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [s.sessionId, s.timestamp, s.vmo_rms, s.vl_rms, s.st_rms, s.bf_rms, s.kneeAngle]
+      );
+    }
+  });
+}
+
+export async function fetchEMGSamplesBySession(sessionId: string): Promise<EMGSample[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<any>(
+    `SELECT * FROM emg_samples WHERE session_id = ? ORDER BY timestamp ASC`,
+    [sessionId]
+  );
+  return rows.map(r => ({
+    sessionId: r.session_id,
+    timestamp: r.timestamp,
+    vmo_rms: r.vmo_rms,
+    vl_rms: r.vl_rms,
+    st_rms: r.st_rms,
+    bf_rms: r.bf_rms,
+    kneeAngle: r.knee_angle,
+  }));
+}
+
+export async function countEMGSamples(sessionId: string): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) as count FROM emg_samples WHERE session_id = ?`,
+    [sessionId]
+  );
+  return row?.count ?? 0;
+}
+
 // ── Row mapper ────────────────────────────────────────────────────────────────
 
 function rowToSession(row: any): Session {
   return {
     id: row.id,
     userId: row.user_id,
+    exerciseType: row.exercise_type ?? '',
+    side: row.side ?? 'LEFT',
     timestamp: row.timestamp,
     duration: row.duration,
+    avgFlexion: row.avg_flexion ?? 0,
     exerciseIds: JSON.parse(row.exercise_ids ?? '[]'),
     synced: row.synced === 1,
     analytics: {
