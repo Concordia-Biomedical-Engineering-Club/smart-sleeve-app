@@ -13,6 +13,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { login, logout } from '../store/userSlice';
 import { useEffect } from "react";
+import { initDatabase } from '@/services/Database';
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -23,8 +24,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     const auth = getAuth();
-
-    // Listen to Firebase auth state changes
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         store.dispatch(
@@ -34,8 +33,11 @@ export default function RootLayout() {
         store.dispatch(logout());
       }
     });
+    return unsubscribe;
+  }, []);
 
-    return unsubscribe; // clean up listener on unmount
+  useEffect(() => {
+    initDatabase().catch(console.error);
   }, []);
 
   return (
