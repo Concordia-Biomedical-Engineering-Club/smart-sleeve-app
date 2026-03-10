@@ -5,11 +5,9 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  startSession, endSession, sessionSaved, sessionSaveFailed,
-  selectSessionStatus, selectRecordingBuffer, selectRecordingKneeAngles,
   selectSessionStartTime,
 } from '@/store/deviceSlice';
-import { saveSession } from '@/services/SessionService';
+import { useWorkoutSession } from '@/hooks/useWorkoutSession';
 import { insertSession, fetchAllSessions, countEMGSamples } from '@/services/Database';
 import type { Session } from '@/services/Database';
 
@@ -37,10 +35,8 @@ function makeDummySession(): Session {
 
 export default function DebugDB() {
   const dispatch = useDispatch();
-  const sessionStatus = useSelector(selectSessionStatus);
-  const recordingBuffer = useSelector(selectRecordingBuffer);
-  const kneeAngles = useSelector(selectRecordingKneeAngles);
   const sessionStartTime = useSelector(selectSessionStartTime);
+  const { sessionStatus, startRecording, endAndSave, recordingBufferLength } = useWorkoutSession();
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sampleCounts, setSampleCounts] = useState<Record<string, number>>({});
@@ -82,34 +78,24 @@ export default function DebugDB() {
   };
 
   const handleStartRecording = () => {
-    dispatch(startSession());
+    startRecording();
     addLog('🔴 Recording started — EMG frames being captured…');
   };
 
   const handleEndRecording = async () => {
     if (sessionStatus !== 'RECORDING') return;
-    dispatch(endSession());
-    addLog(`⏹ Ending session — ${recordingBuffer.length} frames captured`);
+    addLog(`⏹ Ending session — ${recordingBufferLength} frames captured`);
     setLoading(true);
     try {
-      const result = await saveSession({
-        userId: 'debug_user_001',
-        exerciseId: 'quad_sets',
-        exerciseName: 'Quad Sets',
-        side: 'LEFT',
-        startTime: sessionStartTime ?? Date.now() - 60000,
-        endTime: Date.now(),
-        emgBuffer: recordingBuffer,
-        kneeAngleBuffer: kneeAngles,
-      });
-      dispatch(sessionSaved());
-      addLog(`✅ Session saved in ${result.durationMs}ms — ${result.sampleCount} EMG samples`);
-      if (result.durationMs > 2000) {
-        addLog(`⚠️ Save took over 2s — may need optimization`);
+      const result = await endAndSave('debug_user_001');
+      if (result) {
+        addLog(`✅ Session saved in ${result.durationMs}ms — ${result.sampleCount} EMG samples`);
+        if (result.durationMs > 2000) {
+          addLog(`⚠️ Save took over 2s — may need optimization`);
+        }
+        Alert.alert("Success", "Session Saved Successfully ☁️");
       }
-      Alert.alert("Success", "Session Saved Successfully ☁️");
     } catch (e: any) {
-      dispatch(sessionSaveFailed());
       addLog(`❌ Save failed: ${e.message}`);
       Alert.alert("Error", `Session Save Failed: ${e.message}`);
     } finally {
@@ -137,7 +123,7 @@ export default function DebugDB() {
           disabled={sessionStatus === 'RECORDING' || loading}
         >
           <Text style={styles.btnText}>
-            {sessionStatus === 'RECORDING' ? `🔴 Recording (${recordingBuffer.length})` : 'Start Recording'}
+            {sessionStatus === 'RECORDING' ? `🔴 Recording (${recordingBufferLength})` : 'Start Recording'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
