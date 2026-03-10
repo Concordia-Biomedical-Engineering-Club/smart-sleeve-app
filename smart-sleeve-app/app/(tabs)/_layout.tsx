@@ -74,9 +74,19 @@ export default function TabLayout() {
       <Tabs.Screen
         name="MilestonesScreen"
         options={{
-          title: "Milestones",
+          title: "Profile",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="trophy.fill" color={color} />
+            <IconSymbol size={28} name="person.crop.circle.fill" color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="progress"
+        options={{
+          title: "Progress",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="chart.line.uptrend.xyaxis" color={color} />
           ),
         }}
       />
@@ -105,13 +115,6 @@ export default function TabLayout() {
 
       <Tabs.Screen
         name="test-ble"
-        options={{
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="progress"
         options={{
           href: null,
         }}

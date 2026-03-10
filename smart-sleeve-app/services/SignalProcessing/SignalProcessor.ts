@@ -15,12 +15,18 @@ const NOTCH_FREQ = 0; // Disabled for 50Hz (Nyquist is 25Hz)
 const HP_FREQ = 5; // Standard EMG High Pass
 const LP_FREQ = 24; // Anti-aliasing for 50Hz FS
 
+/** Number of samples to process before filter output is considered stable.
+ *  At 50Hz, 50 frames = 1 second — enough for the 5Hz HPF to converge.
+ */
+const WARMUP_FRAMES = 50;
+
 export class SignalProcessor {
   private channels: ChannelFilter[] = [];
   private sampleRate: number;
   private notchFreq: number;
   private hpFreq: number;
   private lpFreq: number;
+  private frameCount: number = 0;
 
   constructor(
     sampleRate: number = DEFAULT_SAMPLE_RATE,
@@ -32,6 +38,11 @@ export class SignalProcessor {
     this.notchFreq = notchFreq;
     this.hpFreq = hpFreq;
     this.lpFreq = lpFreq;
+  }
+
+  /** Returns true once enough frames have been processed for filter state to settle. */
+  public isWarmedUp(): boolean {
+    return this.frameCount >= WARMUP_FRAMES;
   }
 
   /**
@@ -56,6 +67,8 @@ export class SignalProcessor {
       return this.channels[index].process(sample);
     });
 
+    this.frameCount++;
+
     return {
       ...packet,
       channels: filteredChannels,
@@ -68,6 +81,7 @@ export class SignalProcessor {
   
   public reset(): void {
       this.channels = [];
+      this.frameCount = 0;
   }
 }
 

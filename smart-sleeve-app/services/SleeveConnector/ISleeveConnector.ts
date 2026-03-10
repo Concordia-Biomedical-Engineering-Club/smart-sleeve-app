@@ -102,13 +102,15 @@ export interface ISleeveConnector {
    * Subscribe to EMG data frames.
    * The callback will be invoked at the stream frequency
    * (e.g., 50 Hz in the mock implementation).
+   * Returns an unsubscribe function to stop receiving frames.
    */
-  subscribeToEMG(callback: (data: EMGData) => void): void;
+  subscribeToEMG(callback: (data: EMGData) => void): () => void;
 
   /**
    * Subscribe to IMU data frames (roll, pitch, yaw).
+   * Returns an unsubscribe function to stop receiving frames.
    */
-  subscribeToIMU(callback: (data: IMUData) => void): void;
+  subscribeToIMU(callback: (data: IMUData) => void): () => void;
 
   /**
    * Subscribe to connection status updates so the UI

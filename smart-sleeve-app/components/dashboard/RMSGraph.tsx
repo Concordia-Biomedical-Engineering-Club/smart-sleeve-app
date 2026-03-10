@@ -16,7 +16,7 @@ interface RMSGraphProps {
 }
 
 const BUFFER_SIZE = 50; // Number of points to display (horizontal resolution)
-const Y_MAX = 0.5;      // Max expected RMS value for scaling (adjust based on data)
+const Y_MAX = 1.0;      // Max expected RMS value for scaling (1.0 = full activation in mock; calibrate with real hardware)
 
 export const RMSGraph: React.FC<RMSGraphProps> = ({
   channelIndex = 0,

@@ -84,17 +84,25 @@ export class MockSleeveConnector implements ISleeveConnector {
   /**
    * Register a callback that will receive EMGData frames as they
    * are generated. Callbacks are invoked on the timer interval.
+   * Returns an unsubscribe function.
    */
-  subscribeToEMG(callback: (frame: EMGData) => void): void {
+  subscribeToEMG(callback: (frame: EMGData) => void): () => void {
     this.emgSubscribers.push(callback);
+    return () => {
+      this.emgSubscribers = this.emgSubscribers.filter((cb) => cb !== callback);
+    };
   }
 
   /**
    * Register a callback that will receive IMUData frames as they
    * are generated. Callbacks are invoked on the timer interval.
+   * Returns an unsubscribe function.
    */
-  subscribeToIMU(callback: (frame: IMUData) => void): void {
+  subscribeToIMU(callback: (frame: IMUData) => void): () => void {
     this.imuSubscribers.push(callback);
+    return () => {
+      this.imuSubscribers = this.imuSubscribers.filter((cb) => cb !== callback);
+    };
   }
 
   /**

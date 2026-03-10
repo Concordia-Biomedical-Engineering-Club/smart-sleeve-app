@@ -24,6 +24,18 @@ const MAPPING = {
   'trophy.fill': 'emoji-events',
   'antenna.radiowaves.left.and.right': 'bluetooth',
   'cylinder.split.1x2': 'storage',
+  'person.crop.circle.fill': 'person',
+  'chart.line.uptrend.xyaxis': 'trending-up',
+  'checkmark.seal.fill': 'verified',
+  'clock.fill': 'schedule',
+  'figure.walk': 'directions-walk',
+  'timer': 'timer',
+  'flame.fill': 'whatshot',
+  'arrow.triangle.2.circlepath': 'sync',
+  'square.and.arrow.up': 'share',
+  'clipboard.fill': 'assignment',
+  'bell.fill': 'notifications',
+  'lightbulb.fill': 'lightbulb',
 } as IconMapping;
 
 /**

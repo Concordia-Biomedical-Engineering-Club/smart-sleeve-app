@@ -1,8 +1,10 @@
 import React, { useMemo, useEffect } from 'react';
 import {
-  View,
   StyleSheet,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  View,
 } from 'react-native';
 import Animated, { 
   useSharedValue, 
@@ -12,8 +14,10 @@ import Animated, {
   withSequence,
   Easing
 } from 'react-native-reanimated';
+import { router } from 'expo-router';
 import { useAppDispatch, useAppSelector } from '@/hooks/storeHooks';
-import { cancelWorkout, completeWorkout, selectWorkoutPhase } from '@/store/deviceSlice';
+import { cancelWorkout, completeWorkout, selectWorkoutPhase, sessionSaveFailed } from '@/store/deviceSlice';
+import { useWorkoutSession } from '@/hooks/useWorkoutSession';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { EXERCISE_LIBRARY } from '@/constants/exercises';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -121,13 +125,47 @@ function CoachingCard({ tip, theme, phaseColor }: { tip: string, theme: any, pha
 export function WorkoutOverlay() {
   const dispatch = useAppDispatch();
   const phase = useAppSelector(selectWorkoutPhase);
-  const workout = useWorkoutTimer();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
+  const user = useAppSelector((state) => state.user);
+
+  const { endAndSave, sessionStatus } = useWorkoutSession();
+  const workout = useWorkoutTimer();
 
   const activeExerciseData = useMemo(() => {
     return EXERCISE_LIBRARY.find((ex) => ex.id === workout.exerciseId);
   }, [workout.exerciseId]);
+
+  const handleFinishSession = async () => {
+    try {
+      // 1. Save to SQLite via our orchestrated hook
+      const userId = user.email || 'guest_user';
+      const result = await endAndSave(userId);
+      console.log(`[WorkoutOverlay] endAndSave result:`, result);
+      
+      const sessionId = result?.sessionId;
+
+      // 2. Clear UI state
+      dispatch(completeWorkout());
+
+      // 3. Navigate to Summary
+      if (sessionId) {
+        router.push(`/session-summary/${sessionId}`);
+      } else {
+        Alert.alert("Session Saved", `Your workout was stored locally.`);
+      }
+    } catch (e: any) {
+      console.error("Save failed", e);
+      Alert.alert("Save Error", "We couldn't save your workout data locally.");
+      dispatch(completeWorkout()); // still finish the UI even if save fails for now
+    }
+  };
+
+  const handleCancel = () => {
+    // If we cancel, we reset the session recording without saving
+    dispatch(sessionSaveFailed()); 
+    dispatch(cancelWorkout());
+  };
 
   if (phase === 'IDLE') return null;
 
@@ -180,17 +218,36 @@ export function WorkoutOverlay() {
           {phase === 'COMPLETING' ? (
             <TouchableOpacity
               style={[styles.mainButton, { backgroundColor: phaseColor }]}
-              onPress={() => dispatch(completeWorkout())}
+              onPress={handleFinishSession}
+              disabled={sessionStatus === 'SAVING'}
             >
-              <ThemedText type="defaultSemiBold" style={{ color: '#fff' }}>Finish Session</ThemedText>
+              {sessionStatus === 'SAVING' ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <ThemedText type="defaultSemiBold" style={{ color: '#fff' }}>Finish Session</ThemedText>
+              )}
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity
-              style={[styles.outlineButton, { borderColor: theme.warning, backgroundColor: theme.warning + '1A' }]}
-              onPress={() => dispatch(cancelWorkout())}
-            >
-              <ThemedText type="defaultSemiBold" style={{ color: theme.warning }}>Cancel</ThemedText>
-            </TouchableOpacity>
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity
+                style={[styles.outlineButton, { flex: 1, borderColor: theme.success, backgroundColor: theme.success + '1A' }]}
+                onPress={handleFinishSession}
+                disabled={sessionStatus === 'SAVING'}
+              >
+                {sessionStatus === 'SAVING' ? (
+                  <ActivityIndicator color={theme.success} />
+                ) : (
+                  <ThemedText type="defaultSemiBold" style={{ color: theme.success }}>Stop & Save</ThemedText>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.outlineButton, { flex: 0.4, borderColor: theme.warning, backgroundColor: theme.warning + '1A' }]}
+                onPress={handleCancel}
+              >
+                <ThemedText type="defaultSemiBold" style={{ color: theme.warning }}>Cancel</ThemedText>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </View>
@@ -287,6 +344,11 @@ const styles = StyleSheet.create({
   actionRow: {
     width: '100%',
     marginTop: 8,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
   },
   mainButton: {
     paddingVertical: 14,

@@ -91,12 +91,14 @@ export class SleeveDataGenerator {
     const lineNoise = 0; 
 
     // 3. Motion Artifact (Low Frequency drift < 5Hz) - REMOVED by High Pass
-    const motionArtifact = Math.sin(2 * Math.PI * 1.5 * t) * 0.8;
+    // Kept deliberately small (0.15) so REST muscle data looks clean even
+    // before the HPF fully settles. Real resting EMG baseline is < 20 µV.
+    const motionArtifact = Math.sin(2 * Math.PI * 1.5 * t) * 0.15;
 
     // Combine them
     const generateValue = (channelIdx: number) => {
        // Zero-centered random noise floor
-       const noiseFloor = (Math.random() - 0.5) * 0.1; 
+       const noiseFloor = (Math.random() - 0.5) * 0.02; // Quiet noise floor
        
        // CLINICAL WEIGHTING:
        // CH0, CH1 = Quads (VMO, VL)
@@ -116,6 +118,8 @@ export class SleeveDataGenerator {
        const signal = muscleSignal() * channelWeight;
        
        if (this.scenario === 'REST') {
+           // REST: pure low-amplitude noise + tiny motion artifact only
+           // The HPF will clean the motion artifact; what's left should be ~0
            return noiseFloor + motionArtifact;
        }
        return signal + noiseFloor + motionArtifact;

@@ -1,5 +1,12 @@
 import { LineChart } from "react-native-chart-kit";
-import { Dimensions , View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import {
+  Dimensions,
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Pressable,
+} from "react-native";
 import React, { useState, useEffect, useRef } from "react";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -15,11 +22,15 @@ export default function TestBLEScreen() {
   const latestEMG = useSelector((state: RootState) => state.device.latestEMG);
   const latestIMU = useSelector((state: RootState) => state.device.latestIMU);
   const scenario = useSelector((state: RootState) => state.device.scenario);
-  const connectionStatus = useSelector((state: RootState) => state.device.connection);
-  const isFilteringEnabled = useSelector((state: RootState) => state.device.isFilteringEnabled);
-  
+  const connectionStatus = useSelector(
+    (state: RootState) => state.device.connection,
+  );
+  const isFilteringEnabled = useSelector(
+    (state: RootState) => state.device.isFilteringEnabled,
+  );
+
   const lastChartUpdateRef = useRef(0);
-  
+
   // Chart Data State
   const [chartData, setChartData] = useState<number[]>(new Array(50).fill(0));
   const MAX_POINTS = 50;
@@ -30,13 +41,19 @@ export default function TestBLEScreen() {
     const now = Date.now();
     if (now - lastChartUpdateRef.current > 100) {
       lastChartUpdateRef.current = now;
-      setChartData(prev => {
+      setChartData((prev) => {
         const newData = [...prev, latestEMG.channels[0]];
-        if (newData.length > MAX_POINTS) return newData.slice(newData.length - MAX_POINTS);
+        if (newData.length > MAX_POINTS)
+          return newData.slice(newData.length - MAX_POINTS);
         return newData;
       });
     }
   }, [latestEMG]);
+
+  useEffect(() => {
+    lastChartUpdateRef.current = 0;
+    setChartData(new Array(MAX_POINTS).fill(0));
+  }, [isFilteringEnabled]);
 
   const handleConnect = async () => {
     try {
@@ -52,6 +69,10 @@ export default function TestBLEScreen() {
 
   const handleScenarioChange = (newScenario: "REST" | "FLEX" | "SQUAT") => {
     dispatch(scenarioChanged(newScenario));
+  };
+
+  const handleToggleFiltering = () => {
+    dispatch(setFilteringEnabled(!isFilteringEnabled));
   };
 
   // Get screen width for chart
@@ -94,66 +115,91 @@ export default function TestBLEScreen() {
             </TouchableOpacity>
           </View>
         </View>
-        
+
         {/* Filter Toggle */}
         <View style={styles.section}>
-             <ThemedText type="subtitle">Signal Processing</ThemedText>
-             <TouchableOpacity
-              style={[
-                styles.button,
-                { marginTop: 12, backgroundColor: isFilteringEnabled ? Colors.light.success : Colors.light.icon }
-              ]}
-              onPress={() => dispatch(setFilteringEnabled(!isFilteringEnabled))}
-            >
-              <ThemedText style={styles.buttonText}>
-                {isFilteringEnabled ? "Filters ON" : "Filters OFF (Raw)"}
-              </ThemedText>
-            </TouchableOpacity>
+          <ThemedText type="subtitle">Signal Processing</ThemedText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Toggle signal filters"
+            testID="toggle-signal-filters"
+            hitSlop={12}
+            style={({ pressed }) => [
+              styles.button,
+              styles.filterButton,
+              {
+                marginTop: 12,
+                backgroundColor: isFilteringEnabled
+                  ? Colors.light.success
+                  : Colors.light.icon,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+            onPress={handleToggleFiltering}
+          >
+            <ThemedText style={styles.buttonText}>
+              {isFilteringEnabled ? "Filters ON" : "Filters OFF (Raw)"}
+            </ThemedText>
+          </Pressable>
+          <ThemedText style={styles.instruction}>
+            Current mode: {isFilteringEnabled ? "Filtered EMG" : "Raw EMG"}
+          </ThemedText>
         </View>
 
         {/* Real-time Chart */}
         <View style={styles.section}>
-            <ThemedText type="subtitle">Live Signal (CH1)</ThemedText>
-            <LineChart
-                data={{
-                labels: [], // No labels for cleaner look
-                datasets: [
-                    {
-                    data: chartData,
-                    strokeWidth: 2, // optional
-                    },
-                ],
-                }}
-                width={screenWidth - 64} // from react-native
-                height={220}
-                yAxisInterval={1} // optional, defaults to 1
-                withDots={false}
-                withInnerLines={false}
-                withOuterLines={false}
-                chartConfig={{
-                    backgroundColor: isFilteringEnabled ? "#0B5345" : "#022173",
-                    backgroundGradientFrom: isFilteringEnabled ? "#0B5345" : "#022173",
-                    backgroundGradientTo: isFilteringEnabled ? "#1D8348" : "#1b3fa0",
-                    decimalPlaces: 2, // optional, defaults to 2dp
-                    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                    style: {
-                        borderRadius: 16
-                    },
-                    propsForDots: {
-                        r: "3",
-                        strokeWidth: "2",
-                        stroke: "#ffa726"
-                    }
-                }}
-                style={{
-                    marginVertical: 8,
-                    borderRadius: 16
-                }}
-            />
+          <ThemedText type="subtitle">Live Signal (CH1)</ThemedText>
+          <LineChart
+            key={`ble-chart-${isFilteringEnabled ? "filtered" : "raw"}`}
+            data={{
+              labels: [], // No labels for cleaner look
+              datasets: [
+                {
+                  data: chartData,
+                  strokeWidth: 2, // optional
+                },
+              ],
+            }}
+            width={screenWidth - 64} // from react-native
+            height={220}
+            yAxisInterval={1} // optional, defaults to 1
+            withDots={false}
+            withInnerLines={false}
+            withOuterLines={false}
+            chartConfig={{
+              backgroundColor: isFilteringEnabled ? "#0B5345" : "#022173",
+              backgroundGradientFrom: isFilteringEnabled
+                ? "#0B5345"
+                : "#022173",
+              backgroundGradientTo: isFilteringEnabled ? "#1D8348" : "#1b3fa0",
+              decimalPlaces: 2, // optional, defaults to 2dp
+              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+              style: {
+                borderRadius: 16,
+              },
+              propsForDots: {
+                r: "3",
+                strokeWidth: "2",
+                stroke: "#ffa726",
+              },
+            }}
+            style={{
+              marginVertical: 8,
+              borderRadius: 16,
+            }}
+          />
+          <ThemedText style={styles.instruction}>
+            {isFilteringEnabled
+              ? "Signal is stabilized (DC/Line noise removed)"
+              : "Signal contains randomized noise + drift"}
+          </ThemedText>
+          {isFilteringEnabled ? (
             <ThemedText style={styles.instruction}>
-                {isFilteringEnabled ? "Signal is stabilized (DC/Line noise removed)" : "Signal contains randomized noise + drift"}
+              Filtered mode needs about 1 second of fresh samples after a
+              toggle.
             </ThemedText>
+          ) : null}
         </View>
 
         {/* Scenario Controls */}
@@ -199,7 +245,9 @@ export default function TestBLEScreen() {
         {/* Data Counters */}
         <View style={styles.section}>
           <ThemedText type="subtitle">Data Received (Live)</ThemedText>
-          <ThemedText>Values: {latestEMG?.channels[0].toFixed(3) ?? '0.00'}</ThemedText>
+          <ThemedText>
+            Values: {latestEMG?.channels[0].toFixed(3) ?? "0.00"}
+          </ThemedText>
         </View>
 
         {/* Latest EMG Data */}
@@ -256,19 +304,27 @@ export default function TestBLEScreen() {
                 style={[
                   styles.monoText,
                   styles.highlight,
-                  { fontSize: 18, marginTop: 8 }
+                  { fontSize: 18, marginTop: 8 },
                 ]}
               >
                 🦵 Knee Flexion: {latestIMU.roll.toFixed(1)}°
               </ThemedText>
               <ThemedText style={styles.monoText}>
                 {latestIMU.roll < 15 && "  → Standing (Full Extension)"}
-                {latestIMU.roll >= 15 && latestIMU.roll < 45 && "  → Slight Bend"}
-                {latestIMU.roll >= 45 && latestIMU.roll < 90 && "  → Moderate Flexion"}
-                {latestIMU.roll >= 90 && latestIMU.roll < 110 && "  → Deep Flexion (90°+)"}
+                {latestIMU.roll >= 15 &&
+                  latestIMU.roll < 45 &&
+                  "  → Slight Bend"}
+                {latestIMU.roll >= 45 &&
+                  latestIMU.roll < 90 &&
+                  "  → Moderate Flexion"}
+                {latestIMU.roll >= 90 &&
+                  latestIMU.roll < 110 &&
+                  "  → Deep Flexion (90°+)"}
                 {latestIMU.roll >= 110 && "  → Squat Position (110°+)"}
               </ThemedText>
-              <ThemedText style={[styles.monoText, { marginTop: 8, opacity: 0.6 }]}>
+              <ThemedText
+                style={[styles.monoText, { marginTop: 8, opacity: 0.6 }]}
+              >
                 Pitch: {latestIMU.pitch.toFixed(2)}° (unused)
               </ThemedText>
               <ThemedText style={[styles.monoText, { opacity: 0.6 }]}>
@@ -315,6 +371,11 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
+  },
+  filterButton: {
+    flex: 0,
+    minHeight: 48,
+    justifyContent: "center",
   },
   disconnectButton: {
     backgroundColor: "#E94B3C",
