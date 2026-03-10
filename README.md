@@ -77,6 +77,41 @@ The system operates across four integrated layers to ensure high performance and
     ```
     Scan the QR code with **Expo Go** to test on your device.
 
+### Team Setup Matrix
+
+Use the app folder for all commands:
+
+```bash
+cd smart-sleeve-app/smart-sleeve-app
+```
+
+| Computer         | Phone                    | Supported local workflow     | Notes                                                                                                   |
+| ---------------- | ------------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| macOS            | Android                  | `npx expo run:android`       | Full native workflow supported.                                                                         |
+| macOS            | iPhone                   | `npx expo run:ios --device`  | Requires Xcode, Apple signing, trust pairing, and iPhone Developer Mode.                                |
+| Windows          | Android                  | `npx expo run:android`       | Full native Android workflow supported after Android SDK setup.                                         |
+| Windows          | iPhone                   | No local native iOS build    | iOS builds require macOS + Xcode. Use a Mac teammate or a cloud iOS build pipeline for iPhone installs. |
+| macOS or Windows | No phone / quick UI work | `npm start` or `npm run web` | Good for layout and non-native work. Not sufficient for full BLE testing.                               |
+
+### Dev Build vs Expo Go
+
+- `npm start` launches the Expo development server.
+- `npx expo run:android` and `npx expo run:ios` create a native development build on the device.
+- This project uses `react-native-ble-plx`, so full BLE testing should use a native dev build, not Expo Go.
+- If the installed app opens with `No script URL provided`, the native dev client is installed but Metro is not serving the JavaScript bundle yet.
+
+To fix `No script URL provided`, start Metro from the app folder and keep it running:
+
+```bash
+npx expo start --dev-client
+```
+
+If the phone still cannot reach Metro, use tunnel mode:
+
+```bash
+npx expo start --dev-client --tunnel
+```
+
 ### Running On Android Over USB
 
 The Expo app lives in the nested `smart-sleeve-app/` folder. Run Android commands from there, not from the repository root.
@@ -104,6 +139,25 @@ The Expo app lives in the nested `smart-sleeve-app/` folder. Run Android command
     npx expo run:android
     ```
 
+### Android Device Preparation
+
+Before trying a physical Android build:
+
+1.  On the phone, enable **Developer options**.
+2.  Enable **USB debugging**.
+3.  Connect the phone by USB.
+4.  Accept the **Allow USB debugging** prompt on the phone.
+5.  Verify detection:
+    ```bash
+    adb devices -l
+    ```
+
+If Metro is running locally and the Android dev build cannot load JavaScript, forward the Metro port over USB:
+
+```bash
+adb reverse tcp:8081 tcp:8081
+```
+
 ### Android Troubleshooting
 
 - If `npx expo run:android` fails from the repository root with a missing `package.json` error, run it from `smart-sleeve-app/smart-sleeve-app`.
@@ -117,6 +171,7 @@ The Expo app lives in the nested `smart-sleeve-app/` folder. Run Android command
   rm -rf android/.cxx android/app/.cxx android/build android/app/build
   npx expo run:android --device "SM_S921W"
   ```
+- If the installed Android app opens but does not load the bundle, start Metro with `npx expo start --dev-client`.
 
 ### Running On iOS
 
@@ -146,10 +201,49 @@ The same nested app directory rule applies on iOS. Run iOS commands from `smart-
     ```
     For a physical iPhone, you also need a valid Apple signing setup in Xcode and Developer Mode enabled on the device.
 
+### iPhone Preparation
+
+Before trying a physical iPhone build:
+
+1.  Connect the iPhone by USB.
+2.  Tap **Trust This Computer** on the iPhone if prompted.
+3.  Pair the device with Xcode if needed:
+    ```bash
+    xcrun devicectl manage pair --device "<DEVICE_NAME>"
+    ```
+4.  Enable **Developer Mode** on the iPhone:
+    - Open `Settings > Privacy & Security > Developer Mode`.
+    - Turn it on.
+    - Let the phone reboot.
+    - Unlock the phone and tap **Turn On** on the post-reboot confirmation prompt.
+5.  Make sure Xcode signing is configured for your Apple Developer team.
+6.  Verify the device is seen by Xcode:
+    ```bash
+    xcrun devicectl list devices
+    ```
+
+If you want to confirm Developer Mode from the Mac:
+
+```bash
+xcrun devicectl device info ddiServices --device "<DEVICE_NAME>"
+```
+
+If that command reports that Developer Mode is disabled, the iPhone-side enable flow is not finished yet.
+
 ### iOS Notes
 
 - The app already includes the iOS Bluetooth usage descriptions required for BLE access.
 - Because this app uses native BLE libraries, prefer a native Expo dev build with `npx expo run:ios` instead of relying on Expo Go for full device testing.
+- If the installed iPhone app opens with `No script URL provided`, start Metro with `npx expo start --dev-client` from the app folder.
+- If the phone cannot reach Metro reliably, use `npx expo start --dev-client --tunnel`.
+- iOS device builds require macOS and Xcode. A Windows machine cannot build directly for iPhone.
+
+### Recommended Team Workflows
+
+- **Windows + Android**: Use Android Studio / Android SDK, then `npx expo run:android`.
+- **macOS + Android**: Use the same Android workflow as Windows, plus `adb devices -l` for USB targeting.
+- **macOS + iPhone**: Use Xcode signing, iPhone Developer Mode, `npx expo run:ios --device`, and `npx expo start --dev-client`.
+- **Windows + iPhone**: Do not plan on local native iPhone builds. Use a Mac teammate or a cloud iOS build workflow for installable iPhone binaries.
 
 ---
 

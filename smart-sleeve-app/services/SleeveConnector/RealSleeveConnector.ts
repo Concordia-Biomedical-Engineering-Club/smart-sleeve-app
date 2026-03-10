@@ -130,7 +130,7 @@ export class RealSleeveConnector implements ISleeveConnector {
         this.connectedDevice = null;
         this.emitConnectionStatus(false);
         // Reconnection logic: Optional depending on app state.
-        // For physics rehabilitation, we might want to manually trigger reconnect.
+        // For physical rehabilitation, we might want to manually trigger reconnect.
       });
 
       // Setup Notifications
@@ -210,8 +210,7 @@ export class RealSleeveConnector implements ISleeveConnector {
     const checksumReceived = buf.readUInt8(21);
     if (computedChecksum !== checksumReceived) {
       console.warn(`[RealSleeveConnector] EMG checksum mismatch: calc=${computedChecksum}, recv=${checksumReceived}`);
-      // Drop corrupted frames if we want to be strict
-      if (false) return; 
+      // STABLE_MODE: To enforce strict data integrity, you can 'return' here to drop corrupted frames.
     }
 
     const frame: EMGData = {
@@ -251,7 +250,7 @@ export class RealSleeveConnector implements ISleeveConnector {
 
     if (computedChecksum !== checksumReceived) {
        console.warn(`[RealSleeveConnector] IMU checksum mismatch: calc=${computedChecksum}, recv=${checksumReceived}`);
-       if (false) return; // Drop frame
+       // STABLE_MODE: To enforce strict data integrity, you can 'return' here to drop corrupted frames.
     }
 
     // Convert raw 14-bit encoder (0-16383) to degrees (0-140)

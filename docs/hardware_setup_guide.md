@@ -21,8 +21,22 @@ The app is expecting the MyoWare **Envelope (ENV)** signal to be sent on **GPIO 
 | **- (GND)** | **GND** | Common Ground |
 | **ENV** | **34 (A2)** | Analog Output (Signal Envelope) |
 
+### AS5048A Magnetic Encoder (Angle Sensor)
+
+The knee flexion angle is measured by the **AS5048A** sensor via the SPI bus.
+
+| AS5048A Pin | SparkFun ESP32 Pin | SPI Function |
+| :--- | :--- | :--- |
+| **VCC** | **3V3** | Power (3.3V) |
+| **GND** | **GND** | Ground |
+| **SCL** / SCK | **18** | VSPI Clock |
+| **DO** / MISO | **19** | VSPI MISO |
+| **DI** / MOSI | **23** | VSPI MOSI |
+| **CSn** / CS | **5** | Software Chip Select |
+
 > [!WARNING]
-> **Voltage Limits**: The ESP32's Analog-to-Digital Converter (ADC) can only handle a maximum of **3.3V**. Ensure the MyoWare is powered from the **3V3** pin, NOT the 5V/VUSB pin, to prevent destroying the GPIO pins.
+> **Voltage Limits**: The ESP32's Analog-to-Digital Converter (ADC) can only handle a maximum of **3.3V**. Ensure all sensors are powered from the **3V3** pin, NOT the 5V/VUSB pin, to prevent damaging the GPIO pins.
+
 
 ---
 
@@ -35,10 +49,10 @@ We will be flashing the ESP32 using the Arduino IDE. You need the correct board 
    * Go to **Tools > Board > Boards Manager**, search for `esp32`, and install it.
    * Under **Tools > Board**, select **SparkFun ESP32 Thing Plus**.
 
-2. **Install to NimBLE Library**
+2. **Install the NimBLE Library**
    * The standard ESP32 BLE library uses too much memory. We strictly use **NimBLE**.
    * Go to **Sketch > Include Library > Manage Libraries**.
-   * Search for **"NimBLE-Arduino"** (by h2zero) and install the latest version.
+   * Search for **"NimBLE-Arduino"** (by h2zero) and install **version 1.4.x** — do not install v2.x, as the API is incompatible with this firmware.
 
 ---
 
@@ -46,7 +60,7 @@ We will be flashing the ESP32 using the Arduino IDE. You need the correct board 
 
 I have provided the complete, app-compatible firmware inside the repository.
 
-1. Open the file [firmware/esp32_ble_sleeve.ino](file:///Volumes/PSSDT7/BEC/app/smart-sleeve-app/smart-sleeve-app/firmware/esp32_ble_sleeve.ino) in your Arduino IDE.
+1. Open the file [smart-sleeve-app/firmware/esp32_ble_sleeve.ino](../smart-sleeve-app/firmware/esp32_ble_sleeve.ino) in your Arduino IDE.
 2. Connect the ESP32 to your Mac over USB.
 3. Select the correct COM/Serial Port under **Tools > Port**.
 4. Click **Upload**.
