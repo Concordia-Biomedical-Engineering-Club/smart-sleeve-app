@@ -13,6 +13,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { login, logout } from '../store/userSlice';
 import { useEffect } from "react";
+import { initDatabase } from "@/services/Database";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -38,12 +39,17 @@ export default function RootLayout() {
     return unsubscribe; // clean up listener on unmount
   }, []);
 
+  useEffect(() => {
+    initDatabase().catch(console.error);
+  }, []);
+
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="debug-db" options={{ title: "Database Debug" }} />
             <Stack.Screen
               name="modal"
               options={{ presentation: "modal", title: "Modal" }}

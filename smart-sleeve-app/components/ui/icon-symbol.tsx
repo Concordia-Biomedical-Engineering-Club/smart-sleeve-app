@@ -23,6 +23,7 @@ const MAPPING = {
   'waveform.path.ecg': 'timeline',
   'trophy.fill': 'emoji-events',
   'antenna.radiowaves.left.and.right': 'bluetooth',
+  'cylinder.split.1x2': 'storage',
 } as IconMapping;
 
 /**
