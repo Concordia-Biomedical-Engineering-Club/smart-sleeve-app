@@ -82,10 +82,6 @@ export async function initDatabase(): Promise<void> {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
 
-    DROP TABLE IF EXISTS emg_samples;
-    DROP TABLE IF EXISTS sessions;
-    DROP TABLE IF EXISTS users;
-
     CREATE TABLE IF NOT EXISTS users (
       id          TEXT PRIMARY KEY NOT NULL,
       email       TEXT NOT NULL UNIQUE,
