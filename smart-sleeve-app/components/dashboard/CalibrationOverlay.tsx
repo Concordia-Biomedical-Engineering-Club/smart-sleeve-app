@@ -37,12 +37,20 @@ export default function CalibrationOverlay({ visible, liveRMS, onComplete, onDis
 
   useEffect(() => {
     if (visible) {
-      reset(); setPhase('intro'); setBaseline(null); setMVC(null);
-      setErrorMsg(''); progressAnim.setValue(0);
+      reset();
+      setPhase('intro');
+      setBaseline(null);
+      setMVC(null);
+      setErrorMsg('');
+      progressAnim.setValue(0);
     }
+    // progressAnim is a stable ref value, safe to omit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
-  useEffect(() => { return () => { if (countdownRef.current) clearInterval(countdownRef.current); }; }, []);
+  useEffect(() => {
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
+  }, []);
 
   const runCountdown = useCallback((duration: number, onDone: () => void) => {
     progressAnim.setValue(0);
@@ -54,24 +62,46 @@ export default function CalibrationOverlay({ visible, liveRMS, onComplete, onDis
       setCountdown(remaining);
       if (remaining <= 0) { clearInterval(countdownRef.current!); onDone(); }
     }, 1000);
+    // progressAnim is a stable ref value, safe to omit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startMVCPhase = useCallback(() => {
+    startMVC();
+    setPhase('flex');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    runCountdown(MVC_DURATION_SEC, () => {
+      try {
+        const m = finalizeMVC();
+        setMVC(m);
+        setPhase('confirm');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        setErrorMsg('MVC capture failed. Please flex harder and try again.');
+        setPhase('error');
+      }
+    });
+    // runCountdown is stable (no deps), safe to omit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startRestPhase = useCallback(() => {
-    reset(); startBaseline(); setPhase('rest');
+    reset();
+    startBaseline();
+    setPhase('rest');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     runCountdown(BASELINE_DURATION_SEC, () => {
-      try { const b = finalizeBaseline(); setBaseline(b); startMVCPhase(b); }
-      catch { setErrorMsg('Baseline capture failed. Please try again.'); setPhase('error'); }
+      try {
+        const b = finalizeBaseline();
+        setBaseline(b);
+        startMVCPhase();
+      } catch {
+        setErrorMsg('Baseline capture failed. Please try again.');
+        setPhase('error');
+      }
     });
-  }, []);
-
-  const startMVCPhase = useCallback((b?: number[]) => {
-    startMVC(); setPhase('flex');
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    runCountdown(MVC_DURATION_SEC, () => {
-      try { const m = finalizeMVC(); setMVC(m); setPhase('confirm'); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); }
-      catch { setErrorMsg('MVC capture failed. Please flex harder and try again.'); setPhase('error'); }
-    });
+    // runCountdown and startMVCPhase are stable (no deps), safe to omit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleConfirm = useCallback(() => {
@@ -80,7 +110,14 @@ export default function CalibrationOverlay({ visible, liveRMS, onComplete, onDis
   }, [baseline, mvc, onComplete]);
 
   const handleRetry = useCallback(() => {
-    reset(); setPhase('intro'); setBaseline(null); setMVC(null); setErrorMsg(''); progressAnim.setValue(0);
+    reset();
+    setPhase('intro');
+    setBaseline(null);
+    setMVC(null);
+    setErrorMsg('');
+    progressAnim.setValue(0);
+    // progressAnim is a stable ref value, safe to omit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const progressWidth = progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
