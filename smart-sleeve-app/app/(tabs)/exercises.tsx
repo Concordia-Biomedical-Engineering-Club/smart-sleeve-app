@@ -39,6 +39,8 @@ export default function ExercisesScreen() {
         exerciseName: selectedExercise.name,
         targetSide: selectedSide,
         totalReps: selectedExercise.targetReps,
+        workDurationSec: selectedExercise.workDurationSec,
+        restDurationSec: selectedExercise.restDurationSec,
       })
     );
     setSelectedExercise(null);

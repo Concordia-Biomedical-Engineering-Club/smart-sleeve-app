@@ -7,6 +7,7 @@ export interface Exercise {
   workDurationSec: number;
   restDurationSec: number;
   description: string;
+  primaryChannels: number[]; // e.g. [0, 1] for Quads
 }
 
 export const EXERCISE_LIBRARY: Exercise[] = [
@@ -19,6 +20,7 @@ export const EXERCISE_LIBRARY: Exercise[] = [
     workDurationSec: 5,
     restDurationSec: 3,
     description: 'Tighten your quad by pressing your knee flat while lying down. Builds VMO and VL balance critical for knee stability.',
+    primaryChannels: [0, 1],
   },
   {
     id: 'straight-leg-raises',
@@ -29,6 +31,7 @@ export const EXERCISE_LIBRARY: Exercise[] = [
     workDurationSec: 5,
     restDurationSec: 3,
     description: 'Lift your straight leg to the height of the opposite bent knee. Strengthens the quads without stressing the joint.',
+    primaryChannels: [0, 1],
   },
   {
     id: 'wall-slides',
@@ -39,6 +42,7 @@ export const EXERCISE_LIBRARY: Exercise[] = [
     workDurationSec: 5,
     restDurationSec: 4,
     description: 'Slide down a wall into a partial squat position. Trains hamstring co-contraction and overall leg control.',
+    primaryChannels: [0, 1, 2, 3],
   },
   {
     id: 'heel-slides',
@@ -49,5 +53,6 @@ export const EXERCISE_LIBRARY: Exercise[] = [
     workDurationSec: 5,
     restDurationSec: 3,
     description: 'Lying flat, slowly slide your heel toward your glutes and back. Primary ROM exercise for post-surgical recovery.',
+    primaryChannels: [2, 3],
   },
 ];
