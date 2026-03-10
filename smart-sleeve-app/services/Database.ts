@@ -226,12 +226,14 @@ export async function markSessionSynced(sessionId: string): Promise<void> {
 // ── EMG sample bulk insert ────────────────────────────────────────────────────
 
 /**
- * Bulk-inserts all EMG samples for a session.
- * Chunked into batches of 100 for web reliability.
+ * Bulk-inserts all EMG samples for a session inside a SINGLE transaction
+ * for maximum performance on iOS/Android native.
+ *
+ * Loop is chunked purely to keep individual async frames small on web;
+ * all inserts still commit atomically at the end.
  *
  * IMPORTANT: Does NOT use prepareAsync — that API conflicts with
- * withTransactionAsync on the expo-sqlite WASM web backend, causing
- * "Error finalizing statement". Plain runAsync is used instead.
+ * withTransactionAsync on the expo-sqlite WASM web backend.
  *
  * @param samples - full recording buffer from deviceSlice
  */
@@ -239,32 +241,25 @@ export async function bulkInsertEMGSamples(samples: EMGSample[]): Promise<void> 
   if (samples.length === 0) return;
   const db = await getDatabase();
 
-  const CHUNK_SIZE = 100;
+  const CHUNK_SIZE = 200;
   const chunks = Math.ceil(samples.length / CHUNK_SIZE);
+  console.log(`[Database] Bulk inserting ${samples.length} samples (${chunks} chunks)...`);
 
-  for (let j = 0; j < samples.length; j += CHUNK_SIZE) {
-    const chunk = samples.slice(j, j + CHUNK_SIZE);
-    const chunkNum = j / CHUNK_SIZE + 1;
-    console.log(`[Database] Inserting chunk ${chunkNum}/${chunks} (${chunk.length} samples)...`);
-
-    try {
-      await db.withTransactionAsync(async () => {
-        for (const s of chunk) {
-          await db.runAsync(
-            `INSERT INTO emg_samples
-              (session_id, timestamp, vmo_rms, vl_rms, st_rms, bf_rms, knee_angle)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [s.sessionId, s.timestamp, s.vmo_rms, s.vl_rms, s.st_rms, s.bf_rms, s.kneeAngle]
-          );
-        }
-      });
-    } catch (err) {
-      console.error(`[Database] Chunk ${chunkNum}/${chunks} insert FAILED:`, err);
-      throw err;
+  await db.withTransactionAsync(async () => {
+    for (let j = 0; j < samples.length; j += CHUNK_SIZE) {
+      const chunk = samples.slice(j, j + CHUNK_SIZE);
+      for (const s of chunk) {
+        await db.runAsync(
+          `INSERT INTO emg_samples
+            (session_id, timestamp, vmo_rms, vl_rms, st_rms, bf_rms, knee_angle)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [s.sessionId, s.timestamp, s.vmo_rms, s.vl_rms, s.st_rms, s.bf_rms, s.kneeAngle]
+        );
+      }
     }
-  }
+  });
 
-  console.log(`[Database] Bulk inserted ${samples.length} total samples in ${chunks} chunks`);
+  console.log(`[Database] Bulk insert complete: ${samples.length} samples`);
 }
 
 export async function fetchEMGSamplesBySession(sessionId: string): Promise<EMGSample[]> {

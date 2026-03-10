@@ -106,8 +106,21 @@ export default function SessionSummaryScreen() {
     const step = Math.max(1, Math.floor(samples.length / 50));
     const downsampled = samples.filter((_, i) => i % step === 0);
 
+    // Compute smoothed, rectified muscle activation envelope.
+    // vmo_rms is a bipolar filtered EMG value (-1..+1 range).
+    // We rectify (abs), apply a 5-sample rolling average, then scale
+    // to the same 0–120° axis as knee angle for visual comparison.
+    const SMOOTH_WINDOW = 5;
+    const EMG_SCALE = 120; // maps 1.0 -> 120 (same range as max knee angle)
+    const rawAbs = downsampled.map(s => Math.abs(s.vmo_rms));
+    const smoothed = rawAbs.map((_, i) => {
+      const start = Math.max(0, i - SMOOTH_WINDOW + 1);
+      const window = rawAbs.slice(start, i + 1);
+      return (window.reduce((a, b) => a + b, 0) / window.length) * EMG_SCALE;
+    });
+
     return {
-      labels: [], // No labels for a clean sparkline look
+      labels: [],
       datasets: [
         {
           data: downsampled.map(s => s.kneeAngle),
@@ -115,7 +128,7 @@ export default function SessionSummaryScreen() {
           strokeWidth: 3,
         },
         {
-          data: downsampled.map(s => s.vmo_rms * 100), // Scale EMG for visibility
+          data: smoothed,
           color: (opacity = 1) => theme.success,
           strokeWidth: 2,
         }

@@ -41,12 +41,13 @@ export function useSleeveDevice(connector: ISleeveConnector) {
     connector.onConnectionStatusChange((status) => {
       dispatch(connectionChanged(status));
       if (!status.connected) {
+         // Only reset state on actual disconnection
          processor.reset();
          rollingBuffer.current = [];
       }
     });
 
-    connector.subscribeToEMG((rawFrame) => {
+    const unsubscribeEMG = connector.subscribeToEMG((rawFrame) => {
       // 1. Apply DSP filters (HPF/LPF/Notch) if enabled
       let frameToDispatch = rawFrame;
       if (isFilteringEnabledRef.current) {
@@ -64,22 +65,30 @@ export function useSleeveDevice(connector: ISleeveConnector) {
         rollingBuffer.current.shift();
       }
 
-      // Compute features if buffer is full
-      if (rollingBuffer.current.length === WINDOW_SIZE) {
+      // Only dispatch features once the IIR filter has settled.
+      // The first ~50 frames (1s at 50Hz) show a transient DC spike because
+      // the HPF state buffers are still converging. Suppressing features during
+      // this window keeps the live graph at zero until the signal is clean.
+      const filterReady = !isFilteringEnabledRef.current || processor.isWarmedUp();
+      if (filterReady && rollingBuffer.current.length === WINDOW_SIZE) {
         const features = FeatureExtractor.extractFeatures(rollingBuffer.current);
         dispatch(featuresUpdated(features));
       }
     });
 
-    connector.subscribeToIMU((data) => {
+    const unsubscribeIMU = connector.subscribeToIMU((data) => {
       dispatch(imuFrameReceived(data));
     });
 
     return () => {
-      connector.disconnect();
-      dispatch(connectionChanged({ connected: false }));
-      processor.reset();
+      // Unsubscribe our specific callbacks only — do NOT reset the processor
+      // here, as that wipes filter state and prevents IIR filters from settling.
+      // The processor is memoized and persists for the component lifetime.
+      unsubscribeEMG();
+      unsubscribeIMU();
       rollingBuffer.current = [];
     };
-  }, [connector, dispatch, processor]);
+  // processor is stable (useMemo), omitting it keeps the filter history intact.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connector, dispatch]);
 }

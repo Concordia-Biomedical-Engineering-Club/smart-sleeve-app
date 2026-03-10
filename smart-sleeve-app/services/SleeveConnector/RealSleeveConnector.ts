@@ -62,16 +62,24 @@ export class RealSleeveConnector implements ISleeveConnector {
 
   /**
    * Subscribe to EMG data frames.
+   * Returns an unsubscribe function (real BLE will use BLE notification teardown).
    */
-  subscribeToEMG(callback: (data: EMGData) => void): void {
+  subscribeToEMG(callback: (data: EMGData) => void): () => void {
     this.emgSubscribers.push(callback);
+    return () => {
+      this.emgSubscribers = this.emgSubscribers.filter((cb) => cb !== callback);
+    };
   }
 
   /**
    * Subscribe to IMU data frames.
+   * Returns an unsubscribe function.
    */
-  subscribeToIMU(callback: (data: IMUData) => void): void {
+  subscribeToIMU(callback: (data: IMUData) => void): () => void {
     this.imuSubscribers.push(callback);
+    return () => {
+      this.imuSubscribers = this.imuSubscribers.filter((cb) => cb !== callback);
+    };
   }
 
   /**
