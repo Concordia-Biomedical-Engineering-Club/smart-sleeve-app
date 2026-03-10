@@ -1,0 +1,193 @@
+/**
+ * Database.ts
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Issue #54 — Chore: Setup Local Database (expo-sqlite)
+ *
+ * Initialises the local SQLite database and exposes typed CRUD helpers.
+ * Schema is derived from Section 8.1 of the project documentation.
+ *
+ * Storage strategy (Section 8.2):
+ *   - Recent 30 days of raw data
+ *   - All processed analytics
+ *   - Offline queue for Firebase sync
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+import * as SQLite from 'expo-sqlite';
+
+// ── TypeScript interfaces (Section 8.1) ───────────────────────────────────────
+
+export interface User {
+  id: string;
+  email: string;
+  createdAt: number; // Unix ms
+}
+
+export interface SessionAnalytics {
+  avgActivation: number;
+  maxActivation: number;
+  deficitPercentage: number;
+  fatigueScore: number;
+  romDegrees: number;
+  exerciseQuality: number;
+}
+
+export interface Session {
+  id: string;
+  userId: string;
+  timestamp: number;      // Unix ms
+  duration: number;       // seconds
+  exerciseIds: string[];  // JSON-serialised in DB
+  analytics: SessionAnalytics; // JSON-serialised in DB
+  synced: boolean;        // false = in offline queue
+}
+
+// ── DB singleton ──────────────────────────────────────────────────────────────
+
+let _db: SQLite.SQLiteDatabase | null = null;
+
+export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+  if (_db) return _db;
+  _db = await SQLite.openDatabaseAsync('smart_sleeve.db');
+  return _db;
+}
+
+// ── Schema initialisation ─────────────────────────────────────────────────────
+
+/**
+ * Must be called once at app startup (e.g. in App.tsx or a top-level provider).
+ * Uses CREATE TABLE IF NOT EXISTS so it is safe to call on every launch.
+ */
+export async function initDatabase(): Promise<void> {
+  const db = await getDatabase();
+
+  await db.execAsync(`
+    PRAGMA journal_mode = WAL;
+
+    CREATE TABLE IF NOT EXISTS users (
+      id          TEXT PRIMARY KEY NOT NULL,
+      email       TEXT NOT NULL UNIQUE,
+      created_at  INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      id                  TEXT PRIMARY KEY NOT NULL,
+      user_id             TEXT NOT NULL,
+      timestamp           INTEGER NOT NULL,
+      duration            INTEGER NOT NULL DEFAULT 0,
+      exercise_ids        TEXT NOT NULL DEFAULT '[]',
+      avg_activation      REAL NOT NULL DEFAULT 0,
+      max_activation      REAL NOT NULL DEFAULT 0,
+      deficit_percentage  REAL NOT NULL DEFAULT 0,
+      fatigue_score       REAL NOT NULL DEFAULT 0,
+      rom_degrees         REAL NOT NULL DEFAULT 0,
+      exercise_quality    REAL NOT NULL DEFAULT 0,
+      synced              INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sessions_user_id
+      ON sessions(user_id);
+
+    CREATE INDEX IF NOT EXISTS idx_sessions_timestamp
+      ON sessions(timestamp);
+  `);
+}
+
+// ── User helpers ──────────────────────────────────────────────────────────────
+
+export async function insertUser(user: User): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `INSERT OR IGNORE INTO users (id, email, created_at) VALUES (?, ?, ?)`,
+    [user.id, user.email, user.createdAt]
+  );
+}
+
+export async function fetchAllUsers(): Promise<User[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{
+    id: string; email: string; created_at: number;
+  }>(`SELECT * FROM users ORDER BY created_at DESC`);
+  return rows.map(r => ({ id: r.id, email: r.email, createdAt: r.created_at }));
+}
+
+// ── Session helpers ───────────────────────────────────────────────────────────
+
+export async function insertSession(session: Session): Promise<void> {
+  const db = await getDatabase();
+  const { analytics: a } = session;
+  await db.runAsync(
+    `INSERT INTO sessions (
+      id, user_id, timestamp, duration, exercise_ids,
+      avg_activation, max_activation, deficit_percentage,
+      fatigue_score, rom_degrees, exercise_quality, synced
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      session.id,
+      session.userId,
+      session.timestamp,
+      session.duration,
+      JSON.stringify(session.exerciseIds),
+      a.avgActivation,
+      a.maxActivation,
+      a.deficitPercentage,
+      a.fatigueScore,
+      a.romDegrees,
+      a.exerciseQuality,
+      session.synced ? 1 : 0,
+    ]
+  );
+}
+
+export async function fetchSessionsByUser(userId: string): Promise<Session[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<any>(
+    `SELECT * FROM sessions WHERE user_id = ? ORDER BY timestamp DESC`,
+    [userId]
+  );
+  return rows.map(rowToSession);
+}
+
+export async function fetchAllSessions(): Promise<Session[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<any>(
+    `SELECT * FROM sessions ORDER BY timestamp DESC`
+  );
+  return rows.map(rowToSession);
+}
+
+/** Returns sessions not yet synced to Firebase — the offline queue */
+export async function fetchUnsyncedSessions(): Promise<Session[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<any>(
+    `SELECT * FROM sessions WHERE synced = 0 ORDER BY timestamp ASC`
+  );
+  return rows.map(rowToSession);
+}
+
+export async function markSessionSynced(sessionId: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(`UPDATE sessions SET synced = 1 WHERE id = ?`, [sessionId]);
+}
+
+// ── Row mapper ────────────────────────────────────────────────────────────────
+
+function rowToSession(row: any): Session {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    timestamp: row.timestamp,
+    duration: row.duration,
+    exerciseIds: JSON.parse(row.exercise_ids ?? '[]'),
+    synced: row.synced === 1,
+    analytics: {
+      avgActivation: row.avg_activation,
+      maxActivation: row.max_activation,
+      deficitPercentage: row.deficit_percentage,
+      fatigueScore: row.fatigue_score,
+      romDegrees: row.rom_degrees,
+      exerciseQuality: row.exercise_quality,
+    },
+  };
+}
