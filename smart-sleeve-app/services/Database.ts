@@ -213,16 +213,23 @@ export async function bulkInsertEMGSamples(samples: EMGSample[]): Promise<void> 
   if (samples.length === 0) return;
   const db = await getDatabase();
 
-  await db.withTransactionAsync(async () => {
-    for (const s of samples) {
-      await db.runAsync(
-        `INSERT INTO emg_samples
-          (session_id, timestamp, vmo_rms, vl_rms, st_rms, bf_rms, knee_angle)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [s.sessionId, s.timestamp, s.vmo_rms, s.vl_rms, s.st_rms, s.bf_rms, s.kneeAngle]
-      );
-    }
-  });
+  const statement = await db.prepareAsync(
+    `INSERT INTO emg_samples
+      (session_id, timestamp, vmo_rms, vl_rms, st_rms, bf_rms, knee_angle)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+
+  try {
+    await db.withTransactionAsync(async () => {
+      for (const s of samples) {
+        await statement.executeAsync([
+          s.sessionId, s.timestamp, s.vmo_rms, s.vl_rms, s.st_rms, s.bf_rms, s.kneeAngle,
+        ]);
+      }
+    });
+  } finally {
+    await statement.finalizeAsync();
+  }
 }
 
 export async function fetchEMGSamplesBySession(sessionId: string): Promise<EMGSample[]> {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator,
+  StyleSheet, ActivityIndicator, Alert
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -107,9 +107,11 @@ export default function DebugDB() {
       if (result.durationMs > 2000) {
         addLog(`⚠️ Save took over 2s — may need optimization`);
       }
+      Alert.alert("Success", "Session Saved Successfully ☁️");
     } catch (e: any) {
       dispatch(sessionSaveFailed());
       addLog(`❌ Save failed: ${e.message}`);
+      Alert.alert("Error", `Session Save Failed: ${e.message}`);
     } finally {
       setLoading(false);
     }
