@@ -128,7 +128,6 @@ export default function DebugDB() {
           <Text style={styles.btnText}>Fetch Sessions</Text>
         </TouchableOpacity>
       </View>
-
       <View style={styles.btnRow}>
         <TouchableOpacity
           style={[styles.btn, { backgroundColor: sessionStatus === 'RECORDING' ? '#E63946' : '#666' }]}
@@ -149,7 +148,6 @@ export default function DebugDB() {
       </View>
 
       {loading && <ActivityIndicator style={{ marginTop: 12 }} />}
-
       {sessions.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sessions ({sessions.length})</Text>

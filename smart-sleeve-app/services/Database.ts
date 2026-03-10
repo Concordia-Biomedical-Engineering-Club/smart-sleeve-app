@@ -4,21 +4,27 @@
  * Issue #54 — Setup Local Database (expo-sqlite)
  * Issue #7  — Save Session Data for Offline Review
  *
+ * Initialises the local SQLite database and exposes typed CRUD helpers.
  * Schema (Section 8.1 + Issue #7 requirements):
  *   users        — user accounts
  *   sessions     — workout session metadata
  *   emg_samples  — time-series EMG + knee angle (bulk inserted)
+ *
+ * Storage strategy (Section 8.2):
+ *   - Recent 30 days of raw data
+ *   - All processed analytics
+ *   - Offline queue for Firebase sync
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import * as SQLite from 'expo-sqlite';
 
-// ── TypeScript interfaces ─────────────────────────────────────────────────────
+// ── TypeScript interfaces (Section 8.1 + Issue #7) ───────────────────────────
 
 export interface User {
   id: string;
   email: string;
-  createdAt: number;
+  createdAt: number; // Unix ms
 }
 
 export interface SessionAnalytics {
@@ -35,12 +41,12 @@ export interface Session {
   userId: string;
   exerciseType: string;
   side: 'LEFT' | 'RIGHT';
-  timestamp: number;
-  duration: number;
+  timestamp: number;      // Unix ms
+  duration: number;       // seconds
   avgFlexion: number;
-  exerciseIds: string[];
-  analytics: SessionAnalytics;
-  synced: boolean;
+  exerciseIds: string[];  // JSON-serialised in DB
+  analytics: SessionAnalytics; // JSON-serialised in DB
+  synced: boolean;        // false = in offline queue
 }
 
 /** One time-series sample — maps to emg_samples table */
@@ -66,6 +72,10 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 
 // ── Schema initialisation ─────────────────────────────────────────────────────
 
+/**
+ * Must be called once at app startup (e.g. in App.tsx or a top-level provider).
+ * Uses CREATE TABLE IF NOT EXISTS so it is safe to call on every launch.
+ */
 export async function initDatabase(): Promise<void> {
   const db = await getDatabase();
 
@@ -108,13 +118,11 @@ export async function initDatabase(): Promise<void> {
       knee_angle  REAL NOT NULL DEFAULT 0,
       FOREIGN KEY (session_id) REFERENCES sessions(id)
     );
-
     CREATE INDEX IF NOT EXISTS idx_sessions_user_id
       ON sessions(user_id);
 
     CREATE INDEX IF NOT EXISTS idx_sessions_timestamp
       ON sessions(timestamp);
-
     CREATE INDEX IF NOT EXISTS idx_emg_samples_session_id
       ON emg_samples(session_id);
   `);
@@ -160,13 +168,6 @@ export async function insertSession(session: Session): Promise<void> {
   );
 }
 
-export async function fetchAllSessions(): Promise<Session[]> {
-  const db = await getDatabase();
-  const rows = await db.getAllAsync<any>(
-    `SELECT * FROM sessions ORDER BY timestamp DESC`
-  );
-  return rows.map(rowToSession);
-}
 
 export async function fetchSessionsByUser(userId: string): Promise<Session[]> {
   const db = await getDatabase();
@@ -177,6 +178,15 @@ export async function fetchSessionsByUser(userId: string): Promise<Session[]> {
   return rows.map(rowToSession);
 }
 
+export async function fetchAllSessions(): Promise<Session[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<any>(
+    `SELECT * FROM sessions ORDER BY timestamp DESC`
+  );
+  return rows.map(rowToSession);
+}
+
+/** Returns sessions not yet synced to Firebase — the offline queue */
 export async function fetchUnsyncedSessions(): Promise<Session[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<any>(
@@ -240,7 +250,6 @@ export async function countEMGSamples(sessionId: string): Promise<number> {
   );
   return row?.count ?? 0;
 }
-
 // ── Row mapper ────────────────────────────────────────────────────────────────
 
 function rowToSession(row: any): Session {
