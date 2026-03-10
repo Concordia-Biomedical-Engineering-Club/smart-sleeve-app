@@ -31,6 +31,10 @@ describe('deviceSlice', () => {
       restDurationSec: 0,
     },
     isFilteringEnabled: true,
+    sessionStatus: 'IDLE',
+sessionStartTime: null,
+recordingBuffer: [],
+recordingKneeAngles: [],
   };
 
   test('should handle initial state', () => {

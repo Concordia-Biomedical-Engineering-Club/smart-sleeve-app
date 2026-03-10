@@ -24,8 +24,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     const auth = getAuth();
-
-    // Listen to Firebase auth state changes
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         store.dispatch(
@@ -35,8 +33,7 @@ export default function RootLayout() {
         store.dispatch(logout());
       }
     });
-
-    return unsubscribe; // clean up listener on unmount
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
