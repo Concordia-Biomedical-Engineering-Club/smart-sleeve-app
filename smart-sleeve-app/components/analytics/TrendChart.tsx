@@ -60,10 +60,18 @@ export function TrendChart({
         Shadows.card,
       ]}
     >
-      <ThemedText style={[Typography.heading3, styles.cardTitle]}>
+      <ThemedText
+        style={[Typography.heading3, styles.cardTitle, { color: theme.text }]}
+      >
         {title}
       </ThemedText>
-      <ThemedText style={[Typography.caption, styles.cardSubtitle]}>
+      <ThemedText
+        style={[
+          Typography.caption,
+          styles.cardSubtitle,
+          { color: theme.textSecondary },
+        ]}
+      >
         {subtitle}
       </ThemedText>
 
@@ -116,13 +124,10 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 10,
   },
-  cardTitle: {
-    color: "#1A1A1A",
-  },
   cardSubtitle: {
-    color: "#000000",
     marginBottom: 16,
   },
+  cardTitle: {},
   chartContainer: {
     alignItems: "center",
     marginVertical: 10,

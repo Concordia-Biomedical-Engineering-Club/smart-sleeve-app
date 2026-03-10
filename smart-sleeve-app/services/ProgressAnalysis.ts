@@ -158,40 +158,51 @@ export function buildMetricTrend(
     return date;
   });
 
-  return {
-    labels: dates.map((date, index) => {
-      if (days <= 7) {
-        return date.toLocaleDateString([], { weekday: "short" });
-      }
-
-      const labelStep = days === 30 ? 5 : 14;
-      return index % labelStep === 0 || index === dates.length - 1
-        ? date.toLocaleDateString([], { month: "short", day: "numeric" })
-        : "";
-    }),
-    values: dates.map((date) => {
+  const points = dates.reduce<Array<{ date: Date; value: number }>>(
+    (accumulator, date) => {
       const matchingSessions = sessions.filter(
         (session) =>
           new Date(session.timestamp).toDateString() === date.toDateString(),
       );
 
-      if (matchingSessions.length === 0) return 0;
-
-      if (metric === "romDegrees") {
-        return Math.max(
-          ...matchingSessions.map((session) => session.analytics.romDegrees),
-        );
+      if (matchingSessions.length === 0) {
+        return accumulator;
       }
 
-      return roundToOneDecimal(
-        (matchingSessions.reduce(
-          (sum, session) => sum + session.analytics.exerciseQuality,
-          0,
-        ) /
-          matchingSessions.length) *
-          100,
-      );
+      const value =
+        metric === "romDegrees"
+          ? Math.max(
+              ...matchingSessions.map(
+                (session) => session.analytics.romDegrees,
+              ),
+            )
+          : roundToOneDecimal(
+              (matchingSessions.reduce(
+                (sum, session) => sum + session.analytics.exerciseQuality,
+                0,
+              ) /
+                matchingSessions.length) *
+                100,
+            );
+
+      accumulator.push({ date, value });
+      return accumulator;
+    },
+    [],
+  );
+
+  return {
+    labels: points.map(({ date }, index) => {
+      if (days <= 7) {
+        return date.toLocaleDateString([], { weekday: "short" });
+      }
+
+      const labelStep = days === 30 ? 5 : 14;
+      return index % labelStep === 0 || index === points.length - 1
+        ? date.toLocaleDateString([], { month: "short", day: "numeric" })
+        : "";
     }),
+    values: points.map(({ value }) => value),
   };
 }
 

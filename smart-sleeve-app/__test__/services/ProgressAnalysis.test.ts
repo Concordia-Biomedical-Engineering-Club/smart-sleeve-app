@@ -1,5 +1,6 @@
 import {
   buildSessionComparison,
+  buildMetricTrend,
   computeCompletionRate,
   computeDeficitPercentageFromEMGFrames,
   computeIntensityScore,
@@ -154,6 +155,51 @@ describe("ProgressAnalysis", () => {
         fatigueDelta: -1,
       }),
     );
+  });
+
+  test("buildMetricTrend omits empty days instead of plotting fake zero values", () => {
+    const now = new Date();
+    now.setHours(12, 0, 0, 0);
+
+    const threeDaysAgo = new Date(now);
+    threeDaysAgo.setDate(now.getDate() - 3);
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+
+    const trend = buildMetricTrend(
+      [
+        createSession({
+          id: "older",
+          timestamp: threeDaysAgo.getTime(),
+          analytics: {
+            avgActivation: 0.42,
+            maxActivation: 0.78,
+            deficitPercentage: 0,
+            fatigueScore: 4,
+            romDegrees: 80,
+            exerciseQuality: 0.8,
+          },
+        }),
+        createSession({
+          id: "recent",
+          timestamp: yesterday.getTime(),
+          analytics: {
+            avgActivation: 0.42,
+            maxActivation: 0.78,
+            deficitPercentage: 0,
+            fatigueScore: 4,
+            romDegrees: 92,
+            exerciseQuality: 0.9,
+          },
+        }),
+      ],
+      "7D",
+      "romDegrees",
+    );
+
+    expect(trend.values).toEqual([80, 92]);
+    expect(trend.labels).toHaveLength(2);
   });
 
   test("generateSessionRecommendation highlights regression and improvement cases", () => {
