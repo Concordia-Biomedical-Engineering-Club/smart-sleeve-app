@@ -22,6 +22,7 @@ import {
   selectShowNormalized,
   toggleNormalizedMode,
   setCalibration,
+  selectInjuredSide,
 } from "../../store/userSlice";
 import type { CalibrationCoefficients } from "../../store/userSlice";
 import { RootState } from "../../store/store";
@@ -37,12 +38,17 @@ import { EXERCISE_LIBRARY } from "@/constants/exercises";
 import { WorkoutOverlay } from "@/components/dashboard/WorkoutOverlay";
 import CalibrationOverlay from "@/components/dashboard/CalibrationOverlay";
 
-const ALL_CHANNELS = (theme: any) => [
-  { id: 0, label: "Vastus Medialis (VMO)", color: theme.tint },
-  { id: 1, label: "Vastus Lateralis (VL)", color: "#FF6B6B" },
-  { id: 2, label: "Semitendinosus (Medial)", color: "#4ECDC4" },
-  { id: 3, label: "Biceps Femoris (Lateral)", color: "#FFE66D" },
-];
+const getChannels = (injuredSide: 'LEFT' | 'RIGHT' | null, theme: any) => {
+  const isLeftInjured = (injuredSide ?? 'LEFT') === 'LEFT';
+  const injured = (name: string) => `${name} (Injured)`;
+  const healthy = (name: string) => `${name} (Healthy)`;
+  return [
+    { id: 0, label: isLeftInjured ? injured('VMO') : healthy('VMO'), color: theme.tint },
+    { id: 1, label: isLeftInjured ? injured('VL') : healthy('VL'), color: "#FF6B6B" },
+    { id: 2, label: isLeftInjured ? injured('Semitendinosus') : healthy('Semitendinosus'), color: "#4ECDC4" },
+    { id: 3, label: isLeftInjured ? injured('Biceps Femoris') : healthy('Biceps Femoris'), color: "#FFE66D" },
+  ];
+};
 
 export default function DashboardScreen() {
   const dispatch = useDispatch();
@@ -53,6 +59,7 @@ export default function DashboardScreen() {
   const isCalibrated = useSelector(selectIsCalibrated);
   const showNormalized = useSelector(selectShowNormalized);
   const latestFeatures = useSelector((state: RootState) => state.device.latestFeatures);
+  const injuredSide = useSelector(selectInjuredSide);
 
   const [showCalibration, setShowCalibration] = useState(false);
 
@@ -65,15 +72,15 @@ export default function DashboardScreen() {
   const theme = Colors[colorScheme ?? "light"];
   const [timeframe, setTimeframe] = useState("Daily");
 
-  const userName = user?.email ? user.email.split("@")[0] : "Emily";
-  const channels = ALL_CHANNELS(theme);
+  const userName = user?.email ? user.email.split("@")[0] : "Athlete";
+  const channels = getChannels(injuredSide, theme);
 
   const handleStartSession = () => {
     dispatch(
       startWorkout({
         exerciseId: "quad-sets",
         exerciseName: "Quad Sets",
-        targetSide: "LEFT",
+        targetSide: injuredSide ?? "LEFT",
         totalReps: 5,
         workDurationSec: 5,
         restDurationSec: 3,
@@ -105,7 +112,6 @@ export default function DashboardScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* HEADER */}
         {!isWorkoutActive ? (
           <View style={styles.headerContainer}>
             <View style={styles.topRow}>
@@ -120,6 +126,11 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
             <ThemedText style={styles.greeting}>Hey {userName},</ThemedText>
+            {injuredSide && (
+              <ThemedText style={[styles.sideLabel, { color: theme.textSecondary }]}>
+                Rehabbing: {injuredSide === 'LEFT' ? 'Left' : 'Right'} Knee
+              </ThemedText>
+            )}
             <View style={{ marginTop: 16 }}>
               <SegmentedControl
                 options={["Daily", "Weekly", "Monthly"]}
@@ -134,7 +145,6 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* CALIBRATION ROW */}
         <View style={styles.calibrationRow}>
           <TouchableOpacity
             style={[styles.calibrateBtn, { borderColor: theme.tint }]}
@@ -161,7 +171,6 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        {/* GUIDED SESSION ACTION */}
         {!isWorkoutActive && (
           <TouchableOpacity
             style={[styles.libraryAction, { backgroundColor: theme.tint + '15', borderColor: theme.tint }]}
@@ -175,7 +184,6 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         )}
 
-        {/* PRIMARY METRIC */}
         <CircularDataCard
           title="Flexion Angle"
           currentValue={`${currentKneeAngle}°`}
@@ -192,7 +200,6 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         )}
 
-        {/* BIOFEEDBACK */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionTitleRow}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>
@@ -221,7 +228,6 @@ export default function DashboardScreen() {
           })}
         </View>
 
-        {/* GRID STATS */}
         {!isWorkoutActive && (
           <View style={styles.gridContainer}>
             <View style={styles.gridRow}>
@@ -236,7 +242,6 @@ export default function DashboardScreen() {
         )}
       </ScrollView>
 
-      {/* CALIBRATION OVERLAY */}
       <CalibrationOverlay
         visible={showCalibration}
         liveRMS={liveRMS}
@@ -254,6 +259,7 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   iconButton: { padding: 8 },
   greeting: { fontSize: 28, fontWeight: "bold" },
+  sideLabel: { fontSize: 14, marginTop: 2 },
   calibrationRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
   calibrateBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   calibrateBtnText: { fontSize: 13, fontWeight: "600" },

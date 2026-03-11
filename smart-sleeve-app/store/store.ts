@@ -25,8 +25,6 @@ const storage =
       }
     : AsyncStorage;
 
-// ── Migrations ────────────────────────────────────────────────────────────────
-// Version 1 → 2: add calibration fields to user state
 const migrations: any = {
   2: (state: any) => ({
     ...state,
@@ -40,12 +38,29 @@ const migrations: any = {
       showNormalized: false,
     },
   }),
+  3: (state: any) => ({
+    ...state,
+    user: {
+      ...state.user,
+      injuredSide: null,
+      hasCompletedOnboarding: false,
+    },
+  }),
+  4: (state: any) => ({
+    ...state,
+    user: {
+      ...state.user,
+      injuryDetails: null,
+      therapyGoal: null,
+    },
+  }),
+  
 };
 
 const rootPersistConfig = {
   key: "root",
   storage,
-  version: 2,
+  version: 4,
   migrate: createMigrate(migrations, { debug: false }),
   whitelist: ["user"],
 };

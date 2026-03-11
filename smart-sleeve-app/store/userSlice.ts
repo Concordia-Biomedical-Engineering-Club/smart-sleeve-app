@@ -7,12 +7,18 @@ export interface CalibrationCoefficients {
   calibratedAt: number | null;
 }
 
+export type InjuredSide = 'LEFT' | 'RIGHT';
+
 interface UserState {
   isLoggedIn: boolean;
   email: string | null;
   isAuthenticated: boolean;
   calibration: CalibrationCoefficients;
   showNormalized: boolean;
+  injuredSide: InjuredSide | null;
+  hasCompletedOnboarding: boolean;
+  injuryDetails: string | null;
+  therapyGoal: string | null;
 }
 
 const CHANNELS = 4;
@@ -27,6 +33,10 @@ const initialState: UserState = {
     calibratedAt: null,
   },
   showNormalized: false,
+  injuredSide: null,
+  hasCompletedOnboarding: false,
+  injuryDetails: null,
+  therapyGoal: null,
 };
 
 const userSlice = createSlice({
@@ -60,15 +70,33 @@ const userSlice = createSlice({
         state.showNormalized = !state.showNormalized;
       }
     },
+    setInjuredSide: (state, action: PayloadAction<InjuredSide>) => {
+      state.injuredSide = action.payload;
+    },
+    setInjuryDetails: (state, action: PayloadAction<string>) => {
+      state.injuryDetails = action.payload;
+    },
+    setTherapyGoal: (state, action: PayloadAction<string>) => {
+      state.therapyGoal = action.payload;
+    },
+    completeOnboarding: (state) => {
+      state.hasCompletedOnboarding = true;
+    },
   },
 });
 
 export const {
-  login, signup, logout, setCalibration, resetCalibration, toggleNormalizedMode,
+  login, signup, logout,
+  setCalibration, resetCalibration, toggleNormalizedMode,
+  setInjuredSide, setInjuryDetails, setTherapyGoal, completeOnboarding,
 } = userSlice.actions;
 
 export const selectCalibration = (state: RootState) => state.user.calibration;
 export const selectIsCalibrated = (state: RootState) => state.user.calibration.calibratedAt !== null;
 export const selectShowNormalized = (state: RootState) => state.user.showNormalized;
+export const selectInjuredSide = (state: RootState) => state.user.injuredSide;
+export const selectHasCompletedOnboarding = (state: RootState) => state.user.hasCompletedOnboarding;
+export const selectInjuryDetails = (state: RootState) => state.user.injuryDetails;
+export const selectTherapyGoal = (state: RootState) => state.user.therapyGoal;
 
 export default userSlice.reducer;
