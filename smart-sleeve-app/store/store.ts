@@ -5,6 +5,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import {
   persistStore,
   persistReducer,
+  createMigrate,
   FLUSH,
   REHYDRATE,
   PAUSE,
@@ -15,7 +16,6 @@ import {
 import userReducer from "./userSlice";
 import deviceReducer from "./deviceSlice";
 
-// Fallback storage for SSR (Web)
 const storage =
   Platform.OS === "web" && typeof window === "undefined"
     ? {
@@ -25,16 +25,35 @@ const storage =
       }
     : AsyncStorage;
 
+// ── Migrations ────────────────────────────────────────────────────────────────
+// Version 1 → 2: add calibration fields to user state
+const migrations: any = {
+  2: (state: any) => ({
+    ...state,
+    user: {
+      ...state.user,
+      calibration: {
+        baseline: [0, 0, 0, 0],
+        mvc: [1, 1, 1, 1],
+        calibratedAt: null,
+      },
+      showNormalized: false,
+    },
+  }),
+};
+
 const rootPersistConfig = {
   key: "root",
   storage,
-  whitelist: ["user"], // user persists via root
+  version: 2,
+  migrate: createMigrate(migrations, { debug: false }),
+  whitelist: ["user"],
 };
 
 const devicePersistConfig = {
   key: 'device',
   storage,
-  whitelist: ['isFilteringEnabled'], // ONLY persist preferences, not live buffers
+  whitelist: ['isFilteringEnabled'],
 };
 
 const rootReducer = combineReducers({

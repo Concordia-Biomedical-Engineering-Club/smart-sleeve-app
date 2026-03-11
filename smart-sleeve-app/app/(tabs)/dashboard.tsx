@@ -17,6 +17,13 @@ import {
   selectWorkout,
   startWorkout,
 } from "../../store/deviceSlice";
+import {
+  selectIsCalibrated,
+  selectShowNormalized,
+  toggleNormalizedMode,
+  setCalibration,
+} from "../../store/userSlice";
+import type { CalibrationCoefficients } from "../../store/userSlice";
 import { RootState } from "../../store/store";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
@@ -28,6 +35,7 @@ import StatCard from "@/components/StatCard";
 import { RMSGraph } from "@/components/dashboard/RMSGraph";
 import { EXERCISE_LIBRARY } from "@/constants/exercises";
 import { WorkoutOverlay } from "@/components/dashboard/WorkoutOverlay";
+import CalibrationOverlay from "@/components/dashboard/CalibrationOverlay";
 
 const ALL_CHANNELS = (theme: any) => [
   { id: 0, label: "Vastus Medialis (VMO)", color: theme.tint },
@@ -42,6 +50,11 @@ export default function DashboardScreen() {
   const kneeAngleBuffer = useSelector(selectKneeAngleBuffer);
   const isWorkoutActive = useSelector(selectIsWorkoutActive);
   const workout = useSelector(selectWorkout);
+  const isCalibrated = useSelector(selectIsCalibrated);
+  const showNormalized = useSelector(selectShowNormalized);
+  const latestFeatures = useSelector((state: RootState) => state.device.latestFeatures);
+
+  const [showCalibration, setShowCalibration] = useState(false);
 
   const currentKneeAngle =
     kneeAngleBuffer.length > 0
@@ -53,7 +66,6 @@ export default function DashboardScreen() {
   const [timeframe, setTimeframe] = useState("Daily");
 
   const userName = user?.email ? user.email.split("@")[0] : "Emily";
-  
   const channels = ALL_CHANNELS(theme);
 
   const handleStartSession = () => {
@@ -69,53 +81,45 @@ export default function DashboardScreen() {
     );
   };
 
+  const handleCalibrationComplete = (coeffs: CalibrationCoefficients) => {
+    dispatch(setCalibration(coeffs));
+    setShowCalibration(false);
+  };
+
+  const handleToggleNormalized = () => {
+    dispatch(toggleNormalizedMode());
+  };
+
   const sortedChannels = React.useMemo(() => {
     if (!isWorkoutActive || !workout.exerciseId) return channels;
-    
     const exerciseData = EXERCISE_LIBRARY.find(ex => ex.id === workout.exerciseId);
     if (!exerciseData) return channels;
-
     const primaries = channels.filter(c => exerciseData.primaryChannels.includes(c.id));
     const secondaries = channels.filter(c => !exerciseData.primaryChannels.includes(c.id));
-    
     return [...primaries, ...secondaries];
   }, [isWorkoutActive, workout.exerciseId, channels]);
 
+  const liveRMS = latestFeatures?.rms ?? [];
+
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.background }]}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* DYNAMIC HEADER: Integrated Session HUD or Standard Greeting */}
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+        {/* HEADER */}
         {!isWorkoutActive ? (
           <View style={styles.headerContainer}>
             <View style={styles.topRow}>
-              <TouchableOpacity
-                onPress={() => router.push("/modal")}
-                style={styles.iconButton}
-              >
+              <TouchableOpacity onPress={() => router.push("/modal")} style={styles.iconButton}>
                 <Image
                   source={require("../../assets/images/settings.png")}
-                  style={{
-                    width: 24,
-                    height: 24,
-                    resizeMode: "contain",
-                    tintColor: theme.icon ?? theme.text,
-                  }}
+                  style={{ width: 24, height: 24, resizeMode: "contain", tintColor: theme.icon ?? theme.text }}
                 />
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => console.log("Notification")}
-                style={styles.iconButton}
-              >
+              <TouchableOpacity onPress={() => console.log("Notification")} style={styles.iconButton}>
                 <IconSymbol name="bell.fill" size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
             <ThemedText style={styles.greeting}>Hey {userName},</ThemedText>
-            
             <View style={{ marginTop: 16 }}>
               <SegmentedControl
                 options={["Daily", "Weekly", "Monthly"]}
@@ -130,9 +134,36 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* GUIDED SESSION ACTION (Hidden during active workout) */}
+        {/* CALIBRATION ROW */}
+        <View style={styles.calibrationRow}>
+          <TouchableOpacity
+            style={[styles.calibrateBtn, { borderColor: theme.tint }]}
+            onPress={() => setShowCalibration(true)}
+          >
+            <IconSymbol name="waveform" size={16} color={theme.tint} />
+            <ThemedText style={[styles.calibrateBtnText, { color: theme.tint }]}>
+              {isCalibrated ? "Re-Calibrate" : "Calibrate Sensors"}
+            </ThemedText>
+          </TouchableOpacity>
+
+          {isCalibrated && (
+            <TouchableOpacity
+              style={[
+                styles.toggleBtn,
+                { backgroundColor: showNormalized ? theme.tint : theme.cardBackground, borderColor: theme.tint }
+              ]}
+              onPress={handleToggleNormalized}
+            >
+              <ThemedText style={[styles.toggleBtnText, { color: showNormalized ? "#fff" : theme.tint }]}>
+                {showNormalized ? "% MVC" : "μV"}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* GUIDED SESSION ACTION */}
         {!isWorkoutActive && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.libraryAction, { backgroundColor: theme.tint + '15', borderColor: theme.tint }]}
             onPress={() => router.push('/(tabs)/exercises')}
           >
@@ -144,7 +175,7 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         )}
 
-        {/* PRIMARY METRIC: Transition to semi-transparent during workout or hide optional parts */}
+        {/* PRIMARY METRIC */}
         <CircularDataCard
           title="Flexion Angle"
           currentValue={`${currentKneeAngle}°`}
@@ -157,25 +188,27 @@ export default function DashboardScreen() {
             style={[styles.startButton, { backgroundColor: theme.success }]}
             onPress={handleStartSession}
           >
-            <ThemedText style={styles.startButtonText}>
-              ▶  Quick Start (Quad Sets)
-            </ThemedText>
+            <ThemedText style={styles.startButtonText}>▶  Quick Start (Quad Sets)</ThemedText>
           </TouchableOpacity>
         )}
 
-        {/* BIOFEEDBACK SECTION: Always high visibility */}
+        {/* BIOFEEDBACK */}
         <View style={styles.sectionContainer}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Live Muscle Activation
-          </ThemedText>
-          
-          {sortedChannels.map((channel, index) => {
-            const isPrimary = isWorkoutActive && 
+          <View style={styles.sectionTitleRow}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              Live Muscle Activation
+            </ThemedText>
+            {isCalibrated && (
+              <ThemedText style={[styles.unitLabel, { color: theme.textSecondary }]}>
+                {showNormalized ? "% MVC" : "μV"}
+              </ThemedText>
+            )}
+          </View>
+
+          {sortedChannels.map((channel) => {
+            const isPrimary = isWorkoutActive &&
               EXERCISE_LIBRARY.find(ex => ex.id === workout.exerciseId)?.primaryChannels.includes(channel.id);
-            
-            // During workout, shrink the height of "antagonist" or secondary muscles to save space
             const graphHeight = isWorkoutActive && !isPrimary ? 80 : 120;
-            
             return (
               <RMSGraph
                 key={channel.id}
@@ -188,7 +221,7 @@ export default function DashboardScreen() {
           })}
         </View>
 
-        {/* GRID STATS (Hidden during workout to clear space) */}
+        {/* GRID STATS */}
         {!isWorkoutActive && (
           <View style={styles.gridContainer}>
             <View style={styles.gridRow}>
@@ -202,85 +235,41 @@ export default function DashboardScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* CALIBRATION OVERLAY */}
+      <CalibrationOverlay
+        visible={showCalibration}
+        liveRMS={liveRMS}
+        onComplete={handleCalibrationComplete}
+        onDismiss={() => setShowCalibration(false)}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  headerContainer: {
-    marginBottom: 20,
-    paddingHorizontal: 4,
-  },
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  iconButton: {
-    padding: 8,
-  },
-  greeting: {
-    fontSize: 28,
-    fontWeight: "bold",
-  },
-  startButton: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  startButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  sectionContainer: {
-    marginVertical: 20,
-  },
-  sectionTitle: {
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  gridContainer: {
-    gap: 12,
-  },
-  gridRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    gap: 12,
-  },
-  libraryAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 12,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    justifyContent: 'space-between',
-  },
-  actionTextContainer: {
-    gap: 4,
-  },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  actionSubtitle: {
-    fontSize: 13,
-  },
-  workoutHudHeader: {
-    marginBottom: 0,
-    backgroundColor: 'transparent',
-  },
+  safeArea: { flex: 1, paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0 },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+  headerContainer: { marginBottom: 20, paddingHorizontal: 4 },
+  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  iconButton: { padding: 8 },
+  greeting: { fontSize: 28, fontWeight: "bold" },
+  calibrationRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
+  calibrateBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  calibrateBtnText: { fontSize: 13, fontWeight: "600" },
+  toggleBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  toggleBtnText: { fontSize: 13, fontWeight: "700" },
+  startButton: { borderRadius: 14, paddingVertical: 14, alignItems: "center", marginBottom: 8 },
+  startButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16 },
+  sectionContainer: { marginVertical: 20 },
+  sectionTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8, marginLeft: 4 },
+  sectionTitle: {},
+  unitLabel: { fontSize: 12, fontWeight: "600" },
+  gridContainer: { gap: 12 },
+  gridRow: { flexDirection: "row", justifyContent: "space-between", width: "100%", gap: 12 },
+  libraryAction: { flexDirection: 'row', alignItems: 'center', marginVertical: 12, padding: 16, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', justifyContent: 'space-between' },
+  actionTextContainer: { gap: 4 },
+  actionTitle: { fontSize: 16, fontWeight: '700' },
+  actionSubtitle: { fontSize: 13 },
+  workoutHudHeader: { marginBottom: 0, backgroundColor: 'transparent' },
 });
