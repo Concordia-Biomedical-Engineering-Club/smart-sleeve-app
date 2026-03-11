@@ -39,6 +39,7 @@ import {
   getSignalBadgeLabel,
   getSignalToggleLabel,
 } from "@/components/dashboard/signalDisplay";
+import SymmetryCard from "@/components/dashboard/SymmetryCard";
 
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 
@@ -82,6 +83,9 @@ export default function DashboardScreen() {
   const workout = useSelector(selectWorkout);
   const isCalibrated = useSelector(selectIsCalibrated);
   const showNormalized = useSelector(selectShowNormalized);
+  const latestFeatures = useSelector(
+    (state: RootState) => state.device.latestFeatures,
+  );
   const latestCalibrationSample = useSelector(
     (state: RootState) => state.device.latestCalibrationSample,
   );
@@ -277,6 +281,10 @@ export default function DashboardScreen() {
             );
           })}
         </View>
+
+        {isCalibrated && showNormalized && (latestFeatures as any)?.rmsNormalized && (
+          <SymmetryCard normalizedPct={latestFeatures.rmsNormalized} />
+        )}
 
         {!isWorkoutActive && (
           <View style={styles.gridContainer}>
