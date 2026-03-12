@@ -8,11 +8,11 @@ import {
   RefreshControl,
   Text,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 import { ThemedText } from "@/components/themed-text";
-import { Colors, Shadows, Typography } from "@/constants/theme";
+import { Colors, Shadows } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { fetchSessionsByFilters, Session } from "@/services/Database";
@@ -22,6 +22,8 @@ import { TrendChart } from "@/components/analytics/TrendChart";
 import { RootState } from "@/store/store";
 import { SegmentedControl } from "@/components/dashboard/SegmentedControl";
 import { buildMetricTrend, TimeframeOption } from "@/services/ProgressAnalysis";
+
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
 
 type SideFilter = "BOTH" | "LEFT" | "RIGHT";
 
@@ -85,7 +87,7 @@ function SessionHistoryCard({
               {session.side[0]}
             </ThemedText>
           </View>
-          <ThemedText type="defaultSemiBold" style={styles.exerciseNameText}>
+          <ThemedText type="bodyBold" style={styles.exerciseNameText}>
             {exerciseName}
           </ThemedText>
         </View>
@@ -158,7 +160,7 @@ export default function ProgressScreen() {
     return startDate.getTime();
   }, [timeframe]);
 
-  const loadSessions = async () => {
+  const loadSessions = React.useCallback(async () => {
     try {
       setErrorMessage(null);
       const data = await fetchSessionsByFilters({
@@ -175,11 +177,11 @@ export default function ProgressScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [selectedExercise, selectedSide, timeframeStart, user.email]);
 
   useEffect(() => {
     loadSessions();
-  }, [selectedExercise, selectedSide, timeframe, timeframeStart, user.email]);
+  }, [loadSessions]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -268,7 +270,7 @@ export default function ProgressScreen() {
       <View
         style={[styles.loadingContainer, { backgroundColor: theme.background }]}
       >
-        <ActivityIndicator size="large" color={theme.tint} />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -284,20 +286,19 @@ export default function ProgressScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={theme.tint}
+            tintColor={theme.primary}
           />
         }
       >
-        <View style={styles.header}>
-          <ThemedText style={Typography.heading1}>Progress Log</ThemedText>
-          <TouchableOpacity onPress={onRefresh} style={styles.syncButton}>
-            <IconSymbol
-              name="arrow.triangle.2.circlepath"
-              size={20}
-              color={theme.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader
+          badgeLabel="SESSION HISTORY"
+          rightIcon="arrow.triangle.2.circlepath"
+          onRightPress={onRefresh}
+        />
+
+        <ThemedText type="title" style={styles.pageTitle}>
+          Progress Log
+        </ThemedText>
 
         {errorMessage ? (
           <View
@@ -318,22 +319,24 @@ export default function ProgressScreen() {
         <View
           style={[
             styles.filterCard,
-            { backgroundColor: theme.cardBackground },
-            Shadows.card,
+            { backgroundColor: theme.secondaryCard, borderColor: theme.border },
           ]}
         >
-          <ThemedText type="defaultSemiBold" style={styles.filterTitle}>
-            Timeframe
+          <ThemedText
+            type="label"
+            style={[styles.filterTitle, { color: theme.textSecondary }]}
+          >
+            Filters
           </ThemedText>
+
           <SegmentedControl
             options={["7D", "30D", "90D"]}
             selectedOption={timeframe}
             onSelect={(option) => setTimeframe(option as TimeframeOption)}
           />
 
-          <ThemedText type="defaultSemiBold" style={styles.filterTitle}>
-            Side
-          </ThemedText>
+          <View style={{ height: 12 }} />
+
           <SegmentedControl
             options={["Both", "Left", "Right"]}
             selectedOption={
@@ -354,9 +357,8 @@ export default function ProgressScreen() {
             }}
           />
 
-          <ThemedText type="defaultSemiBold" style={styles.filterTitle}>
-            Exercise
-          </ThemedText>
+          <View style={{ height: 16 }} />
+
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -381,16 +383,18 @@ export default function ProgressScreen() {
                       styles.exerciseChip,
                       {
                         backgroundColor: isSelected
-                          ? theme.tint
+                          ? theme.primary
                           : theme.background,
-                        borderColor: isSelected ? theme.tint : theme.border,
+                        borderColor: isSelected ? theme.primary : theme.border,
                       },
+                      isSelected && Shadows.button,
                     ]}
                   >
                     <Text
                       style={{
-                        color: isSelected ? "#fff" : theme.text,
-                        fontWeight: "600",
+                        color: isSelected ? "#fff" : theme.textSecondary,
+                        fontSize: 12,
+                        fontWeight: "700",
                       }}
                     >
                       {label}
@@ -405,56 +409,18 @@ export default function ProgressScreen() {
         {/* ANALYTICS SNAPSHOT */}
         <View style={styles.statsContainer}>
           <View style={styles.row}>
+            <StatCard label="Avg Quality" value={`${stats.avgQuality}%`} />
             <StatCard
-              label="Quality"
-              value={`${stats.avgQuality}%`}
-              image={require("@/assets/images/target.png")}
-              imageStyle={{
-                width: 60,
-                height: 60,
-                bottom: -5,
-                right: -5,
-                opacity: 0.2,
-              }}
-            />
-            <StatCard
-              label="Sessions"
+              label="Total Sessions"
               value={stats.sessionCount.toString()}
-              image={require("@/assets/images/fire.png")}
-              imageStyle={{
-                width: 60,
-                height: 60,
-                bottom: -5,
-                right: -5,
-                opacity: 0.2,
-              }}
             />
           </View>
           <View style={styles.row}>
             <StatCard
-              label="Min Trained"
+              label="Mins Trained"
               value={stats.totalDuration.toString()}
-              image={require("@/assets/images/woman.png")}
-              imageStyle={{
-                width: 60,
-                height: 60,
-                bottom: -5,
-                right: -5,
-                opacity: 0.2,
-              }}
             />
-            <StatCard
-              label="Peak ROM"
-              value={`${stats.maxROM}°`}
-              image={require("@/assets/images/trophy.png")}
-              imageStyle={{
-                width: 60,
-                height: 60,
-                bottom: -5,
-                right: -5,
-                opacity: 0.2,
-              }}
-            />
+            <StatCard label="Peak ROM" value={`${stats.maxROM}°`} />
           </View>
         </View>
 
@@ -482,7 +448,10 @@ export default function ProgressScreen() {
 
         {/* RECENT ACTIVITY LIST */}
         <View style={styles.historyContainer}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
+          <ThemedText
+            type="label"
+            style={[styles.sectionTitle, { color: theme.textSecondary }]}
+          >
             Recent Activity
           </ThemedText>
 
@@ -520,28 +489,10 @@ export default function ProgressScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
-    paddingHorizontal: 4,
-  },
-  syncButton: {
-    padding: 8,
-  },
+  safeArea: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  scrollContent: { padding: 24, paddingBottom: 40 },
+  pageTitle: { marginBottom: 24 },
   errorBanner: {
     borderRadius: 16,
     borderWidth: 1,
@@ -549,44 +500,35 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   filterCard: {
-    padding: 16,
-    borderRadius: 20,
-    marginBottom: 24,
+    padding: 20,
+    borderRadius: 24,
+    marginBottom: 32,
+    borderWidth: 1,
   },
   filterTitle: {
-    marginBottom: 10,
+    marginBottom: 16,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
   },
-  exerciseChipRow: {
-    gap: 10,
-    paddingRight: 8,
-  },
+  exerciseChipRow: { gap: 10, paddingRight: 8 },
   exerciseChip: {
-    borderRadius: 999,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
-  statsContainer: {
-    marginBottom: 24,
-    gap: 12,
-  },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  chartWrapper: {
-    marginBottom: 32,
-  },
-  historyContainer: {
-    flex: 1,
-  },
+  statsContainer: { marginBottom: 32, gap: 16 },
+  row: { flexDirection: "row", gap: 16 },
+  chartWrapper: { marginBottom: 32 },
+  historyContainer: { flex: 1 },
   sectionTitle: {
     marginBottom: 16,
-    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
   },
-  dateGroup: {
-    marginBottom: 24,
-  },
+  dateGroup: { marginBottom: 24 },
   dateHeader: {
     fontSize: 13,
     fontWeight: "700",
@@ -597,47 +539,32 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
   },
   sessionCard: {
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
     position: "relative",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.02)",
   },
   sessionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  sessionTypeInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
+  sessionTypeInfo: { flexDirection: "row", alignItems: "center", gap: 12 },
   sideIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
   },
-  sideIndicatorText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  exerciseNameText: {
-    fontSize: 16,
-  },
-  sessionTimeText: {
-    fontSize: 12,
-    opacity: 0.5,
-  },
-  sessionDetails: {
-    gap: 12,
-  },
-  statItem: {
-    gap: 6,
-  },
+  sideIndicatorText: { color: "#fff", fontSize: 14, fontWeight: "900" },
+  exerciseNameText: { fontSize: 17 },
+  sessionTimeText: { fontSize: 12, opacity: 0.5 },
+  sessionDetails: { gap: 16 },
+  statItem: { gap: 8 },
   statLabel: {
     fontSize: 10,
     fontWeight: "800",
@@ -645,45 +572,23 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   qualityBarBg: {
-    height: 6,
+    height: 8,
     backgroundColor: "rgba(0,0,0,0.05)",
-    borderRadius: 3,
+    borderRadius: 4,
     overflow: "hidden",
   },
-  qualityBarFill: {
-    height: "100%",
-    borderRadius: 3,
-  },
-  metricRow: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  miniMetric: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  miniMetricText: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  chevron: {
-    position: "absolute",
-    right: 16,
-    top: "50%",
-    marginTop: 8,
-  },
+  qualityBarFill: { height: "100%", borderRadius: 4 },
+  metricRow: { flexDirection: "row", gap: 20 },
+  miniMetric: { flexDirection: "row", alignItems: "center", gap: 6 },
+  miniMetricText: { fontSize: 13, opacity: 0.7, fontWeight: "600" },
+  chevron: { position: "absolute", right: 20, top: "50%", marginTop: 10 },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 60,
     gap: 12,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    opacity: 0.8,
-  },
+  emptyTitle: { fontSize: 20, fontWeight: "700", opacity: 0.8 },
   emptySubtitle: {
     fontSize: 14,
     textAlign: "center",

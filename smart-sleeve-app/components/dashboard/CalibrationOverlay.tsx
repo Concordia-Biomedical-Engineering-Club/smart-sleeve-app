@@ -1,12 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  Animated,
-} from "react-native";
+import { View, StyleSheet, TouchableOpacity, Animated } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
@@ -21,6 +14,8 @@ import {
   reset,
   BASELINE_DURATION_SEC,
 } from "@/services/NormalizationService";
+import { AppModal } from "@/components/ui/AppModal";
+import { ThemedText } from "@/components/themed-text";
 
 const MVC_DURATION_SEC = 5;
 export const CALIBRATION_CHANNEL_LABELS = ["VMO", "VL", "ST", "BF"];
@@ -63,34 +58,35 @@ export default function CalibrationOverlay({
       setErrorMsg("");
       progressAnim.setValue(0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  }, [progressAnim, visible]);
 
   useEffect(() => {
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, []);
+  }, [progressAnim]);
 
-  const runCountdown = useCallback((duration: number, onDone: () => void) => {
-    progressAnim.setValue(0);
-    Animated.timing(progressAnim, {
-      toValue: 1,
-      duration: duration * 1000,
-      useNativeDriver: false,
-    }).start();
-    let remaining = duration;
-    setCountdown(remaining);
-    countdownRef.current = setInterval(() => {
-      remaining -= 1;
+  const runCountdown = useCallback(
+    (duration: number, onDone: () => void) => {
+      progressAnim.setValue(0);
+      Animated.timing(progressAnim, {
+        toValue: 1,
+        duration: duration * 1000,
+        useNativeDriver: false,
+      }).start();
+      let remaining = duration;
       setCountdown(remaining);
-      if (remaining <= 0) {
-        clearInterval(countdownRef.current!);
-        onDone();
-      }
-    }, 1000);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      countdownRef.current = setInterval(() => {
+        remaining -= 1;
+        setCountdown(remaining);
+        if (remaining <= 0) {
+          clearInterval(countdownRef.current!);
+          onDone();
+        }
+      }, 1000);
+    },
+    [progressAnim],
+  );
 
   const startMVCPhase = useCallback(() => {
     startMVC();
@@ -107,8 +103,7 @@ export default function CalibrationOverlay({
         setPhase("error");
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [runCountdown]);
 
   const startRestPhase = useCallback(() => {
     reset();
@@ -125,8 +120,7 @@ export default function CalibrationOverlay({
         setPhase("error");
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [runCountdown, startMVCPhase]);
 
   const handleConfirm = useCallback(() => {
     if (!baseline || !mvc) return;
@@ -140,8 +134,7 @@ export default function CalibrationOverlay({
     setMVC(null);
     setErrorMsg("");
     progressAnim.setValue(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [progressAnim]);
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -153,116 +146,112 @@ export default function CalibrationOverlay({
       {CALIBRATION_CHANNEL_LABELS.map((ch, i) => (
         <View
           key={ch}
-          style={[styles.channelChip, { borderColor: theme.border }]}
+          style={[
+            styles.channelChip,
+            { borderColor: theme.border, backgroundColor: theme.secondaryCard },
+          ]}
         >
-          <Text style={[styles.channelLabel, { color: theme.textSecondary }]}>
+          <ThemedText
+            type="label"
+            style={[styles.channelLabel, { color: theme.textSecondary }]}
+          >
             {ch}
-          </Text>
-          <Text style={[styles.channelValue, { color: theme.text }]}>
+          </ThemedText>
+          <ThemedText
+            type="bodyBold"
+            style={[styles.channelValue, { color: theme.text }]}
+          >
             {values[i]?.toFixed(3) ?? "—"}
-          </Text>
+          </ThemedText>
         </View>
       ))}
     </View>
   );
 
-  const renderPhase = () => {
+  const renderContent = () => {
     switch (phase) {
       case "intro":
         return (
-          <>
-            <Text style={[styles.title, { color: theme.text }]}>
-              🎯 Calibration
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              A 2-step process to personalise your signal readings.
-            </Text>
+          <View style={styles.phaseContent}>
             <View
               style={[
                 styles.stepCard,
-                { backgroundColor: theme.cardBackground },
+                { backgroundColor: theme.secondaryCard },
               ]}
             >
-              <Text style={[styles.stepTitle, { color: theme.tint }]}>
+              <ThemedText
+                type="bodyBold"
+                style={[styles.stepTitle, { color: theme.primary }]}
+              >
                 Step 1 — Rest (5s)
-              </Text>
-              <Text style={[styles.stepDesc, { color: theme.textSecondary }]}>
+              </ThemedText>
+              <ThemedText
+                style={[styles.stepDesc, { color: theme.textSecondary }]}
+              >
                 Sit still with your leg relaxed. We measure your muscle noise
                 floor.
-              </Text>
+              </ThemedText>
             </View>
             <View
               style={[
                 styles.stepCard,
-                { backgroundColor: theme.cardBackground },
+                { backgroundColor: theme.secondaryCard },
               ]}
             >
-              <Text style={[styles.stepTitle, { color: theme.success }]}>
+              <ThemedText
+                type="bodyBold"
+                style={[styles.stepTitle, { color: theme.success }]}
+              >
                 Step 2 — Flex (5s)
-              </Text>
-              <Text style={[styles.stepDesc, { color: theme.textSecondary }]}>
+              </ThemedText>
+              <ThemedText
+                style={[styles.stepDesc, { color: theme.textSecondary }]}
+              >
                 Contract your quad as hard as possible. This sets your 100% MVC
                 reference point.
-              </Text>
+              </ThemedText>
             </View>
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: theme.tint }]}
-              onPress={startRestPhase}
-            >
-              <Text style={styles.primaryBtnText}>Start Calibration</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onDismiss}>
-              <Text
-                style={[styles.cancelBtnText, { color: theme.textSecondary }]}
-              >
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </>
+          </View>
         );
       case "rest":
         return (
-          <>
-            <Text style={[styles.phaseLabel, { color: theme.tint }]}>
+          <View style={styles.centerPhase}>
+            <ThemedText
+              type="label"
+              style={[styles.phaseIndicator, { color: theme.primary }]}
+            >
               STEP 1 OF 2
-            </Text>
-            <Text style={[styles.title, { color: theme.text }]}>😌 Relax</Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Keep your leg completely still and relaxed.
-            </Text>
-            <Text style={[styles.countdown, { color: theme.tint }]}>
+            </ThemedText>
+            <ThemedText style={[styles.countdown, { color: theme.primary }]}>
               {countdown}s
-            </Text>
+            </ThemedText>
             <View
               style={[styles.progressTrack, { backgroundColor: theme.border }]}
             >
               <Animated.View
                 style={[
                   styles.progressBar,
-                  { width: progressWidth, backgroundColor: theme.tint },
+                  { width: progressWidth, backgroundColor: theme.primary },
                 ]}
               />
             </View>
-            <Text style={[styles.hint, { color: theme.textSecondary }]}>
+            <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
               Measuring baseline noise floor…
-            </Text>
-          </>
+            </ThemedText>
+          </View>
         );
       case "flex":
         return (
-          <>
-            <Text style={[styles.phaseLabel, { color: theme.success }]}>
+          <View style={styles.centerPhase}>
+            <ThemedText
+              type="label"
+              style={[styles.phaseIndicator, { color: theme.success }]}
+            >
               STEP 2 OF 2
-            </Text>
-            <Text style={[styles.title, { color: theme.text }]}>
-              💪 FLEX NOW
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Contract your quad as hard as you can and hold it!
-            </Text>
-            <Text style={[styles.countdown, { color: theme.success }]}>
+            </ThemedText>
+            <ThemedText style={[styles.countdown, { color: theme.success }]}>
               {countdown}s
-            </Text>
+            </ThemedText>
             <View
               style={[styles.progressTrack, { backgroundColor: theme.border }]}
             >
@@ -273,165 +262,256 @@ export default function CalibrationOverlay({
                 ]}
               />
             </View>
-            <Text style={[styles.hint, { color: theme.textSecondary }]}>
+            <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
               Hold maximum contraction…
-            </Text>
-          </>
+            </ThemedText>
+          </View>
         );
       case "confirm":
         return (
-          <>
-            <Text style={[styles.title, { color: theme.text }]}>
-              ✅ Calibration Complete
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Review your values. Confirm to enable Clinical % MVC mode.
-            </Text>
+          <View style={styles.phaseContent}>
             {baseline && (
               <View style={styles.resultBlock}>
-                <Text
+                <ThemedText
+                  type="label"
                   style={[styles.resultLabel, { color: theme.textSecondary }]}
                 >
                   Baseline (Rest) — μV RMS
-                </Text>
+                </ThemedText>
                 {renderChannelRow(baseline)}
               </View>
             )}
             {mvc && (
               <View style={styles.resultBlock}>
-                <Text
+                <ThemedText
+                  type="label"
                   style={[styles.resultLabel, { color: theme.textSecondary }]}
                 >
                   MVC Peak (500ms window) — μV RMS
-                </Text>
+                </ThemedText>
                 {renderChannelRow(mvc)}
               </View>
             )}
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: theme.success }]}
-              onPress={handleConfirm}
-            >
-              <Text style={styles.primaryBtnText}>Save & Enable % MVC</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.secondaryBtn, { borderColor: theme.border }]}
-              onPress={handleRetry}
-            >
-              <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
-                Retry
-              </Text>
-            </TouchableOpacity>
-          </>
+          </View>
         );
       case "error":
         return (
-          <>
-            <Text style={[styles.title, { color: theme.warning }]}>
-              ⚠️ Calibration Failed
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          <View style={styles.centerPhase}>
+            <ThemedText style={[styles.errorText, { color: theme.warning }]}>
               {errorMsg}
-            </Text>
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: theme.tint }]}
-              onPress={handleRetry}
-            >
-              <Text style={styles.primaryBtnText}>Try Again</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onDismiss}>
-              <Text
-                style={[styles.cancelBtnText, { color: theme.textSecondary }]}
-              >
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </>
+            </ThemedText>
+          </View>
         );
+      default:
+        return null;
     }
   };
 
+  const getTitle = () => {
+    switch (phase) {
+      case "intro":
+        return "🎯 Calibration";
+      case "rest":
+        return "😌 Relax";
+      case "flex":
+        return "💪 FLEX NOW";
+      case "confirm":
+        return "✅ Complete";
+      case "error":
+        return "⚠️ Failed";
+    }
+  };
+
+  const getSubtitle = () => {
+    switch (phase) {
+      case "intro":
+        return "A 2-step process to personalise your signal readings.";
+      case "rest":
+        return "Keep your leg completely still and relaxed.";
+      case "flex":
+        return "Contract your quad as hard as you can and hold it!";
+      case "confirm":
+        return "Review your values. Confirm to enable Clinical % MVC mode.";
+      case "error":
+        return "There was an issue during capture.";
+    }
+  };
+
+  const renderFooter = () => {
+    if (phase === "intro") {
+      return (
+        <>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
+            onPress={startRestPhase}
+          >
+            <ThemedText type="bodyBold" style={styles.primaryBtnText}>
+              Start Calibration
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.cancelLink} onPress={onDismiss}>
+            <ThemedText style={{ color: theme.textSecondary }}>
+              Cancel
+            </ThemedText>
+          </TouchableOpacity>
+        </>
+      );
+    }
+    if (phase === "confirm") {
+      return (
+        <>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: theme.success }]}
+            onPress={handleConfirm}
+          >
+            <ThemedText type="bodyBold" style={styles.primaryBtnText}>
+              Save & Enable % MVC
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.secondaryBtn, { borderColor: theme.border }]}
+            onPress={handleRetry}
+          >
+            <ThemedText type="bodyBold" style={{ color: theme.text }}>
+              Retry
+            </ThemedText>
+          </TouchableOpacity>
+        </>
+      );
+    }
+    if (phase === "error") {
+      return (
+        <>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
+            onPress={handleRetry}
+          >
+            <ThemedText type="bodyBold" style={styles.primaryBtnText}>
+              Try Again
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.cancelLink} onPress={onDismiss}>
+            <ThemedText style={{ color: theme.textSecondary }}>
+              Cancel
+            </ThemedText>
+          </TouchableOpacity>
+        </>
+      );
+    }
+    return null;
+  };
+
   return (
-    <Modal
+    <AppModal
       visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onDismiss}
+      onClose={onDismiss}
+      title={getTitle()}
+      subtitle={getSubtitle()}
+      footer={renderFooter()}
     >
-      <View style={styles.overlay}>
-        <View style={[styles.sheet, { backgroundColor: theme.background }]}>
-          {renderPhase()}
-        </View>
+      <View style={styles.modalContentContainer}>
+        {renderContent()}
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "flex-end",
+  phaseIndicator: {
+    textAlign: "center",
+    marginBottom: 8,
   },
-  sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 28,
-    paddingBottom: 48,
+  centerPhase: {
+    alignItems: "center",
+    paddingVertical: 20,
     gap: 16,
-    minHeight: "60%",
   },
-  phaseLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
+  phaseContent: {
+    gap: 16,
   },
-  title: { fontSize: 26, fontWeight: "700" },
-  subtitle: { fontSize: 15, lineHeight: 22 },
   countdown: {
     fontSize: 72,
     fontWeight: "800",
     textAlign: "center",
-    marginVertical: 8,
+    lineHeight: 80,
   },
-  progressTrack: { height: 8, borderRadius: 4, overflow: "hidden" },
-  progressBar: { height: 8, borderRadius: 4 },
-  hint: { fontSize: 13, textAlign: "center", fontStyle: "italic" },
-  stepCard: { borderRadius: 14, padding: 16, gap: 6 },
-  stepTitle: { fontSize: 15, fontWeight: "700" },
-  stepDesc: { fontSize: 13, lineHeight: 19 },
-  resultBlock: { gap: 8 },
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+    width: "100%",
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+  },
+  hint: {
+    fontSize: 13,
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  stepCard: {
+    borderRadius: 16,
+    padding: 20,
+    gap: 8,
+  },
+  stepTitle: {
+    fontSize: 15,
+  },
+  stepDesc: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  resultBlock: {
+    gap: 12,
+  },
   resultLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
+    fontSize: 10,
+    marginLeft: 4,
   },
-  channelGrid: { flexDirection: "row", gap: 8 },
+  channelGrid: {
+    flexDirection: "row",
+    gap: 8,
+  },
   channelChip: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
+    borderRadius: 12,
+    padding: 12,
     alignItems: "center",
     gap: 4,
   },
-  channelLabel: { fontSize: 11, fontWeight: "600" },
-  channelValue: { fontSize: 13, fontWeight: "700" },
-  primaryBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 8,
+  channelLabel: {
+    fontSize: 10,
   },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  channelValue: {
+    fontSize: 14,
+  },
+  primaryBtn: {
+    borderRadius: 16,
+    paddingVertical: 18,
+    alignItems: "center",
+  },
+  primaryBtnText: {
+    color: "#fff",
+  },
   secondaryBtn: {
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingVertical: 16,
     alignItems: "center",
     borderWidth: 1,
   },
-  secondaryBtnText: { fontWeight: "600", fontSize: 15 },
-  cancelBtn: { alignItems: "center", paddingVertical: 8 },
-  cancelBtnText: { fontSize: 14 },
+  cancelLink: {
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  errorText: {
+    textAlign: "center",
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  modalContentContainer: {
+    minHeight: 400, // Provides vertical stability across different phases
+    justifyContent: "center",
+  },
 });

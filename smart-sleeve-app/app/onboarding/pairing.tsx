@@ -10,7 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useDispatch } from "react-redux";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Colors } from "@/constants/theme";
+import { Colors, Typography, Shadows } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
 import { completeOnboarding } from "@/store/userSlice";
 import { setIsScanning } from "@/store/deviceSlice";
@@ -122,7 +122,7 @@ export default function OnboardingPairing() {
             <View
               style={[
                 styles.deviceIcon,
-                { backgroundColor: theme.tint + "20" },
+                { backgroundColor: theme.primary + "20" },
               ]}
             >
               <ThemedText style={styles.deviceEmoji}>📡</ThemedText>
@@ -137,10 +137,10 @@ export default function OnboardingPairing() {
               below to search for your device.
             </ThemedText>
             <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: theme.tint }]}
+              style={[styles.primaryBtn, { backgroundColor: theme.primary }, Shadows.button]}
               onPress={handleStartPairing}
             >
-              <ThemedText style={styles.primaryBtnText}>
+              <ThemedText type="bodyBold" style={styles.primaryBtnText}>
                 Search for Device
               </ThemedText>
             </TouchableOpacity>
@@ -153,7 +153,7 @@ export default function OnboardingPairing() {
               style={[
                 styles.deviceIcon,
                 {
-                  backgroundColor: theme.tint + "20",
+                  backgroundColor: theme.primary + "20",
                   transform: [{ scale: pulseAnim }],
                 },
               ]}
@@ -168,7 +168,7 @@ export default function OnboardingPairing() {
             >
               Looking for Smart Sleeve devices nearby.
             </ThemedText>
-            <ActivityIndicator size="large" color={theme.tint} />
+            <ActivityIndicator size="large" color={theme.primary} />
           </>
         );
       case "connecting":
@@ -215,10 +215,10 @@ export default function OnboardingPairing() {
               You&apos;re all set to start your rehabilitation journey.
             </ThemedText>
             <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: theme.success }]}
+              style={[styles.primaryBtn, { backgroundColor: theme.success }, Shadows.button]}
               onPress={handleFinish}
             >
-              <ThemedText style={styles.primaryBtnText}>
+              <ThemedText type="bodyBold" style={styles.primaryBtnText}>
                 Go to Dashboard →
               </ThemedText>
             </TouchableOpacity>
@@ -244,10 +244,10 @@ export default function OnboardingPairing() {
               {errorMessage}
             </ThemedText>
             <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: theme.tint }]}
+              style={[styles.primaryBtn, { backgroundColor: theme.primary }, Shadows.button]}
               onPress={handleStartPairing}
             >
-              <ThemedText style={styles.primaryBtnText}>Try Again</ThemedText>
+              <ThemedText type="bodyBold" style={styles.primaryBtnText}>Try Again</ThemedText>
             </TouchableOpacity>
           </>
         );
@@ -259,7 +259,7 @@ export default function OnboardingPairing() {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <View style={styles.content}>
-        <ThemedText style={[styles.step, { color: theme.tint }]}>
+        <ThemedText style={[styles.step, { color: theme.primary }]}>
           STEP 2 OF 2
         </ThemedText>
         <View style={styles.centerContent}>{renderContent()}</View>
@@ -285,15 +285,13 @@ export default function OnboardingPairing() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { flex: 1, paddingHorizontal: 28, paddingTop: 32 },
+  content: { flex: 1, paddingHorizontal: 24, paddingTop: 60 },
   step: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
+    ...Typography.label,
+    fontSize: 10,
     marginBottom: 60,
   },
-  centerContent: { alignItems: "center", gap: 20 },
+  centerContent: { alignItems: "center", gap: 24 },
   deviceIcon: {
     width: 120,
     height: 120,
@@ -302,9 +300,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 8,
   },
-  deviceEmoji: { fontSize: 52 },
-  title: { fontSize: 28, fontWeight: "800", textAlign: "center" },
-  subtitle: { fontSize: 15, textAlign: "center", lineHeight: 22 },
+  deviceEmoji: { fontSize: 48 },
+  title: { ...Typography.heading1, textAlign: "center" },
+  subtitle: { ...Typography.body, textAlign: "center", maxWidth: '90%' },
   primaryBtn: {
     borderRadius: 16,
     paddingVertical: 18,
@@ -312,13 +310,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 12,
   },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 17 },
+  primaryBtnText: { color: "#fff" },
   footer: {
-    paddingHorizontal: 28,
-    paddingBottom: 32,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
     flexDirection: "row",
     justifyContent: "flex-start",
   },
   backBtn: { paddingVertical: 8 },
-  backBtnText: { fontSize: 15 },
+  backBtnText: { ...Typography.body, fontSize: 15 },
 });

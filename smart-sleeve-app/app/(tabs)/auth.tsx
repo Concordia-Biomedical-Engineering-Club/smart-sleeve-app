@@ -6,13 +6,17 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { login, signup, logout } from "../../store/userSlice";
 import { RootState } from "../../store/store";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Colors, Typography, Shadows } from "@/constants/theme";
 import {
   login as firebaseLogin,
   register as firebaseRegister,
@@ -20,11 +24,15 @@ import {
   sendResetPasswordEmail,
   mapFirebaseError,
 } from "../../services/auth";
+import { StatusBar } from "expo-status-bar";
+import { AppModal } from "@/components/ui/AppModal";
 
 export default function AuthScreen() {
   const dispatch = useDispatch();
   const router = useRouter();
   const user = useSelector((state: RootState) => state.user);
+  const colorScheme = useColorScheme() ?? "light";
+  const theme = Colors[colorScheme];
 
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -36,14 +44,13 @@ export default function AuthScreen() {
   const [resetEmail, setResetEmail] = useState("");
   const [resetMessage, setResetMessage] = useState("");
 
-  // Clear inputs when screen is focused
   useFocusEffect(
     useCallback(() => {
       setEmail("");
       setPassword("");
       setRetypePassword("");
       setError("");
-    }, [])
+    }, []),
   );
 
   const handleAuth = async () => {
@@ -54,20 +61,15 @@ export default function AuthScreen() {
     }
 
     setLoading(true);
-
-    // Set timeout for request (10 seconds)
     const timeoutId = setTimeout(() => {
       setLoading(false);
-      setError(
-        "Request taking too long. Please check your connection and try again."
-      );
+      setError("Request taking too long. Please try again.");
     }, 10000);
 
     try {
       if (isLogin) {
         const userCredential = await firebaseLogin(email, password);
         const user = userCredential.user;
-
         if (user.emailVerified) {
           dispatch(login({ email: user.email, isAuthenticated: true }));
           router.push("/");
@@ -82,8 +84,7 @@ export default function AuthScreen() {
         router.push("/email-verification");
       }
     } catch (e) {
-      const message = mapFirebaseError(e);
-      setError(message);
+      setError(mapFirebaseError(e));
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
@@ -103,13 +104,11 @@ export default function AuthScreen() {
     setResetMessage("");
     setError("");
 
-    // Validate email is not empty
     if (!resetEmail) {
       setError("Please enter your email.");
       return;
     }
 
-    // Validate email format before sending to Firebase
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(resetEmail)) {
       setError("Please enter a valid email address.");
@@ -117,23 +116,19 @@ export default function AuthScreen() {
     }
 
     setLoading(true);
-
-    // Set timeout for request (10 seconds)
     const timeoutId = setTimeout(() => {
       setLoading(false);
       setError(
-        "Request taking too long. Please check your connection and try again."
+        "Request taking too long. Please check your connection and try again.",
       );
     }, 10000);
 
     try {
       await sendResetPasswordEmail(resetEmail);
       setResetMessage("Password reset email sent! Check your inbox.");
-      setResetEmail(""); // Clear email field after success
-    } catch (error) {
-      const errorMessage =
-        (error as Error).message || "Failed to send reset email.";
-      setError(errorMessage);
+      setResetEmail("");
+    } catch (resetError) {
+      setError((resetError as Error).message || "Failed to send reset email.");
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
@@ -142,248 +137,346 @@ export default function AuthScreen() {
 
   const toggleAuth = () => {
     setIsLogin(!isLogin);
-    setEmail("");
-    setPassword("");
-    setRetypePassword("");
     setError("");
   };
 
-  // If already logged in
   if (user.isLoggedIn) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>You are logged in as {user.email}</Text>
-        <TouchableOpacity style={styles.button} onPress={handleLogout}>
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: theme.background,
+            justifyContent: "center",
+            alignItems: "center",
+          },
+        ]}
+      >
+        <Text style={[styles.title, { color: theme.text }]}>Hello again!</Text>
+        <Text
+          style={[
+            styles.subtitle,
+            { color: theme.textSecondary, marginBottom: 24 },
+          ]}
+        >
+          {user.email}
+        </Text>
+        <TouchableOpacity
+          style={[
+            styles.button,
+            { backgroundColor: theme.primary, width: "80%" },
+          ]}
+          onPress={handleLogout}
+        >
           <Text style={styles.buttonText}>Logout</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // Default login/register screen
   return (
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.projectTitle}>
-          Smart Rehabilitation Knee Sleeve
-        </Text>
-        <Text style={styles.subtitle}>True North Biomedical 2025–2026</Text>
-      </View>
-
-      <View style={styles.authBox}>
-        <Text style={styles.title}>
-          {isLogin ? "Welcome Back" : "Create Account"}
-        </Text>
-
-        <View style={styles.formContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#aaa"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#aaa"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          {isLogin && (
-            <TouchableOpacity onPress={() => setShowResetModal(true)}>
-              <Text style={styles.forgotPassword}>Forgot Password?</Text>
-            </TouchableOpacity>
-          )}
-
-          {!isLogin && (
-            <TextInput
-              style={styles.input}
-              placeholder="Retype Password"
-              placeholderTextColor="#aaa"
-              value={retypePassword}
-              onChangeText={setRetypePassword}
-              secureTextEntry
-            />
-          )}
-        </View>
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleAuth}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>
-              {isLogin ? "Login" : "Register"}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.headerContainer}>
+          <View
+            style={[
+              styles.brandBadge,
+              { backgroundColor: theme.primary + "15" },
+            ]}
+          >
+            <Text style={[styles.brandBadgeText, { color: theme.primary }]}>
+              TRUE NORTH BIOMEDICAL
             </Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={toggleAuth}>
-          <Text style={styles.switch}>
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <Text style={styles.switchHighlight}>
-              {isLogin ? "Register" : "Login"}
-            </Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* --- Password Reset Modal --- */}
-      <Modal visible={showResetModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Reset Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor="#aaa"
-              value={resetEmail}
-              onChangeText={setResetEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            {resetMessage ? (
-              <Text style={styles.success}>{resetMessage}</Text>
-            ) : null}
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handlePasswordReset}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Send Reset Link</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowResetModal(false)}>
-              <Text style={styles.switchHighlight}>Cancel</Text>
-            </TouchableOpacity>
           </View>
+          <Text style={[styles.projectTitle, { color: theme.text }]}>
+            Knee Companion
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Advanced ACL Rehabilitation Monitoring
+          </Text>
         </View>
-      </Modal>
-    </View>
+
+        <View
+          style={[
+            styles.authBox,
+            { backgroundColor: theme.cardBackground, ...Shadows.card },
+          ]}
+        >
+          <Text style={[styles.title, { color: theme.text }]}>
+            {isLogin ? "Welcome Back" : "Get Started"}
+          </Text>
+
+          <View style={styles.formContainer}>
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                EMAIL
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    color: theme.text,
+                    borderColor: theme.border,
+                    backgroundColor: theme.secondaryCard,
+                  },
+                ]}
+                placeholder="athlete@example.com"
+                placeholderTextColor={theme.textTertiary}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
+
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                PASSWORD
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    color: theme.text,
+                    borderColor: theme.border,
+                    backgroundColor: theme.secondaryCard,
+                  },
+                ]}
+                placeholder="••••••••"
+                placeholderTextColor={theme.textTertiary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
+
+            {!isLogin && (
+              <View style={styles.inputWrapper}>
+                <Text
+                  style={[styles.inputLabel, { color: theme.textSecondary }]}
+                >
+                  CONFIRM PASSWORD
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      color: theme.text,
+                      borderColor: theme.border,
+                      backgroundColor: theme.secondaryCard,
+                    },
+                  ]}
+                  placeholder="••••••••"
+                  placeholderTextColor={theme.textTertiary}
+                  value={retypePassword}
+                  onChangeText={setRetypePassword}
+                  secureTextEntry
+                />
+              </View>
+            )}
+
+            {isLogin && (
+              <TouchableOpacity
+                onPress={() => setShowResetModal(true)}
+                style={styles.forgotPasswordContainer}
+              >
+                <Text style={[styles.forgotPassword, { color: theme.primary }]}>
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: theme.primary }]}
+            onPress={handleAuth}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>
+                {isLogin ? "Sign In" : "Create Account"}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={toggleAuth} style={styles.switchContainer}>
+            <Text style={[styles.switch, { color: theme.textSecondary }]}>
+              {isLogin
+                ? "New to Knee Companion? "
+                : "Already have an account? "}
+              <Text style={[styles.switchHighlight, { color: theme.primary }]}>
+                {isLogin ? "Register" : "Login"}
+              </Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      <AppModal
+        visible={showResetModal}
+        onClose={() => {
+          setShowResetModal(false);
+          setResetMessage("");
+          setError("");
+        }}
+        title="Reset Password"
+        subtitle="Enter your email to receive a password reset link."
+        footer={
+          <TouchableOpacity
+            style={[
+              styles.button,
+              { backgroundColor: theme.primary, marginTop: 0 },
+            ]}
+            onPress={handlePasswordReset}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Send Link</Text>
+            )}
+          </TouchableOpacity>
+        }
+      >
+        <TextInput
+          style={[
+            styles.input,
+            {
+              color: theme.text,
+              borderColor: theme.border,
+              backgroundColor: theme.secondaryCard,
+            },
+          ]}
+          placeholder="athlete@example.com"
+          placeholderTextColor={theme.textTertiary}
+          value={resetEmail}
+          onChangeText={setResetEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        {resetMessage ? (
+          <Text style={styles.success}>{resetMessage}</Text>
+        ) : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+      </AppModal>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0A1D2E",
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 80,
+    paddingBottom: 40,
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
   },
   headerContainer: {
     alignItems: "center",
     marginBottom: 40,
   },
+  brandBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  brandBadgeText: {
+    ...Typography.label,
+    fontSize: 10,
+  },
   projectTitle: {
-    color: "#E6F4F1",
-    fontSize: 20,
-    fontWeight: "bold",
+    ...Typography.heading1,
     textAlign: "center",
   },
   subtitle: {
-    color: "#6CC5C0",
-    fontSize: 14,
+    ...Typography.body,
     textAlign: "center",
-    marginTop: 4,
+    marginTop: 8,
+    maxWidth: "80%",
   },
   authBox: {
     width: "100%",
-    backgroundColor: "#132E45",
-    borderRadius: 16,
+    borderRadius: 24,
     padding: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
   },
   formContainer: {
     width: "100%",
+    gap: 16,
+  },
+  inputWrapper: {
+    gap: 8,
+  },
+  inputLabel: {
+    ...Typography.label,
+    fontSize: 10,
+    marginLeft: 4,
   },
   title: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "700",
+    ...Typography.heading2,
     marginBottom: 24,
     textAlign: "center",
   },
   input: {
-    backgroundColor: "#1E3B57",
-    color: "#fff",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    marginBottom: 16,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderColor: "#2C5A77",
+    ...Typography.body,
   },
   button: {
-    backgroundColor: "#00B8A9",
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 24,
   },
   buttonText: {
     color: "#fff",
-    fontWeight: "bold",
+    fontWeight: "700",
     fontSize: 16,
   },
   error: {
+    ...Typography.caption,
     color: "#FF6B6B",
-    marginBottom: 8,
+    marginTop: 12,
     textAlign: "center",
   },
   success: {
-    color: "#6CC5C0",
-    marginBottom: 8,
+    ...Typography.caption,
+    color: "#00A878",
     textAlign: "center",
+  },
+  forgotPasswordContainer: {
+    alignSelf: "flex-end",
   },
   forgotPassword: {
-    color: "#00B8A9",
-    marginBottom: 12,
-    textAlign: "right",
+    ...Typography.caption,
+    fontWeight: "600",
+  },
+  switchContainer: {
+    marginTop: 24,
   },
   switch: {
-    color: "#C7DDE7",
-    marginTop: 16,
     textAlign: "center",
+    ...Typography.body,
+    fontSize: 14,
   },
   switchHighlight: {
-    color: "#00B8A9",
-    fontWeight: "bold",
+    fontWeight: "700",
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalBox: {
-    backgroundColor: "#132E45",
-    borderRadius: 16,
-    padding: 24,
-    width: "85%",
-  },
-  modalTitle: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 16,
-  },
+  modalBox: {},
+  modalTitle: {},
 });

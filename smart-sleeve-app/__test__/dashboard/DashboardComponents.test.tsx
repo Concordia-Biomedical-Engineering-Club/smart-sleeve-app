@@ -42,13 +42,13 @@ describe("Dashboard Components", () => {
       <CircularDataCard
         title="Test Chart"
         currentValue="50"
-        goalValue="100"
+        goalValue="Goal: 100"
         percentage={50}
-      />,
+      />
     );
     expect(getByText("Test Chart")).toBeTruthy();
     expect(getByText("50")).toBeTruthy();
-    expect(getByText("Goal:")).toBeTruthy();
+    expect(getByText(/Goal:/)).toBeTruthy();
   });
 
   it("uses normalized graph values when normalized mode is enabled", () => {

@@ -29,16 +29,16 @@ const StatCard: React.FC<StatCardProps> = ({
   return (
     <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
       <View style={styles.content}>
-        <Text style={[styles.value, { color: theme.text }]}>{value}</Text>
         <Text style={[styles.label, { color: theme.textSecondary }]}>
           {label}
         </Text>
+        <Text style={[styles.value, { color: theme.text }]}>{value}</Text>
       </View>
 
       {image && (
         <Image
           source={image}
-          style={[styles.image, imageStyle]}
+          style={[styles.image, imageStyle, { tintColor: theme.primary }]}
           resizeMode="contain"
         />
       )}
@@ -51,28 +51,34 @@ export default StatCard;
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    aspectRatio: 1.05,
-    borderRadius: 20,
-    padding: 15,
+    borderRadius: 24, // Consistent with CircularDataCard
+    padding: 20,
     overflow: "hidden",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     ...Shadows.card,
     position: "relative",
     minWidth: 140,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.02)', // Nearly invisible border for hair-line definition
   },
   content: {
     zIndex: 1,
+    gap: 4,
   },
   value: {
     ...Typography.heading2,
+    fontSize: 22,
   },
   label: {
-    ...Typography.caption,
-    marginTop: 4,
+    ...Typography.label,
+    fontSize: 10,
   },
   image: {
     position: "absolute",
-    bottom: 10,
-    right: 10,
+    bottom: -10,
+    right: -10,
+    opacity: 0.1, // Subtle decorative image
+    width: 60,
+    height: 60,
   },
 });

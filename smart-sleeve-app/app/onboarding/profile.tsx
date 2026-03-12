@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
+import { Colors, Typography, Shadows } from '@/constants/theme';
 import { ThemedText } from '@/components/themed-text';
 import { setInjuredSide, setInjuryDetails, setTherapyGoal } from '@/store/userSlice';
 import type { InjuredSide } from '@/store/userSlice';
@@ -37,14 +37,14 @@ export default function OnboardingProfile() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <ThemedText style={[styles.step, { color: theme.tint }]}>STEP 1 OF 2</ThemedText>
+        <ThemedText style={[styles.step, { color: theme.primary }]}>STEP 1 OF 2</ThemedText>
         <ThemedText style={[styles.title, { color: theme.text }]}>Your Profile</ThemedText>
         <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
           Help us personalise your rehabilitation experience.
         </ThemedText>
 
         {/* Injured Side */}
-        <ThemedText style={[styles.sectionLabel, { color: theme.text }]}>Which leg is being rehabilitated?</ThemedText>
+        <ThemedText type="bodyBold" style={[styles.sectionLabel, { color: theme.text }]}>Which leg is being rehabilitated?</ThemedText>
         <View style={styles.optionsRow}>
           {(['LEFT', 'RIGHT'] as InjuredSide[]).map((side) => {
             const isSelected = selected === side;
@@ -54,18 +54,19 @@ export default function OnboardingProfile() {
                 style={[
                   styles.sideCard,
                   {
-                    borderColor: isSelected ? theme.tint : theme.border,
-                    backgroundColor: isSelected ? theme.tint + '15' : theme.cardBackground,
-                  }
+                    borderColor: isSelected ? theme.primary : 'transparent',
+                    backgroundColor: isSelected ? theme.primary + '15' : theme.cardBackground,
+                  },
+                  isSelected ? Shadows.card : { borderWidth: 1, borderColor: theme.border }
                 ]}
                 onPress={() => setSelected(side)}
               >
                 <ThemedText style={styles.legIcon}>🦵</ThemedText>
-                <ThemedText style={[styles.sideLabel2, { color: isSelected ? theme.tint : theme.text }]}>
+                <ThemedText type="bodyBold" style={[styles.sideLabel2, { color: isSelected ? theme.primary : theme.text }]}>
                   {side === 'LEFT' ? 'Left Leg' : 'Right Leg'}
                 </ThemedText>
                 {isSelected && (
-                  <View style={[styles.checkBadge, { backgroundColor: theme.tint }]}>
+                  <View style={[styles.checkBadge, { backgroundColor: theme.primary }]}>
                     <ThemedText style={styles.checkText}>✓</ThemedText>
                   </View>
                 )}
@@ -75,7 +76,7 @@ export default function OnboardingProfile() {
         </View>
 
         {/* Injury Details */}
-        <ThemedText style={[styles.sectionLabel, { color: theme.text }]}>Injury details (optional)</ThemedText>
+        <ThemedText type="bodyBold" style={[styles.sectionLabel, { color: theme.text }]}>Injury details (optional)</ThemedText>
         <TextInput
           style={[styles.textInput, { backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border }]}
           placeholder="e.g. ACL tear, meniscus repair, post-op..."
@@ -86,7 +87,7 @@ export default function OnboardingProfile() {
         />
 
         {/* Therapy Goals */}
-        <ThemedText style={[styles.sectionLabel, { color: theme.text }]}>Primary therapy goal</ThemedText>
+        <ThemedText type="bodyBold" style={[styles.sectionLabel, { color: theme.text }]}>Primary therapy goal</ThemedText>
         <View style={styles.goalsList}>
           {THERAPY_GOALS.map((goal) => {
             const isSelected = selectedGoal === goal.id;
@@ -96,17 +97,17 @@ export default function OnboardingProfile() {
                 style={[
                   styles.goalRow,
                   {
-                    borderColor: isSelected ? theme.tint : theme.border,
-                    backgroundColor: isSelected ? theme.tint + '15' : theme.cardBackground,
+                    borderColor: isSelected ? theme.primary : theme.border,
+                    backgroundColor: isSelected ? theme.primary + '15' : theme.cardBackground,
                   }
                 ]}
                 onPress={() => setSelectedGoal(goal.id)}
               >
-                <ThemedText style={[styles.goalLabel, { color: isSelected ? theme.tint : theme.text }]}>
+                <ThemedText type="bodyBold" style={[styles.goalLabel, { color: isSelected ? theme.primary : theme.text }]}>
                   {goal.label}
                 </ThemedText>
                 {isSelected && (
-                  <View style={[styles.checkBadge, { backgroundColor: theme.tint }]}>
+                  <View style={[styles.checkBadge, { backgroundColor: theme.primary }]}>
                     <ThemedText style={styles.checkText}>✓</ThemedText>
                   </View>
                 )}
@@ -117,11 +118,11 @@ export default function OnboardingProfile() {
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: canContinue ? theme.tint : theme.border }]}
+            style={[styles.primaryBtn, { backgroundColor: canContinue ? theme.primary : theme.border }, canContinue && Shadows.button]}
             onPress={handleContinue}
             disabled={!canContinue}
           >
-            <ThemedText style={[styles.primaryBtnText, { color: canContinue ? '#fff' : theme.textSecondary }]}>
+            <ThemedText type="bodyBold" style={[styles.primaryBtnText, { color: canContinue ? '#fff' : theme.textSecondary }]}>
               Continue →
             </ThemedText>
           </TouchableOpacity>
@@ -136,38 +137,39 @@ export default function OnboardingProfile() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingHorizontal: 28, paddingTop: 32, paddingBottom: 48 },
-  step: { fontSize: 12, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 },
-  title: { fontSize: 28, fontWeight: '800', marginBottom: 8 },
-  subtitle: { fontSize: 15, lineHeight: 22, marginBottom: 28 },
-  sectionLabel: { fontSize: 15, fontWeight: '700', marginBottom: 12, marginTop: 8 },
+  scrollContent: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 48 },
+  step: { ...Typography.label, fontSize: 10, marginBottom: 8 },
+  title: { ...Typography.heading1, marginBottom: 8 },
+  subtitle: { ...Typography.body, marginBottom: 32 },
+  sectionLabel: { fontSize: 15, marginBottom: 12, marginTop: 8 },
   optionsRow: { flexDirection: 'row', gap: 16, marginBottom: 24 },
   sideCard: {
-    flex: 1, borderWidth: 2, borderRadius: 20,
-    padding: 20, alignItems: 'center', gap: 8, position: 'relative',
+    flex: 1, borderRadius: 24,
+    padding: 24, alignItems: 'center', gap: 12, position: 'relative',
+    borderWidth: 2,
   },
   legIcon: { fontSize: 40 },
-  sideLabel2: { fontSize: 16, fontWeight: '700' },
+  sideLabel2: { fontSize: 16 },
   checkBadge: {
-    position: 'absolute', top: 10, right: 10,
+    position: 'absolute', top: 12, right: 12,
     width: 22, height: 22, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
   },
   checkText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   textInput: {
-    borderWidth: 1, borderRadius: 14, padding: 14,
-    fontSize: 14, lineHeight: 20, minHeight: 80,
+    borderWidth: 1, borderRadius: 16, padding: 16,
+    ...Typography.body, minHeight: 100,
     marginBottom: 24, textAlignVertical: 'top',
   },
-  goalsList: { gap: 10, marginBottom: 32 },
+  goalsList: { gap: 12, marginBottom: 32 },
   goalRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 2, borderRadius: 14, padding: 16, position: 'relative',
+    borderWidth: 2, borderRadius: 16, padding: 18, position: 'relative',
   },
-  goalLabel: { fontSize: 15, fontWeight: '600' },
+  goalLabel: { fontSize: 15 },
   footer: { gap: 12 },
   primaryBtn: { borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
-  primaryBtnText: { fontWeight: '700', fontSize: 17 },
-  backBtn: { alignItems: 'center', paddingVertical: 8 },
-  backBtnText: { fontSize: 15 },
+  primaryBtnText: { fontSize: 17 },
+  backBtn: { alignItems: 'center', paddingVertical: 12 },
+  backBtnText: { ...Typography.body, fontSize: 15 },
 });

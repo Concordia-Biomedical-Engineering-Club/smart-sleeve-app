@@ -1,7 +1,9 @@
 import React from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
+import { View, StyleSheet, Image } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors, Typography, Shadows } from "@/constants/theme";
+import { IconSymbol } from "./ui/icon-symbol";
+import { ThemedText } from "./themed-text";
 
 interface MilestoneCardProps {
   title: string;
@@ -23,38 +25,49 @@ export default function MilestoneListItem({
     <View
       style={[
         styles.card,
-        { backgroundColor: theme.cardBackground },
-        !unlocked && {
-          backgroundColor: colorScheme === "light" ? "#f4f4f4" : "#2a2a2a",
+        { 
+          backgroundColor: unlocked ? theme.cardBackground : theme.secondaryCard, 
+          borderColor: unlocked ? 'transparent' : theme.border 
         },
+        unlocked && Shadows.card,
       ]}
     >
+      <View style={[styles.iconContainer, { backgroundColor: unlocked ? theme.primary + '10' : theme.background }]}>
+         <Image
+          source={icon}
+          style={[styles.icon, !unlocked && styles.lockedIcon, { tintColor: unlocked ? theme.primary : theme.textTertiary }]}
+        />
+      </View>
+
       <View style={styles.textContainer}>
-        <Text
+        <ThemedText
+          type="bodyBold"
           style={[
             styles.title,
-            { color: theme.text },
             !unlocked && { color: theme.textTertiary },
           ]}
         >
           {title}
-        </Text>
+        </ThemedText>
 
         {unlocked ? (
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Achieved on {achievedDate}
-          </Text>
+          <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Unlocked on {achievedDate}
+          </ThemedText>
         ) : (
-          <Text style={[styles.lockedSubtitle, { color: theme.textTertiary }]}>
-            Keep up with your exercises to unlock this next!
-          </Text>
+          <ThemedText style={[styles.lockedSubtitle, { color: theme.textTertiary }]}>
+            Keep training to unlock
+          </ThemedText>
         )}
       </View>
 
-      <Image
-        source={icon}
-        style={[styles.icon, !unlocked && styles.lockedIcon]}
-      />
+      {unlocked ? (
+        <View style={[styles.statusBadge, { backgroundColor: theme.success + '15' }]}>
+           <IconSymbol name="checkmark.seal.fill" size={14} color={theme.success} />
+        </View>
+      ) : (
+        <IconSymbol name="clock.fill" size={16} color={theme.textTertiary} />
+      )}
     </View>
   );
 }
@@ -62,38 +75,46 @@ export default function MilestoneListItem({
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    borderRadius: 20,
+    borderRadius: 24,
     marginBottom: 16,
-    ...Shadows.card,
-    width: "100%",
-    minHeight: 84,
+    borderWidth: 1,
+    gap: 16,
+  },
+  iconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
   },
   textContainer: {
     flex: 1,
-    marginRight: 16,
-    alignItems: "flex-start",
   },
   title: {
-    ...Typography.heading3,
-    textAlign: "left",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   subtitle: {
     ...Typography.caption,
-    textAlign: "left",
   },
   lockedSubtitle: {
     ...Typography.caption,
-    textAlign: "left",
+    fontStyle: 'italic',
   },
   icon: {
     width: 32,
     height: 32,
+    resizeMode: 'contain',
   },
   lockedIcon: {
-    opacity: 0.4,
+    opacity: 0.2,
+  },
+  statusBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
