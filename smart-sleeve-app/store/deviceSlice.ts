@@ -3,9 +3,11 @@ import {
   ConnectionStatus,
   EMGData,
   IMUData,
+  TransportEvent,
 } from "@/services/SleeveConnector/ISleeveConnector";
 import { RootState } from "./store";
 import type { NormalizedEMGFeatures } from "@/services/SignalProcessing/FeatureExtractor";
+import { EMG_STALE_TIMEOUT_MS, IMU_STALE_TIMEOUT_MS } from "@/constants/ble";
 
 export type WorkoutPhase =
   | "IDLE"
@@ -28,6 +30,14 @@ export interface TransportDiagnostics {
   lastIMUPacketTimestamp: number | null;
   emgPacketCount: number;
   imuPacketCount: number;
+  emgChecksumErrorCount: number;
+  imuChecksumErrorCount: number;
+  emgDroppedPacketCount: number;
+  imuDroppedPacketCount: number;
+  emgNotificationErrorCount: number;
+  imuNotificationErrorCount: number;
+  emgStaleTimeoutMs: number;
+  imuStaleTimeoutMs: number;
   discoveredCharacteristics: string[];
 }
 
@@ -109,6 +119,14 @@ const initialState: DeviceState = {
     lastIMUPacketTimestamp: null,
     emgPacketCount: 0,
     imuPacketCount: 0,
+    emgChecksumErrorCount: 0,
+    imuChecksumErrorCount: 0,
+    emgDroppedPacketCount: 0,
+    imuDroppedPacketCount: 0,
+    emgNotificationErrorCount: 0,
+    imuNotificationErrorCount: 0,
+    emgStaleTimeoutMs: EMG_STALE_TIMEOUT_MS,
+    imuStaleTimeoutMs: IMU_STALE_TIMEOUT_MS,
     discoveredCharacteristics: [],
   },
 };
@@ -165,6 +183,33 @@ const deviceSlice = createSlice({
         ...state.transportDiagnostics,
         ...action.payload,
       };
+    },
+    transportEventRecorded(state, action: PayloadAction<TransportEvent>) {
+      const { stream, kind } = action.payload;
+
+      if (kind === "checksum-mismatch") {
+        if (stream === "emg") {
+          state.transportDiagnostics.emgChecksumErrorCount += 1;
+        } else {
+          state.transportDiagnostics.imuChecksumErrorCount += 1;
+        }
+        return;
+      }
+
+      if (kind === "invalid-packet") {
+        if (stream === "emg") {
+          state.transportDiagnostics.emgDroppedPacketCount += 1;
+        } else {
+          state.transportDiagnostics.imuDroppedPacketCount += 1;
+        }
+        return;
+      }
+
+      if (stream === "emg") {
+        state.transportDiagnostics.emgNotificationErrorCount += 1;
+      } else {
+        state.transportDiagnostics.imuNotificationErrorCount += 1;
+      }
     },
     scenarioChanged(state, action: PayloadAction<DeviceState["scenario"]>) {
       state.scenario = action.payload;
@@ -353,6 +398,7 @@ const deviceSlice = createSlice({
 export const {
   connectionChanged,
   transportDiagnosticsChanged,
+  transportEventRecorded,
   scenarioChanged,
   setCalibrationScenarioOverride,
   setIsScanning,

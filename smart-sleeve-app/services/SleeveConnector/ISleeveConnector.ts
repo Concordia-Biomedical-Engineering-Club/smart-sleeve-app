@@ -13,6 +13,20 @@
  */
 export type SleeveScenario = "REST" | "FLEX" | "SQUAT";
 
+export type TransportStream = "emg" | "imu";
+
+export type TransportEventKind =
+  | "invalid-packet"
+  | "checksum-mismatch"
+  | "notification-error";
+
+export interface TransportEvent {
+  stream: TransportStream;
+  kind: TransportEventKind;
+  timestamp: number;
+  detail?: string;
+}
+
 /**
  * EMGData
  * -----------------------------------------------------
@@ -129,6 +143,13 @@ export interface ISleeveConnector {
   onConnectionStatusChange(
     callback: (status: ConnectionStatus) => void,
   ): () => void;
+
+  /**
+   * Subscribe to transport-layer events that do not represent
+   * connection state changes, such as parser failures, checksum
+   * mismatches, and notification callback errors.
+   */
+  onTransportEvent(callback: (event: TransportEvent) => void): () => void;
 
   /**
    * Update the movement scenario (Mock only, no-op for Real).

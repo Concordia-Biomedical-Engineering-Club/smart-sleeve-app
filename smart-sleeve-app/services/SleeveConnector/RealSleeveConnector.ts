@@ -22,8 +22,14 @@ import {
   IMUData,
   ConnectionStatus,
   SleeveScenario,
+  TransportEvent,
+  TransportEventKind,
+  TransportStream,
 } from "./ISleeveConnector";
 import {
+  BLE_MAX_RECONNECT_ATTEMPTS,
+  BLE_RECONNECT_DELAY_MS,
+  BLE_SCAN_TIMEOUT_MS,
   SERVICE_UUID,
   EMG_CHAR_UUID,
   IMU_CHAR_UUID,
@@ -63,16 +69,13 @@ type BleManagerLike = Pick<
   "startDeviceScan" | "stopDeviceScan" | "connectToDevice"
 >;
 
-const SCAN_TIMEOUT_MS = 5000;
-const RECONNECT_DELAY_MS = 1500;
-const MAX_RECONNECT_ATTEMPTS = 3;
-
 export class RealSleeveConnector implements ISleeveConnector {
   private manager: BleManagerLike;
   private connectedDevice: BleDeviceLike | null = null;
   private emgSubscribers: ((frame: EMGData) => void)[] = [];
   private imuSubscribers: ((frame: IMUData) => void)[] = [];
   private connectionSubscribers: ((status: ConnectionStatus) => void)[] = [];
+  private transportEventSubscribers: ((event: TransportEvent) => void)[] = [];
   private notificationSubscriptions: RemovableSubscription[] = [];
   private disconnectSubscription: RemovableSubscription | null = null;
   private scanTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -177,7 +180,7 @@ export class RealSleeveConnector implements ISleeveConnector {
         this.stopScan();
         this.emitConnectionStatus(false, { phase: "disconnected" });
         this.resolveScan(this.scanResults);
-      }, SCAN_TIMEOUT_MS);
+      }, BLE_SCAN_TIMEOUT_MS);
     });
   }
 
@@ -254,6 +257,7 @@ export class RealSleeveConnector implements ISleeveConnector {
       (error: unknown, char: Base64Characteristic) => {
         if (error) {
           console.error("[RealSleeveConnector] EMG notification error:", error);
+          this.emitTransportEvent("emg", "notification-error", error);
           return;
         }
         if (!char?.value) {
@@ -263,10 +267,12 @@ export class RealSleeveConnector implements ISleeveConnector {
         const parsedPacket = parseEMGPacketBase64(char.value);
         if (!parsedPacket) {
           console.warn("[RealSleeveConnector] Dropping invalid EMG packet");
+          this.emitTransportEvent("emg", "invalid-packet");
           return;
         }
         if (!parsedPacket.checksumValid) {
           console.warn("[RealSleeveConnector] EMG checksum mismatch");
+          this.emitTransportEvent("emg", "checksum-mismatch");
         }
         this.emgSubscribers.forEach((callback) => callback(parsedPacket.frame));
       },
@@ -278,6 +284,7 @@ export class RealSleeveConnector implements ISleeveConnector {
       (error: unknown, char: Base64Characteristic) => {
         if (error) {
           console.error("[RealSleeveConnector] IMU notification error:", error);
+          this.emitTransportEvent("imu", "notification-error", error);
           return;
         }
         if (!char?.value) {
@@ -287,10 +294,12 @@ export class RealSleeveConnector implements ISleeveConnector {
         const parsedPacket = parseIMUPacketBase64(char.value);
         if (!parsedPacket) {
           console.warn("[RealSleeveConnector] Dropping invalid IMU packet");
+          this.emitTransportEvent("imu", "invalid-packet");
           return;
         }
         if (!parsedPacket.checksumValid) {
           console.warn("[RealSleeveConnector] IMU checksum mismatch");
+          this.emitTransportEvent("imu", "checksum-mismatch");
         }
         this.imuSubscribers.forEach((callback) => callback(parsedPacket.frame));
       },
@@ -341,6 +350,15 @@ export class RealSleeveConnector implements ISleeveConnector {
     };
   }
 
+  onTransportEvent(callback: (event: TransportEvent) => void): () => void {
+    this.transportEventSubscribers.push(callback);
+    return () => {
+      this.transportEventSubscribers = this.transportEventSubscribers.filter(
+        (subscriber) => subscriber !== callback,
+      );
+    };
+  }
+
   setScenario(scenario: SleeveScenario): void {
     // Hardware doesn't care about scenario, it just streams reality.
     // This could optionally send a command to the ESP32 if firmware support it.
@@ -383,6 +401,21 @@ export class RealSleeveConnector implements ISleeveConnector {
     this.scanResults = [];
   }
 
+  private emitTransportEvent(
+    stream: TransportStream,
+    kind: TransportEventKind,
+    error?: unknown,
+  ): void {
+    const event: TransportEvent = {
+      stream,
+      kind,
+      timestamp: Date.now(),
+      detail: error instanceof Error ? error.message : undefined,
+    };
+
+    this.transportEventSubscribers.forEach((callback) => callback(event));
+  }
+
   private clearReconnectTimer(): void {
     if (this.reconnectTimeoutId) {
       clearTimeout(this.reconnectTimeoutId);
@@ -401,7 +434,7 @@ export class RealSleeveConnector implements ISleeveConnector {
   }
 
   private scheduleReconnect(deviceId: string): void {
-    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    if (this.reconnectAttempts >= BLE_MAX_RECONNECT_ATTEMPTS) {
       console.warn("[RealSleeveConnector] Reconnect attempts exhausted");
       this.emitConnectionStatus(false, {
         phase: "failed",
@@ -424,6 +457,6 @@ export class RealSleeveConnector implements ISleeveConnector {
           this.scheduleReconnect(deviceId);
         }
       });
-    }, RECONNECT_DELAY_MS);
+    }, BLE_RECONNECT_DELAY_MS);
   }
 }

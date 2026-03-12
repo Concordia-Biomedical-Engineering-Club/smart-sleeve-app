@@ -1,16 +1,21 @@
 import { Buffer } from "buffer";
-import { EMG_HEADER, IMU_HEADER } from "@/constants/ble";
+import {
+  EMG_CHANNEL_COUNT,
+  EMG_HEADER,
+  EMG_PACKET_LENGTH,
+  IMU_HEADER,
+  IMU_PACKET_LENGTH,
+  KNEE_ANGLE_AS5600_RAW_TICKS,
+  KNEE_ANGLE_FAULT_SENTINEL,
+  KNEE_ANGLE_LEGACY_RAW_TICKS,
+  KNEE_ANGLE_MAX_DEGREES,
+} from "@/constants/ble";
 import type { EMGData, IMUData } from "./ISleeveConnector";
 
-export const EMG_PACKET_LENGTH = 22;
-export const IMU_PACKET_LENGTH = 12;
-const EMG_CHANNEL_COUNT = 8;
+export { EMG_PACKET_LENGTH, IMU_PACKET_LENGTH };
+
 const EMG_ADC_MAX = 4095;
-const IMU_FAULT_SENTINEL = 0x7fff;
-const AS5600_ENCODER_TICKS = 4096;
-const LEGACY_ENCODER_TICKS = 16384;
-const AS5600_MAX_RAW_VALUE = AS5600_ENCODER_TICKS - 1;
-const IMU_MAX_KNEE_DEGREES = 140;
+const AS5600_MAX_RAW_VALUE = KNEE_ANGLE_AS5600_RAW_TICKS - 1;
 
 export interface ParsedPacket<T> {
   frame: T;
@@ -109,18 +114,18 @@ function computeChecksum(buf: Buffer, packetLength: number): number {
 }
 
 function decodeKneeFlexionDegrees(rawRoll: number): number {
-  if (rawRoll === IMU_FAULT_SENTINEL || rawRoll < 0) {
+  if (rawRoll === KNEE_ANGLE_FAULT_SENTINEL || rawRoll < 0) {
     return 0;
   }
 
   const encoderTicks =
     rawRoll > AS5600_MAX_RAW_VALUE
-      ? LEGACY_ENCODER_TICKS
-      : AS5600_ENCODER_TICKS;
+      ? KNEE_ANGLE_LEGACY_RAW_TICKS
+      : KNEE_ANGLE_AS5600_RAW_TICKS;
 
   return clampKneeFlexion((rawRoll * 360) / encoderTicks);
 }
 
 function clampKneeFlexion(value: number): number {
-  return Math.max(0, Math.min(IMU_MAX_KNEE_DEGREES, value));
+  return Math.max(0, Math.min(KNEE_ANGLE_MAX_DEGREES, value));
 }

@@ -8,6 +8,7 @@ import deviceReducer, {
   selectTransportDiagnostics,
   setCalibrationScenarioOverride,
   signalWarmupChanged,
+  transportEventRecorded,
   transportDiagnosticsChanged,
   DeviceState,
   startWorkout,
@@ -55,6 +56,14 @@ describe("deviceSlice", () => {
       lastIMUPacketTimestamp: null,
       emgPacketCount: 0,
       imuPacketCount: 0,
+      emgChecksumErrorCount: 0,
+      imuChecksumErrorCount: 0,
+      emgDroppedPacketCount: 0,
+      imuDroppedPacketCount: 0,
+      emgNotificationErrorCount: 0,
+      imuNotificationErrorCount: 0,
+      emgStaleTimeoutMs: 1000,
+      imuStaleTimeoutMs: 1000,
       discoveredCharacteristics: [],
     },
   };
@@ -296,6 +305,40 @@ describe("deviceSlice", () => {
       "imu-char",
     ]);
     expect(state.transportDiagnostics.lastConnectionReason).toBe("ready");
+  });
+
+  test("should track checksum, dropped-packet, and notification transport events", () => {
+    let state = deviceReducer(
+      initialState,
+      transportEventRecorded({
+        stream: "emg",
+        kind: "checksum-mismatch",
+        timestamp: 100,
+      }),
+    );
+
+    state = deviceReducer(
+      state,
+      transportEventRecorded({
+        stream: "imu",
+        kind: "invalid-packet",
+        timestamp: 101,
+      }),
+    );
+
+    state = deviceReducer(
+      state,
+      transportEventRecorded({
+        stream: "imu",
+        kind: "notification-error",
+        timestamp: 102,
+        detail: "notify failed",
+      }),
+    );
+
+    expect(state.transportDiagnostics.emgChecksumErrorCount).toBe(1);
+    expect(state.transportDiagnostics.imuDroppedPacketCount).toBe(1);
+    expect(state.transportDiagnostics.imuNotificationErrorCount).toBe(1);
   });
 
   test("selectTransportDiagnostics should return diagnostics state", () => {

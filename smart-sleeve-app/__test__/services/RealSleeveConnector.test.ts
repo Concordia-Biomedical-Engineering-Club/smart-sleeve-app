@@ -14,6 +14,15 @@ import {
   SERVICE_UUID,
 } from "@/constants/ble";
 
+function withChecksum(bytes: number[]): string {
+  let checksum = bytes[0] ?? 0;
+  for (let index = 1; index < bytes.length - 1; index += 1) {
+    checksum ^= bytes[index];
+  }
+  bytes[bytes.length - 1] = checksum;
+  return Buffer.from(Uint8Array.from(bytes)).toString("base64");
+}
+
 type DisconnectCallback = (
   error?: Error | null,
   device?: { id: string },
@@ -148,6 +157,53 @@ describe("RealSleeveConnector", () => {
         discoveredCharacteristics: [EMG_CHAR_UUID, IMU_CHAR_UUID],
       },
     ]);
+  });
+
+  it("emits transport events for invalid packets and checksum mismatches", async () => {
+    const connector = new RealSleeveConnector(manager as any);
+    const events: Array<{ stream: string; kind: string }> = [];
+
+    connector.onTransportEvent((event) => {
+      events.push({ stream: event.stream, kind: event.kind });
+    });
+
+    await connector.connect("device-1");
+
+    const emgCallback =
+      mockDevice.monitorCharacteristicForService.mock.calls[0][2];
+    const imuCallback =
+      mockDevice.monitorCharacteristicForService.mock.calls[1][2];
+
+    emgCallback(null, { value: Buffer.from([0x00, 0x01]).toString("base64") });
+
+    const imuPacket = new Array(12).fill(0);
+    imuPacket[0] = 0xb1;
+    imuPacket[11] = 0xff;
+    imuCallback(null, {
+      value: Buffer.from(Uint8Array.from(imuPacket)).toString("base64"),
+    });
+
+    expect(events).toEqual([
+      { stream: "emg", kind: "invalid-packet" },
+      { stream: "imu", kind: "checksum-mismatch" },
+    ]);
+  });
+
+  it("emits transport events for notification callback errors", async () => {
+    const connector = new RealSleeveConnector(manager as any);
+    const events: Array<{ stream: string; kind: string }> = [];
+
+    connector.onTransportEvent((event) => {
+      events.push({ stream: event.stream, kind: event.kind });
+    });
+
+    await connector.connect("device-1");
+
+    const emgCallback =
+      mockDevice.monitorCharacteristicForService.mock.calls[0][2];
+    emgCallback(new Error("notify failed"), null);
+
+    expect(events).toEqual([{ stream: "emg", kind: "notification-error" }]);
   });
 
   it("removes active notification subscriptions on disconnect", async () => {

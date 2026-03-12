@@ -11,6 +11,14 @@ import { ISleeveConnector } from "./ISleeveConnector";
 import { MockSleeveConnector } from "../MockBleService/MockSleeveConnector";
 import { RealSleeveConnector } from "./RealSleeveConnector";
 
+const USE_MOCK_HARDWARE_ENV_KEY = [
+  "EXPO",
+  "PUBLIC",
+  "USE",
+  "MOCK",
+  "HARDWARE",
+].join("_");
+
 export class SleeveConnectionFactory {
   private static instance: ISleeveConnector | null = null;
 
@@ -20,7 +28,7 @@ export class SleeveConnectionFactory {
    */
   public static getConnector(): ISleeveConnector {
     if (!this.instance) {
-      const useMock = process.env.EXPO_PUBLIC_USE_MOCK_HARDWARE !== "false";
+      const useMock = process.env[USE_MOCK_HARDWARE_ENV_KEY] !== "false";
 
       if (useMock) {
         console.log(

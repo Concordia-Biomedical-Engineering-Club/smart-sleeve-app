@@ -14,6 +14,7 @@ import {
   IMUData,
   ConnectionStatus,
   SleeveScenario,
+  TransportEvent,
 } from "../SleeveConnector/ISleeveConnector";
 import { SleeveDataGenerator } from "./SleeveDataGenerator";
 
@@ -118,6 +119,10 @@ export class MockSleeveConnector implements ISleeveConnector {
         (cb) => cb !== callback,
       );
     };
+  }
+
+  onTransportEvent(_callback: (event: TransportEvent) => void): () => void {
+    return () => undefined;
   }
 
   /**

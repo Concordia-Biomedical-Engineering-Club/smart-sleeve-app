@@ -10,6 +10,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
+import { EMG_STALE_TIMEOUT_MS, IMU_STALE_TIMEOUT_MS } from "@/constants/ble";
 import { useSleeve } from "@/hooks/useSleeve";
 import { MockSleeveConnector } from "@/services/MockBleService/MockSleeveConnector";
 import { useDispatch, useSelector } from "react-redux";
@@ -19,6 +20,14 @@ import {
   selectTransportDiagnostics,
   setFilteringEnabled,
 } from "@/store/deviceSlice";
+
+const USE_MOCK_HARDWARE_ENV_KEY = [
+  "EXPO",
+  "PUBLIC",
+  "USE",
+  "MOCK",
+  "HARDWARE",
+].join("_");
 
 export default function TestBLEScreen() {
   const dispatch = useDispatch();
@@ -40,8 +49,7 @@ export default function TestBLEScreen() {
   const MAX_POINTS = 50;
   const [devices, setDevices] = useState<string[]>([]);
   const [isScanning, setIsScanningState] = useState(false);
-  const requestedMockMode =
-    process.env.EXPO_PUBLIC_USE_MOCK_HARDWARE !== "false";
+  const requestedMockMode = process.env[USE_MOCK_HARDWARE_ENV_KEY] !== "false";
   const isUsingMockConnector = connector instanceof MockSleeveConnector;
   const isFallbackRoute = !requestedMockMode && isUsingMockConnector;
   const isMock = isUsingMockConnector;
@@ -52,6 +60,14 @@ export default function TestBLEScreen() {
   const lastImuAgeMs = transportDiagnostics.lastIMUPacketTimestamp
     ? now - transportDiagnostics.lastIMUPacketTimestamp
     : null;
+  const isEmgStale =
+    connectionStatus.connected &&
+    (lastEmgAgeMs == null ||
+      lastEmgAgeMs > transportDiagnostics.emgStaleTimeoutMs);
+  const isImuStale =
+    connectionStatus.connected &&
+    (lastImuAgeMs == null ||
+      lastImuAgeMs > transportDiagnostics.imuStaleTimeoutMs);
 
   // Update Chart Data (Channel 1 only for viz) - Throttled for readability
   useEffect(() => {
@@ -255,6 +271,30 @@ export default function TestBLEScreen() {
           </ThemedText>
           <ThemedText>
             Last IMU age: {lastImuAgeMs == null ? "-" : `${lastImuAgeMs} ms`}
+          </ThemedText>
+          <ThemedText>
+            EMG checksum errors: {transportDiagnostics.emgChecksumErrorCount}
+          </ThemedText>
+          <ThemedText>
+            IMU checksum errors: {transportDiagnostics.imuChecksumErrorCount}
+          </ThemedText>
+          <ThemedText>
+            EMG dropped packets: {transportDiagnostics.emgDroppedPacketCount}
+          </ThemedText>
+          <ThemedText>
+            IMU dropped packets: {transportDiagnostics.imuDroppedPacketCount}
+          </ThemedText>
+          <ThemedText>
+            EMG notify errors: {transportDiagnostics.emgNotificationErrorCount}
+          </ThemedText>
+          <ThemedText>
+            IMU notify errors: {transportDiagnostics.imuNotificationErrorCount}
+          </ThemedText>
+          <ThemedText>
+            EMG stale: {isEmgStale ? "yes" : "no"} ({EMG_STALE_TIMEOUT_MS} ms)
+          </ThemedText>
+          <ThemedText>
+            IMU stale: {isImuStale ? "yes" : "no"} ({IMU_STALE_TIMEOUT_MS} ms)
           </ThemedText>
           <ThemedText>
             Characteristics:{" "}

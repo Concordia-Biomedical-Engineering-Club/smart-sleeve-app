@@ -11,18 +11,26 @@ import { useSelector } from "react-redux";
 import { useSleeve } from "@/hooks/useSleeve";
 import { useSleeveDevice } from "@/hooks/useSleeveDevice";
 
+const USE_MOCK_HARDWARE_ENV_KEY = [
+  "EXPO",
+  "PUBLIC",
+  "USE",
+  "MOCK",
+  "HARDWARE",
+].join("_");
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const user = useSelector((state: RootState) => state.user);
-  
+
   // Initialize Global BLE Data Flow
   const connector = useSleeve();
   useSleeveDevice(connector);
 
   // Auto-connect in Mock mode if not connected
   useEffect(() => {
-    if (process.env.EXPO_PUBLIC_USE_MOCK_HARDWARE !== 'false') {
-       connector.connect("GLOBAL_MOCK_DEVICE");
+    if (process.env[USE_MOCK_HARDWARE_ENV_KEY] !== "false") {
+      connector.connect("GLOBAL_MOCK_DEVICE");
     }
   }, [connector]);
 
@@ -76,7 +84,11 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="person.crop.circle.fill" color={color} />
+            <IconSymbol
+              size={28}
+              name="person.crop.circle.fill"
+              color={color}
+            />
           ),
         }}
       />
@@ -86,7 +98,11 @@ export default function TabLayout() {
         options={{
           title: "Progress",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="chart.line.uptrend.xyaxis" color={color} />
+            <IconSymbol
+              size={28}
+              name="chart.line.uptrend.xyaxis"
+              color={color}
+            />
           ),
         }}
       />
