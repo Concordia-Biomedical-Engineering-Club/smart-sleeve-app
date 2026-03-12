@@ -7,7 +7,9 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Colors, Typography } from "@/constants/theme";
+import { Colors, Shadows } from "@/constants/theme";
+
+import { ThemedText } from "./themed-text";
 
 interface ProfileAvatarCardProps {
   name: string;
@@ -24,29 +26,30 @@ const ProfileAvatarCard: React.FC<ProfileAvatarCardProps> = ({
 }) => {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
-  const { width } = useWindowDimensions();
-
-  // Calculate avatar size based on screen width, maxing out at 274
-  const avatarSize = Math.min(width * 0.6, 274);
 
   return (
     <View style={styles.container}>
-      {/* Avatar */}
-      <View style={styles.avatarContainer}>
-        <View style={[styles.avatarBorder, { borderColor: theme.primary }]}>
-          <Image
-            source={avatar}
-            style={[styles.avatar, { width: avatarSize, height: avatarSize }]}
-          />
+      {/* Avatar Container */}
+      <View style={styles.avatarWrapper}>
+        <View style={[styles.avatarBorder, { borderColor: theme.primary + '20' }]}>
+          <View style={[styles.innerBorder, { borderColor: theme.primary }]}>
+            <Image source={avatar} style={styles.avatar} />
+          </View>
         </View>
-        {starIcon && <Image source={starIcon} style={styles.starIcon} />}
+        {starIcon && (
+          <View style={[styles.badgeContainer, { backgroundColor: theme.cardBackground, ...Shadows.card }]}>
+             <Image source={starIcon} style={styles.starIcon} />
+          </View>
+        )}
       </View>
 
-      {/* Info */}
-      <Text style={[styles.name, { color: theme.text }]}>{name}</Text>
-      <Text style={[styles.membership, { color: theme.textSecondary }]}>
-        {membership}
-      </Text>
+      {/* Info Section */}
+      <ThemedText type="subtitle" style={styles.name}>{name}</ThemedText>
+      <View style={[styles.membershipBadge, { backgroundColor: theme.primary + '10' }]}>
+        <ThemedText style={[styles.membership, { color: theme.primary }]}>
+          {membership.toUpperCase()}
+        </ThemedText>
+      </View>
     </View>
   );
 };
@@ -54,36 +57,57 @@ const ProfileAvatarCard: React.FC<ProfileAvatarCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 8,
   },
-  avatarContainer: {
-    marginTop: 20,
+  avatarWrapper: {
     position: "relative",
-    justifyContent: "center",
-    alignItems: "center",
+    marginBottom: 20,
   },
   avatarBorder: {
-    borderWidth: 3,
-    borderRadius: 150,
-    padding: 10,
+    padding: 8,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  innerBorder: {
+    padding: 4,
+    borderRadius: 100,
+    borderWidth: 2,
   },
   avatar: {
-    borderRadius: 150,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+  },
+  badgeContainer: {
+    position: "absolute",
+    bottom: -5,
+    right: -5,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: '#fff',
   },
   starIcon: {
-    position: "absolute",
-    bottom: 5,
-    right: 10,
-    width: 50,
-    height: 50,
+    width: 24,
+    height: 24,
     resizeMode: "contain",
   },
   name: {
-    ...Typography.heading1,
-    marginTop: 10,
+    marginBottom: 8,
+  },
+  membershipBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
   membership: {
-    ...Typography.caption,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
 });
 

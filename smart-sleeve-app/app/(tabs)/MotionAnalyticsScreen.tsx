@@ -24,17 +24,17 @@ export default function MotionAnalyticsScreen() {
 
   // Mock data for the chart
   const mockData = {
-    labels: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     datasets: [
       {
         data: [60, 62, 68, 67, 63, 70, 75], // Flexion
-        color: () => theme.primary, // Blue
-        strokeWidth: 2,
+        color: () => theme.primary,
+        strokeWidth: 3,
       },
       {
         data: [20, 35, 45, 58, 42, 48, 52], // Extension
-        color: () => theme.success, // Green
-        strokeWidth: 2,
+        color: () => theme.success,
+        strokeWidth: 3,
       },
     ],
     legend: ["Flexion", "Extension"],
@@ -42,37 +42,47 @@ export default function MotionAnalyticsScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Header */}
-        <View style={styles.headerContainer}>
-          <View style={styles.topRow}>
-            <TouchableOpacity onPress={() => router.push("/modal")} style={styles.iconButton}>
-              <Image 
-                source={require("../../assets/images/settings.png")} 
-                style={{ width: 24, height: 24, resizeMode: "contain", tintColor: theme.icon ?? theme.text }} 
-              />
-            </TouchableOpacity>
-            <ThemedText style={Typography.heading2}>Motion Analytics</ThemedText>
-            <TouchableOpacity onPress={() => console.log("Notification")} style={styles.iconButton}>
-              <IconSymbol name="bell.fill" size={24} color={theme.text} />
-            </TouchableOpacity>
+      <View style={styles.headerContainer}>
+        <View style={styles.topRow}>
+          <TouchableOpacity onPress={() => router.push("/modal")} style={styles.iconButton}>
+             <IconSymbol name="gearshape.fill" size={24} color={theme.textSecondary} />
+          </TouchableOpacity>
+          <View style={styles.brandBadge}>
+             <ThemedText style={[styles.brandBadgeText, { color: theme.primary }]}>BIOMETRIC ANALYTICS</ThemedText>
           </View>
+          <TouchableOpacity onPress={() => console.log("Notification")} style={styles.iconButton}>
+            <IconSymbol name="bell.fill" size={24} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ThemedText type="title" style={styles.pageTitle}>Motion Patterns</ThemedText>
+        
+        <View style={styles.selectorWrapper}>
+          <SegmentedControl
+            options={["Daily", "Weekly", "Monthly"]}
+            selectedOption={timeframe}
+            onSelect={setTimeframe}
+          />
         </View>
 
-        {/* Timeframe Selector */}
-        <SegmentedControl
-          options={["Daily", "Weekly", "Monthly"]}
-          selectedOption={timeframe}
-          onSelect={setTimeframe}
-        />
+        <View style={styles.chartContainer}>
+          <TrendChart 
+            data={mockData}
+            title="Range of Motion"
+            subtitle={`Active flexion/extension trend for this ${timeframe.toLowerCase()}`}
+            height={280}
+          />
+        </View>
 
-        {/* Modular Trend Chart */}
-        <TrendChart 
-          data={mockData}
-          title="Range of Motion"
-          subtitle="Last 7 Days"
-        />
+        <View style={styles.insightsGrid}>
+           <ThemedText type="label" style={styles.sectionLabel}>Key Insights</ThemedText>
+           <View style={[styles.insightCard, { backgroundColor: theme.secondaryCard }]}>
+              <IconSymbol name="checkmark.seal.fill" size={20} color={theme.success} />
+              <ThemedText style={styles.insightText}>Your flexion has improved by 12% over the last 3 days. Keep the persistence!</ThemedText>
+           </View>
+        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -80,23 +90,18 @@ export default function MotionAnalyticsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  headerContainer: {
-    marginBottom: 20,
-  },
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  iconButton: {
-    padding: 8,
-  },
+  safeArea: { flex: 1 },
+  scrollContent: { padding: 24, paddingBottom: 40 },
+  headerContainer: { paddingHorizontal: 24, paddingVertical: 12 },
+  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  brandBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.03)' },
+  brandBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  iconButton: { padding: 8 },
+  pageTitle: { marginBottom: 24 },
+  selectorWrapper: { marginBottom: 32 },
+  chartContainer: { marginBottom: 32 },
+  insightsGrid: { gap: 16 },
+  sectionLabel: { color: "#64748B", marginBottom: 8 },
+  insightCard: { padding: 20, borderRadius: 20, flexDirection: 'row', gap: 16, alignItems: 'center' },
+  insightText: { flex: 1, fontSize: 14, lineHeight: 20, opacity: 0.8 },
 });

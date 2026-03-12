@@ -3,7 +3,7 @@ import { View, Dimensions, StyleSheet } from "react-native";
 import Svg, { Path, Line, Defs, LinearGradient, Stop } from "react-native-svg";
 import { useSelector } from "react-redux";
 import { selectLatestFeatures } from "../../store/deviceSlice";
-import { Colors } from "@/constants/theme";
+import { Colors, Shadows, Typography } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { ThemedText } from "../themed-text";
 import { selectShowNormalized } from "@/store/userSlice";
@@ -160,23 +160,16 @@ export const RMSGraph: React.FC<RMSGraphProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 16,
-    padding: 16,
-    marginVertical: 10,
+    borderRadius: 24,
+    padding: 20,
+    marginVertical: 12,
     overflow: "hidden",
-    // Shadow for iOS
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    // Elevation for Android
-    elevation: 5,
+    ...Shadows.card,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.02)',
   },
   header: {
-    marginBottom: 10,
+    marginBottom: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",

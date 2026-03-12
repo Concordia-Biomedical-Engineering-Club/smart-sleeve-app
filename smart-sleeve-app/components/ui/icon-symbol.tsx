@@ -36,6 +36,8 @@ const MAPPING = {
   'clipboard.fill': 'assignment',
   'bell.fill': 'notifications',
   'lightbulb.fill': 'lightbulb',
+  'gearshape.fill': 'settings',
+  'waveform': 'gesture',
 } as IconMapping;
 
 /**

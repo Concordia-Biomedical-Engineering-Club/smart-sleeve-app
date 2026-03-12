@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
+import { Colors, Typography } from '@/constants/theme';
 
 interface SegmentedControlProps {
   options: string[];
@@ -18,29 +18,30 @@ export function SegmentedControl({
   const theme = Colors[colorScheme ?? 'light'];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.secondaryCard, borderColor: theme.border }]}>
       {options.map((option) => {
         const isSelected = option === selectedOption;
         return (
           <TouchableOpacity
             key={option}
             onPress={() => onSelect(option)}
+            activeOpacity={0.7}
             style={[
               styles.option,
               isSelected && {
-                backgroundColor: theme.tint,
-                borderColor: theme.tint,
-              },
-              !isSelected && {
-                backgroundColor: 'transparent',
-                borderColor: theme.tint,
-              },
+                backgroundColor: theme.background,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2,
+              }
             ]}
           >
             <Text
               style={[
                 styles.text,
-                { color: isSelected ? '#FFFFFF' : theme.tint },
+                { color: isSelected ? theme.primary : theme.textSecondary },
               ]}
             >
               {option}
@@ -55,20 +56,21 @@ export function SegmentedControl({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 12,
+    padding: 4,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
   },
   option: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   text: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...Typography.label,
+    fontSize: 12,
+    textTransform: 'none',
   },
 });
