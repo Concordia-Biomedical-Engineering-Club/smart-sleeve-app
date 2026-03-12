@@ -54,6 +54,7 @@ export function finalizeMVC(): number[] {
   for (let i = 0; i <= _mvcBuffer.length - MVC_PEAK_WINDOW; i++) {
     const window = _mvcBuffer.slice(i, i + MVC_PEAK_WINDOW);
     const windowRMS = computeChannelRMS(window);
+    // Use the strongest 500 ms RMS window so brief noisy spikes do not define MVC.
     const sum = windowRMS.reduce((a, b) => a + b, 0);
     if (sum > bestSum) {
       bestSum = sum;

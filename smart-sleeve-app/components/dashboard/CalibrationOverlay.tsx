@@ -61,6 +61,7 @@ export default function CalibrationOverlay({
   }, []);
 
   const cleanupCalibrationRuntime = useCallback(() => {
+    // Always clear the override on every exit path so mock calibration cannot leak into normal workout scenarios.
     clearCountdown();
     dispatch(setCalibrationScenarioOverride(null));
     reset();

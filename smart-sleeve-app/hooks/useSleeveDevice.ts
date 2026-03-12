@@ -47,6 +47,7 @@ export function useSleeveDevice(connector: ISleeveConnector) {
   const rollingBuffer = useRef<number[][]>([]);
 
   useEffect(() => {
+    // Calibration owns the mock scenario temporarily; outside calibration we fall back to workout-driven behavior.
     connector.setScenario(calibrationScenarioOverride ?? scenario);
   }, [calibrationScenarioOverride, scenario, connector]);
 
@@ -76,6 +77,7 @@ export function useSleeveDevice(connector: ISleeveConnector) {
       }
 
       dispatch(emgFrameReceived(frameToDispatch));
+      // Calibration samples are captured before feature aggregation so calibration does not reuse smoothed dashboard RMS snapshots.
       dispatch(calibrationSampleReceived(frameToDispatch.channels.slice()));
 
       rollingBuffer.current.push(frameToDispatch.channels);
