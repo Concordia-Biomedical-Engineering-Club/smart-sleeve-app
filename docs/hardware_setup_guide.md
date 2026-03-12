@@ -1,6 +1,6 @@
 # Smart Sleeve Hardware Setup Guide
 
-This guide covers how to prepare the SparkFun Thing Plus ESP32 WROOM and the MyoWare 2.0 Muscle Sensor to stream real clinical data to the Smart Sleeve App over Bluetooth Low Energy (BLE).
+This guide covers how to prepare the SparkFun Thing Plus ESP32 WROOM, the MyoWare 2.0 Muscle Sensor, and the AS5600 magnetic encoder to stream real data to the Smart Sleeve App over Bluetooth Low Energy (BLE).
 
 ---
 
@@ -8,7 +8,8 @@ This guide covers how to prepare the SparkFun Thing Plus ESP32 WROOM and the Myo
 
 1. **Microcontroller:** [SparkFun Thing Plus - ESP32 WROOM (DEV-15663)](https://www.sparkfun.com/products/15663)
 2. **EMG Sensor:** [MyoWare 2.0 Muscle Sensor](https://www.sparkfun.com/products/21265)
-3. **Power/Wiring:** Jumper wires and a micro-USB cable for flashing/power.
+3. **Angle Sensor:** AS5600 magnetic rotary position sensor
+4. **Power/Wiring:** Jumper wires and a micro-USB cable for flashing/power.
 
 ---
 
@@ -22,18 +23,22 @@ The app is expecting the MyoWare **Envelope (ENV)** signal to be sent on **GPIO 
 | **- (GND)**     | **GND**            | Common Ground                                    |
 | **ENV**         | **34 (A2)**        | Analog Output (Signal Envelope)                  |
 
-### AS5048A Magnetic Encoder (Angle Sensor)
+### AS5600 Magnetic Encoder (Angle Sensor)
 
-The knee flexion angle is measured by the **AS5048A** sensor via the SPI bus.
+The knee flexion angle is measured by the **AS5600** sensor over **I2C**. The firmware reads the **RAW ANGLE** register and sends the raw 12-bit value over BLE.
 
-| AS5048A Pin   | SparkFun ESP32 Pin | SPI Function         |
-| :------------ | :----------------- | :------------------- |
-| **VCC**       | **3V3**            | Power (3.3V)         |
-| **GND**       | **GND**            | Ground               |
-| **SCL** / SCK | **18**             | VSPI Clock           |
-| **DO** / MISO | **19**             | VSPI MISO            |
-| **DI** / MOSI | **23**             | VSPI MOSI            |
-| **CSn** / CS  | **5**              | Software Chip Select |
+| AS5600 Pin         | SparkFun ESP32 Pin | Purpose                    |
+| :----------------- | :----------------- | :------------------------- |
+| **VDD3V3 / VDD5V** | **3V3**            | Power the sensor from 3.3V |
+| **GND**            | **GND**            | Ground                     |
+| **SDA**            | **21**             | I2C data                   |
+| **SCL**            | **22**             | I2C clock                  |
+| **DIR**            | **GND** or **3V3** | Fixed direction select     |
+| **OUT / PWM**      | Not connected      | Not used by this firmware  |
+| **PGO**            | Not connected      | Not used by this firmware  |
+
+> [!NOTE]
+> The AS5600 default I2C address is `0x36`. This firmware does not use the analog or PWM output path; it reads the digital RAW ANGLE register pair over I2C.
 
 > [!WARNING]
 > **Voltage Limits**: The ESP32's Analog-to-Digital Converter (ADC) can only handle a maximum of **3.3V**. Ensure all sensors are powered from the **3V3** pin, NOT the 5V/VUSB pin, to prevent damaging the GPIO pins.
@@ -54,6 +59,9 @@ We will be flashing the ESP32 using the Arduino IDE. You need the correct board 
    - Go to **Sketch > Include Library > Manage Libraries**.
    - Search for **"NimBLE-Arduino"** (by h2zero) and install **version 1.4.x** — do not install v2.x, as the API is incompatible with this firmware.
 
+3. **No extra AS5600 library is required**
+   - The firmware talks to the AS5600 directly over Arduino `Wire`, so you do not need to install a separate AS5600 helper library.
+
 ---
 
 ## 🚀 3. Flashing the Firmware
@@ -64,6 +72,8 @@ I have provided the complete, app-compatible firmware inside the repository.
 2. Connect the ESP32 to your Mac over USB.
 3. Select the correct COM/Serial Port under **Tools > Port**.
 4. Click **Upload**.
+
+This firmware has already been compile-validated against the **SparkFun ESP32 Thing Plus** target with `arduino-cli`.
 
 > [!TIP]
 > If the upload fails to connect, you may need to hold down the **"BOOT"** button on the SparkFun board when you see the `Connecting...` text in the Arduino console.
@@ -124,7 +134,33 @@ Now that the hardware is broadcasting, let's connect it to your phone.
    # OR
    npx expo run:android
    ```
-3. Open the **Test Connection** tab in the app.
+3. Open the app and go to the BLE connection screen you use for hardware bring-up.
 4. Click **Scan for Devices**. You should see `SMART-SLEEVE-01` appear.
 5. Tap to connect.
-6. Switch to the **Dashboard** — the live graphs will now be plotting the electrical activity from your actual arm! Try flexing!
+6. Verify that packet counters begin increasing and the knee angle changes as you move the joint.
+7. Switch to the **Dashboard** to confirm the live graphs respond to real muscle activity.
+
+### What the firmware is sending
+
+- **EMG**: one live ADC channel on CH1 from the MyoWare ENV pin, channels 2-8 set to zero
+- **Angle**: raw **AS5600 12-bit RAW ANGLE** value in the IMU angle field
+- **Pitch/Yaw**: always zero in this firmware
+- **Fault handling**: if the AS5600 read fails or no magnet is detected, the firmware sends `0x7FFF` as the angle sentinel
+
+### Serial Monitor sanity check
+
+If you open the Arduino Serial Monitor at `115200`, you should see lines like:
+
+```text
+[DATA] EMG=1832  AngleRaw=1024 (OK)
+```
+
+Possible angle statuses are:
+
+- `OK`: angle read succeeded
+- `MAGNET_WEAK`: angle read succeeded, but the magnet field is weak
+- `MAGNET_STRONG`: angle read succeeded, but the magnet field is too strong
+- `NO_MAGNET`: the AS5600 does not detect a usable magnet
+- `I2C_ERROR`: ESP32 could not read the AS5600 over I2C
+
+If the app connects but the knee angle stays at zero while the Serial Monitor shows `NO_MAGNET` or `I2C_ERROR`, the problem is on the hardware side, not in the BLE packet format.
