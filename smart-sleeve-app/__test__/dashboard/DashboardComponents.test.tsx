@@ -137,7 +137,7 @@ describe("Dashboard Components", () => {
     );
 
     expect(getByText("Symmetry Score")).toBeTruthy();
-    expect(getByText("Bilateral Comparison")).toBeTruthy();
+    expect(getByText("Quadriceps Sets · Bilateral Analysis")).toBeTruthy();
     expect(queryByText("Single-Leg Insights")).toBeNull();
   });
 });
