@@ -130,6 +130,7 @@ export default function DashboardScreen() {
   }, [isWorkoutActive, workout.exerciseId, channels]);
 
   const liveCalibrationSample = latestCalibrationSample ?? [];
+  const normalizedRms = latestFeatures?.rmsNormalized ?? null;
 
   return (
     <SafeAreaView
@@ -282,8 +283,8 @@ export default function DashboardScreen() {
           })}
         </View>
 
-        {isCalibrated && showNormalized && (latestFeatures as any)?.rmsNormalized && (
-          <SymmetryCard normalizedPct={latestFeatures.rmsNormalized} />
+        {isCalibrated && showNormalized && normalizedRms && (
+          <SymmetryCard normalizedPct={normalizedRms} />
         )}
 
         {!isWorkoutActive && (
