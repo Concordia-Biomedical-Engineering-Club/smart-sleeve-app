@@ -1,17 +1,8 @@
 import React, { useState } from "react";
-import {
-  StyleSheet,
-  ScrollView,
-  View,
-  Platform,
-  StatusBar,
-  TouchableOpacity,
-  Image,
-} from "react-native";
+import { StyleSheet, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Colors,Shadows } from "@/constants/theme";
+import { Colors, Shadows } from "@/constants/theme";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/themed-text";
@@ -42,16 +33,23 @@ export default function MotionAnalyticsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <ScreenHeader 
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <ScreenHeader
           badgeLabel="BIOMETRIC ANALYTICS"
           onRightPress={() => console.log("Notification")}
           rightIcon="bell.fill"
         />
 
-        <ThemedText type="title" style={styles.pageTitle}>Motion Patterns</ThemedText>
-        
+        <ThemedText type="title" style={styles.pageTitle}>
+          Motion Patterns
+        </ThemedText>
+
         <View style={styles.selectorWrapper}>
           <SegmentedControl
             options={["Daily", "Weekly", "Monthly"]}
@@ -61,7 +59,7 @@ export default function MotionAnalyticsScreen() {
         </View>
 
         <View style={styles.chartContainer}>
-          <TrendChart 
+          <TrendChart
             data={mockData}
             title="Range of Motion"
             subtitle={`Active flexion/extension trend for this ${timeframe.toLowerCase()}`}
@@ -70,29 +68,83 @@ export default function MotionAnalyticsScreen() {
         </View>
 
         <View style={styles.insightsSection}>
-           <ThemedText type="label" style={[styles.sectionLabel, { color: theme.textSecondary }]}>KEY INSIGHTS</ThemedText>
-           
-           <View style={[styles.insightCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }, Shadows.card]}>
-              <View style={[styles.iconBox, { backgroundColor: theme.success + '15' }]}>
-                <IconSymbol name="checkmark.seal.fill" size={20} color={theme.success} />
-              </View>
-              <View style={styles.insightContent}>
-                <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>Improvement Detected</ThemedText>
-                <ThemedText style={[styles.insightText, { color: theme.textSecondary }]}>Your flexion has improved by 12% over the last 3 days. Keep the persistence!</ThemedText>
-              </View>
-           </View>
+          <ThemedText
+            type="label"
+            style={[styles.sectionLabel, { color: theme.textSecondary }]}
+          >
+            KEY INSIGHTS
+          </ThemedText>
 
-           <View style={[styles.insightCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }, Shadows.card]}>
-              <View style={[styles.iconBox, { backgroundColor: theme.primary + '15' }]}>
-                <IconSymbol name="lightbulb.fill" size={20} color={theme.primary} />
-              </View>
-              <View style={styles.insightContent}>
-                <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>Coach Recommendation</ThemedText>
-                <ThemedText style={[styles.insightText, { color: theme.textSecondary }]}>Consider adding 2 more sets of Quad Sets to your daily routine to stabilize the joint.</ThemedText>
-              </View>
-           </View>
+          <View
+            style={[
+              styles.insightCard,
+              {
+                backgroundColor: theme.cardBackground,
+                borderColor: theme.border,
+              },
+              Shadows.card,
+            ]}
+          >
+            <View
+              style={[
+                styles.iconBox,
+                { backgroundColor: theme.success + "15" },
+              ]}
+            >
+              <IconSymbol
+                name="checkmark.seal.fill"
+                size={20}
+                color={theme.success}
+              />
+            </View>
+            <View style={styles.insightContent}>
+              <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>
+                Improvement Detected
+              </ThemedText>
+              <ThemedText
+                style={[styles.insightText, { color: theme.textSecondary }]}
+              >
+                Your flexion has improved by 12% over the last 3 days. Keep the
+                persistence!
+              </ThemedText>
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.insightCard,
+              {
+                backgroundColor: theme.cardBackground,
+                borderColor: theme.border,
+              },
+              Shadows.card,
+            ]}
+          >
+            <View
+              style={[
+                styles.iconBox,
+                { backgroundColor: theme.primary + "15" },
+              ]}
+            >
+              <IconSymbol
+                name="lightbulb.fill"
+                size={20}
+                color={theme.primary}
+              />
+            </View>
+            <View style={styles.insightContent}>
+              <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>
+                Coach Recommendation
+              </ThemedText>
+              <ThemedText
+                style={[styles.insightText, { color: theme.textSecondary }]}
+              >
+                Consider adding 2 more sets of Quad Sets to your daily routine
+                to stabilize the joint.
+              </ThemedText>
+            </View>
+          </View>
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -105,9 +157,27 @@ const styles = StyleSheet.create({
   selectorWrapper: { marginBottom: 32 },
   chartContainer: { marginBottom: 40 },
   insightsSection: { gap: 16 },
-  sectionLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 8 },
-  insightCard: { padding: 20, borderRadius: 24, flexDirection: 'row', gap: 16, alignItems: 'flex-start', borderWidth: 1 },
-  iconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  insightCard: {
+    padding: 20,
+    borderRadius: 24,
+    flexDirection: "row",
+    gap: 16,
+    alignItems: "flex-start",
+    borderWidth: 1,
+  },
+  iconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   insightContent: { flex: 1 },
   insightText: { fontSize: 14, lineHeight: 20 },
 });

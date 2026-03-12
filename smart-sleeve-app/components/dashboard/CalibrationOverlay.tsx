@@ -1,10 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-} from "react-native";
+import { View, StyleSheet, TouchableOpacity, Animated } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
@@ -21,7 +16,6 @@ import {
 } from "@/services/NormalizationService";
 import { AppModal } from "@/components/ui/AppModal";
 import { ThemedText } from "@/components/themed-text";
-import { Typography, Shadows } from "@/constants/theme";
 
 const MVC_DURATION_SEC = 5;
 export const CALIBRATION_CHANNEL_LABELS = ["VMO", "VL", "ST", "BF"];
@@ -64,32 +58,35 @@ export default function CalibrationOverlay({
       setErrorMsg("");
       progressAnim.setValue(0);
     }
-  }, [visible]);
+  }, [progressAnim, visible]);
 
   useEffect(() => {
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, []);
+  }, [progressAnim]);
 
-  const runCountdown = useCallback((duration: number, onDone: () => void) => {
-    progressAnim.setValue(0);
-    Animated.timing(progressAnim, {
-      toValue: 1,
-      duration: duration * 1000,
-      useNativeDriver: false,
-    }).start();
-    let remaining = duration;
-    setCountdown(remaining);
-    countdownRef.current = setInterval(() => {
-      remaining -= 1;
+  const runCountdown = useCallback(
+    (duration: number, onDone: () => void) => {
+      progressAnim.setValue(0);
+      Animated.timing(progressAnim, {
+        toValue: 1,
+        duration: duration * 1000,
+        useNativeDriver: false,
+      }).start();
+      let remaining = duration;
       setCountdown(remaining);
-      if (remaining <= 0) {
-        clearInterval(countdownRef.current!);
-        onDone();
-      }
-    }, 1000);
-  }, []);
+      countdownRef.current = setInterval(() => {
+        remaining -= 1;
+        setCountdown(remaining);
+        if (remaining <= 0) {
+          clearInterval(countdownRef.current!);
+          onDone();
+        }
+      }, 1000);
+    },
+    [progressAnim],
+  );
 
   const startMVCPhase = useCallback(() => {
     startMVC();
@@ -137,7 +134,7 @@ export default function CalibrationOverlay({
     setMVC(null);
     setErrorMsg("");
     progressAnim.setValue(0);
-  }, []);
+  }, [progressAnim]);
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -149,12 +146,21 @@ export default function CalibrationOverlay({
       {CALIBRATION_CHANNEL_LABELS.map((ch, i) => (
         <View
           key={ch}
-          style={[styles.channelChip, { borderColor: theme.border, backgroundColor: theme.secondaryCard }]}
+          style={[
+            styles.channelChip,
+            { borderColor: theme.border, backgroundColor: theme.secondaryCard },
+          ]}
         >
-          <ThemedText type="label" style={[styles.channelLabel, { color: theme.textSecondary }]}>
+          <ThemedText
+            type="label"
+            style={[styles.channelLabel, { color: theme.textSecondary }]}
+          >
             {ch}
           </ThemedText>
-          <ThemedText type="bodyBold" style={[styles.channelValue, { color: theme.text }]}>
+          <ThemedText
+            type="bodyBold"
+            style={[styles.channelValue, { color: theme.text }]}
+          >
             {values[i]?.toFixed(3) ?? "—"}
           </ThemedText>
         </View>
@@ -167,20 +173,42 @@ export default function CalibrationOverlay({
       case "intro":
         return (
           <View style={styles.phaseContent}>
-            <View style={[styles.stepCard, { backgroundColor: theme.secondaryCard }]}>
-              <ThemedText type="bodyBold" style={[styles.stepTitle, { color: theme.primary }]}>
+            <View
+              style={[
+                styles.stepCard,
+                { backgroundColor: theme.secondaryCard },
+              ]}
+            >
+              <ThemedText
+                type="bodyBold"
+                style={[styles.stepTitle, { color: theme.primary }]}
+              >
                 Step 1 — Rest (5s)
               </ThemedText>
-              <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>
-                Sit still with your leg relaxed. We measure your muscle noise floor.
+              <ThemedText
+                style={[styles.stepDesc, { color: theme.textSecondary }]}
+              >
+                Sit still with your leg relaxed. We measure your muscle noise
+                floor.
               </ThemedText>
             </View>
-            <View style={[styles.stepCard, { backgroundColor: theme.secondaryCard }]}>
-              <ThemedText type="bodyBold" style={[styles.stepTitle, { color: theme.success }]}>
+            <View
+              style={[
+                styles.stepCard,
+                { backgroundColor: theme.secondaryCard },
+              ]}
+            >
+              <ThemedText
+                type="bodyBold"
+                style={[styles.stepTitle, { color: theme.success }]}
+              >
                 Step 2 — Flex (5s)
               </ThemedText>
-              <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>
-                Contract your quad as hard as possible. This sets your 100% MVC reference point.
+              <ThemedText
+                style={[styles.stepDesc, { color: theme.textSecondary }]}
+              >
+                Contract your quad as hard as possible. This sets your 100% MVC
+                reference point.
               </ThemedText>
             </View>
           </View>
@@ -188,14 +216,24 @@ export default function CalibrationOverlay({
       case "rest":
         return (
           <View style={styles.centerPhase}>
-            <ThemedText type="label" style={[styles.phaseIndicator, { color: theme.primary }]}>
+            <ThemedText
+              type="label"
+              style={[styles.phaseIndicator, { color: theme.primary }]}
+            >
               STEP 1 OF 2
             </ThemedText>
             <ThemedText style={[styles.countdown, { color: theme.primary }]}>
               {countdown}s
             </ThemedText>
-            <View style={[styles.progressTrack, { backgroundColor: theme.border }]}>
-              <Animated.View style={[styles.progressBar, { width: progressWidth, backgroundColor: theme.primary }]} />
+            <View
+              style={[styles.progressTrack, { backgroundColor: theme.border }]}
+            >
+              <Animated.View
+                style={[
+                  styles.progressBar,
+                  { width: progressWidth, backgroundColor: theme.primary },
+                ]}
+              />
             </View>
             <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
               Measuring baseline noise floor…
@@ -205,14 +243,24 @@ export default function CalibrationOverlay({
       case "flex":
         return (
           <View style={styles.centerPhase}>
-            <ThemedText type="label" style={[styles.phaseIndicator, { color: theme.success }]}>
+            <ThemedText
+              type="label"
+              style={[styles.phaseIndicator, { color: theme.success }]}
+            >
               STEP 2 OF 2
             </ThemedText>
             <ThemedText style={[styles.countdown, { color: theme.success }]}>
               {countdown}s
             </ThemedText>
-            <View style={[styles.progressTrack, { backgroundColor: theme.border }]}>
-              <Animated.View style={[styles.progressBar, { width: progressWidth, backgroundColor: theme.success }]} />
+            <View
+              style={[styles.progressTrack, { backgroundColor: theme.border }]}
+            >
+              <Animated.View
+                style={[
+                  styles.progressBar,
+                  { width: progressWidth, backgroundColor: theme.success },
+                ]}
+              />
             </View>
             <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
               Hold maximum contraction…
@@ -224,7 +272,10 @@ export default function CalibrationOverlay({
           <View style={styles.phaseContent}>
             {baseline && (
               <View style={styles.resultBlock}>
-                <ThemedText type="label" style={[styles.resultLabel, { color: theme.textSecondary }]}>
+                <ThemedText
+                  type="label"
+                  style={[styles.resultLabel, { color: theme.textSecondary }]}
+                >
                   Baseline (Rest) — μV RMS
                 </ThemedText>
                 {renderChannelRow(baseline)}
@@ -232,7 +283,10 @@ export default function CalibrationOverlay({
             )}
             {mvc && (
               <View style={styles.resultBlock}>
-                <ThemedText type="label" style={[styles.resultLabel, { color: theme.textSecondary }]}>
+                <ThemedText
+                  type="label"
+                  style={[styles.resultLabel, { color: theme.textSecondary }]}
+                >
                   MVC Peak (500ms window) — μV RMS
                 </ThemedText>
                 {renderChannelRow(mvc)}
@@ -255,21 +309,31 @@ export default function CalibrationOverlay({
 
   const getTitle = () => {
     switch (phase) {
-      case "intro": return "🎯 Calibration";
-      case "rest": return "😌 Relax";
-      case "flex": return "💪 FLEX NOW";
-      case "confirm": return "✅ Complete";
-      case "error": return "⚠️ Failed";
+      case "intro":
+        return "🎯 Calibration";
+      case "rest":
+        return "😌 Relax";
+      case "flex":
+        return "💪 FLEX NOW";
+      case "confirm":
+        return "✅ Complete";
+      case "error":
+        return "⚠️ Failed";
     }
   };
 
   const getSubtitle = () => {
     switch (phase) {
-      case "intro": return "A 2-step process to personalise your signal readings.";
-      case "rest": return "Keep your leg completely still and relaxed.";
-      case "flex": return "Contract your quad as hard as you can and hold it!";
-      case "confirm": return "Review your values. Confirm to enable Clinical % MVC mode.";
-      case "error": return "There was an issue during capture.";
+      case "intro":
+        return "A 2-step process to personalise your signal readings.";
+      case "rest":
+        return "Keep your leg completely still and relaxed.";
+      case "flex":
+        return "Contract your quad as hard as you can and hold it!";
+      case "confirm":
+        return "Review your values. Confirm to enable Clinical % MVC mode.";
+      case "error":
+        return "There was an issue during capture.";
     }
   };
 
@@ -277,11 +341,18 @@ export default function CalibrationOverlay({
     if (phase === "intro") {
       return (
         <>
-          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: theme.primary }]} onPress={startRestPhase}>
-            <ThemedText type="bodyBold" style={styles.primaryBtnText}>Start Calibration</ThemedText>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
+            onPress={startRestPhase}
+          >
+            <ThemedText type="bodyBold" style={styles.primaryBtnText}>
+              Start Calibration
+            </ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancelLink} onPress={onDismiss}>
-            <ThemedText style={{ color: theme.textSecondary }}>Cancel</ThemedText>
+            <ThemedText style={{ color: theme.textSecondary }}>
+              Cancel
+            </ThemedText>
           </TouchableOpacity>
         </>
       );
@@ -289,11 +360,21 @@ export default function CalibrationOverlay({
     if (phase === "confirm") {
       return (
         <>
-          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: theme.success }]} onPress={handleConfirm}>
-            <ThemedText type="bodyBold" style={styles.primaryBtnText}>Save & Enable % MVC</ThemedText>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: theme.success }]}
+            onPress={handleConfirm}
+          >
+            <ThemedText type="bodyBold" style={styles.primaryBtnText}>
+              Save & Enable % MVC
+            </ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: theme.border }]} onPress={handleRetry}>
-            <ThemedText type="bodyBold" style={{ color: theme.text }}>Retry</ThemedText>
+          <TouchableOpacity
+            style={[styles.secondaryBtn, { borderColor: theme.border }]}
+            onPress={handleRetry}
+          >
+            <ThemedText type="bodyBold" style={{ color: theme.text }}>
+              Retry
+            </ThemedText>
           </TouchableOpacity>
         </>
       );
@@ -301,11 +382,18 @@ export default function CalibrationOverlay({
     if (phase === "error") {
       return (
         <>
-          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: theme.primary }]} onPress={handleRetry}>
-            <ThemedText type="bodyBold" style={styles.primaryBtnText}>Try Again</ThemedText>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
+            onPress={handleRetry}
+          >
+            <ThemedText type="bodyBold" style={styles.primaryBtnText}>
+              Try Again
+            </ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancelLink} onPress={onDismiss}>
-            <ThemedText style={{ color: theme.textSecondary }}>Cancel</ThemedText>
+            <ThemedText style={{ color: theme.textSecondary }}>
+              Cancel
+            </ThemedText>
           </TouchableOpacity>
         </>
       );
@@ -321,18 +409,20 @@ export default function CalibrationOverlay({
       subtitle={getSubtitle()}
       footer={renderFooter()}
     >
-      {renderContent()}
+      <View style={styles.modalContentContainer}>
+        {renderContent()}
+      </View>
     </AppModal>
   );
 }
 
 const styles = StyleSheet.create({
   phaseIndicator: {
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 8,
   },
   centerPhase: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 20,
     gap: 16,
   },
@@ -343,44 +433,45 @@ const styles = StyleSheet.create({
     fontSize: 72,
     fontWeight: "800",
     textAlign: "center",
+    lineHeight: 80,
   },
-  progressTrack: { 
-    height: 8, 
-    borderRadius: 4, 
-    overflow: "hidden", 
-    width: '100%',
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+    width: "100%",
   },
-  progressBar: { 
-    height: 8, 
-    borderRadius: 4 
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
   },
-  hint: { 
-    fontSize: 13, 
-    textAlign: "center", 
-    fontStyle: "italic" 
+  hint: {
+    fontSize: 13,
+    textAlign: "center",
+    fontStyle: "italic",
   },
-  stepCard: { 
-    borderRadius: 16, 
-    padding: 20, 
-    gap: 8 
+  stepCard: {
+    borderRadius: 16,
+    padding: 20,
+    gap: 8,
   },
-  stepTitle: { 
+  stepTitle: {
     fontSize: 15,
   },
-  stepDesc: { 
-    fontSize: 14, 
-    lineHeight: 20 
+  stepDesc: {
+    fontSize: 14,
+    lineHeight: 20,
   },
-  resultBlock: { 
-    gap: 12 
+  resultBlock: {
+    gap: 12,
   },
   resultLabel: {
     fontSize: 10,
     marginLeft: 4,
   },
-  channelGrid: { 
-    flexDirection: "row", 
-    gap: 8 
+  channelGrid: {
+    flexDirection: "row",
+    gap: 8,
   },
   channelChip: {
     flex: 1,
@@ -390,10 +481,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
-  channelLabel: { 
+  channelLabel: {
     fontSize: 10,
   },
-  channelValue: { 
+  channelValue: {
     fontSize: 14,
   },
   primaryBtn: {
@@ -401,7 +492,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: "center",
   },
-  primaryBtnText: { 
+  primaryBtnText: {
     color: "#fff",
   },
   secondaryBtn: {
@@ -410,13 +501,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
   },
-  cancelLink: { 
-    alignItems: "center", 
-    paddingVertical: 12 
+  cancelLink: {
+    alignItems: "center",
+    paddingVertical: 12,
   },
   errorText: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 16,
     lineHeight: 24,
+  },
+  modalContentContainer: {
+    minHeight: 400, // Provides vertical stability across different phases
+    justifyContent: "center",
   },
 });

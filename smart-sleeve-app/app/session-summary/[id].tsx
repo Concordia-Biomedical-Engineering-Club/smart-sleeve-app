@@ -160,18 +160,26 @@ export default function SessionSummaryScreen() {
         <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
-  }  if (!session) {
+  }
+  if (!session) {
     return (
       <View
         style={[styles.loadingContainer, { backgroundColor: theme.background }]}
       >
-        <ThemedText style={{ marginBottom: 16 }}>{errorMessage ?? "Session not found"}</ThemedText>
+        <ThemedText style={{ marginBottom: 16 }}>
+          {errorMessage ?? "Session not found"}
+        </ThemedText>
         <TouchableOpacity
           accessibilityLabel="Back"
           onPress={() => router.back()}
-          style={[styles.doneButton, { backgroundColor: theme.primary, width: '60%' }]}
+          style={[
+            styles.doneButton,
+            { backgroundColor: theme.primary, width: "60%" },
+          ]}
         >
-          <ThemedText type="bodyBold" style={{ color: '#fff' }}>Go Back</ThemedText>
+          <ThemedText type="bodyBold" style={{ color: "#fff" }}>
+            Go Back
+          </ThemedText>
         </TouchableOpacity>
       </View>
     );
@@ -184,8 +192,10 @@ export default function SessionSummaryScreen() {
       <ScreenHeader
         badgeLabel="SESSION SUMMARY"
         onLeftPress={() => router.back()}
+        leftAccessibilityLabel="Back"
         leftIcon="chevron.left"
         rightIcon="square.and.arrow.up"
+        rightAccessibilityLabel="Share session"
         onRightPress={handleShare}
       />
 
@@ -229,7 +239,9 @@ export default function SessionSummaryScreen() {
             <ThemedText type="subtitle" style={styles.exerciseTitle}>
               {exerciseInfo?.name || "General Session"}
             </ThemedText>
-            <ThemedText style={[styles.sessionDate, { color: theme.textSecondary }]}>
+            <ThemedText
+              style={[styles.sessionDate, { color: theme.textSecondary }]}
+            >
               {new Date(session.timestamp).toLocaleDateString([], {
                 month: "long",
                 day: "numeric",
@@ -262,9 +274,7 @@ export default function SessionSummaryScreen() {
           ]}
         >
           <View style={styles.comparisonHeader}>
-            <ThemedText type="bodyBold">
-              Progress Comparison
-            </ThemedText>
+            <ThemedText type="bodyBold">Progress Comparison</ThemedText>
             <ThemedText
               style={[Typography.caption, { color: theme.textSecondary }]}
             >
@@ -290,7 +300,15 @@ export default function SessionSummaryScreen() {
                   {comparison.qualityDelta >= 0 ? "+" : ""}
                   {comparison.qualityDelta.toFixed(1)}%
                 </ThemedText>
-                <ThemedText type="label" style={[styles.comparisonLabel, { color: theme.textSecondary }]}>Quality</ThemedText>
+                <ThemedText
+                  type="label"
+                  style={[
+                    styles.comparisonLabel,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  Quality
+                </ThemedText>
               </View>
               <View style={styles.comparisonMetric}>
                 <ThemedText
@@ -307,7 +325,15 @@ export default function SessionSummaryScreen() {
                   {comparison.romDelta >= 0 ? "+" : ""}
                   {comparison.romDelta.toFixed(1)}°
                 </ThemedText>
-                <ThemedText type="label" style={[styles.comparisonLabel, { color: theme.textSecondary }]}>ROM</ThemedText>
+                <ThemedText
+                  type="label"
+                  style={[
+                    styles.comparisonLabel,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  ROM
+                </ThemedText>
               </View>
               <View style={styles.comparisonMetric}>
                 <ThemedText
@@ -316,7 +342,15 @@ export default function SessionSummaryScreen() {
                   {comparison.durationDelta >= 0 ? "+" : ""}
                   {comparison.durationDelta.toFixed(0)}s
                 </ThemedText>
-                <ThemedText type="label" style={[styles.comparisonLabel, { color: theme.textSecondary }]}>Duration</ThemedText>
+                <ThemedText
+                  type="label"
+                  style={[
+                    styles.comparisonLabel,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  Duration
+                </ThemedText>
               </View>
             </View>
           ) : (
@@ -348,7 +382,9 @@ export default function SessionSummaryScreen() {
               {recommendation?.title ?? "Clinician's Insight"}
             </ThemedText>
           </View>
-          <ThemedText style={[styles.insightText, { color: theme.textSecondary }]}>
+          <ThemedText
+            style={[styles.insightText, { color: theme.textSecondary }]}
+          >
             {recommendation?.message}
           </ThemedText>
         </View>
@@ -375,6 +411,10 @@ export default function SessionSummaryScreen() {
               value={`${Math.round(session.analytics.fatigueScore)}/10`}
             />
           </View>
+          <View style={styles.row}>
+            <StatCard label="Completion" value={`${completionRate}%`} />
+            <StatCard label="Intensity" value={`${intensityScore}/10`} />
+          </View>
         </View>
 
         {/* ACTIVATION GRAPH */}
@@ -385,7 +425,9 @@ export default function SessionSummaryScreen() {
             Shadows.card,
           ]}
         >
-          <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>Session Analytics</ThemedText>
+          <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>
+            Session Analytics
+          </ThemedText>
           <ThemedText
             style={[
               Typography.caption,
@@ -440,7 +482,10 @@ export default function SessionSummaryScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.doneButton, { backgroundColor: theme.primary, ...Shadows.button }]}
+          style={[
+            styles.doneButton,
+            { backgroundColor: theme.primary, ...Shadows.button },
+          ]}
           onPress={() => router.replace("/(tabs)/dashboard" as any)}
         >
           <ThemedText type="bodyBold" style={styles.doneButtonText}>

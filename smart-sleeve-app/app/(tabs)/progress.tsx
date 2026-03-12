@@ -8,11 +8,11 @@ import {
   RefreshControl,
   Text,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 import { ThemedText } from "@/components/themed-text";
-import { Colors, Shadows, Typography } from "@/constants/theme";
+import { Colors, Shadows } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { fetchSessionsByFilters, Session } from "@/services/Database";
@@ -144,7 +144,6 @@ export default function ProgressScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
   const user = useSelector((state: RootState) => state.user);
-  const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -161,7 +160,7 @@ export default function ProgressScreen() {
     return startDate.getTime();
   }, [timeframe]);
 
-  const loadSessions = async () => {
+  const loadSessions = React.useCallback(async () => {
     try {
       setErrorMessage(null);
       const data = await fetchSessionsByFilters({
@@ -178,11 +177,11 @@ export default function ProgressScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [selectedExercise, selectedSide, timeframeStart, user.email]);
 
   useEffect(() => {
     loadSessions();
-  }, [selectedExercise, selectedSide, timeframe, timeframeStart, user.email]);
+  }, [loadSessions]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -291,13 +290,15 @@ export default function ProgressScreen() {
           />
         }
       >
-        <ScreenHeader 
+        <ScreenHeader
           badgeLabel="SESSION HISTORY"
           rightIcon="arrow.triangle.2.circlepath"
           onRightPress={onRefresh}
         />
 
-        <ThemedText type="title" style={styles.pageTitle}>Progress Log</ThemedText>
+        <ThemedText type="title" style={styles.pageTitle}>
+          Progress Log
+        </ThemedText>
 
         {errorMessage ? (
           <View
@@ -321,10 +322,13 @@ export default function ProgressScreen() {
             { backgroundColor: theme.secondaryCard, borderColor: theme.border },
           ]}
         >
-          <ThemedText type="label" style={[styles.filterTitle, { color: theme.textSecondary }]}>
+          <ThemedText
+            type="label"
+            style={[styles.filterTitle, { color: theme.textSecondary }]}
+          >
             Filters
           </ThemedText>
-          
+
           <SegmentedControl
             options={["7D", "30D", "90D"]}
             selectedOption={timeframe}
@@ -405,10 +409,7 @@ export default function ProgressScreen() {
         {/* ANALYTICS SNAPSHOT */}
         <View style={styles.statsContainer}>
           <View style={styles.row}>
-            <StatCard
-              label="Avg Quality"
-              value={`${stats.avgQuality}%`}
-            />
+            <StatCard label="Avg Quality" value={`${stats.avgQuality}%`} />
             <StatCard
               label="Total Sessions"
               value={stats.sessionCount.toString()}
@@ -419,10 +420,7 @@ export default function ProgressScreen() {
               label="Mins Trained"
               value={stats.totalDuration.toString()}
             />
-            <StatCard
-              label="Peak ROM"
-              value={`${stats.maxROM}°`}
-            />
+            <StatCard label="Peak ROM" value={`${stats.maxROM}°`} />
           </View>
         </View>
 
@@ -450,7 +448,10 @@ export default function ProgressScreen() {
 
         {/* RECENT ACTIVITY LIST */}
         <View style={styles.historyContainer}>
-          <ThemedText type="label" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          <ThemedText
+            type="label"
+            style={[styles.sectionTitle, { color: theme.textSecondary }]}
+          >
             Recent Activity
           </ThemedText>
 
@@ -492,35 +493,107 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   scrollContent: { padding: 24, paddingBottom: 40 },
   pageTitle: { marginBottom: 24 },
-  errorBanner: { borderRadius: 16, borderWidth: 1, padding: 12, marginBottom: 16 },
-  filterCard: { padding: 20, borderRadius: 24, marginBottom: 32, borderWidth: 1 },
-  filterTitle: { marginBottom: 16, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  errorBanner: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 16,
+  },
+  filterCard: {
+    padding: 20,
+    borderRadius: 24,
+    marginBottom: 32,
+    borderWidth: 1,
+  },
+  filterTitle: {
+    marginBottom: 16,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
   exerciseChipRow: { gap: 10, paddingRight: 8 },
-  exerciseChip: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 10 },
+  exerciseChip: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
   statsContainer: { marginBottom: 32, gap: 16 },
   row: { flexDirection: "row", gap: 16 },
   chartWrapper: { marginBottom: 32 },
   historyContainer: { flex: 1 },
-  sectionTitle: { marginBottom: 16, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  sectionTitle: {
+    marginBottom: 16,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
   dateGroup: { marginBottom: 24 },
-  dateHeader: { fontSize: 13, fontWeight: "700", opacity: 0.5, marginBottom: 12, paddingLeft: 4, textTransform: "uppercase", letterSpacing: 1.1 },
-  sessionCard: { borderRadius: 24, padding: 20, marginBottom: 16, position: "relative", borderWidth: 1, borderColor: 'rgba(0,0,0,0.02)' },
-  sessionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  dateHeader: {
+    fontSize: 13,
+    fontWeight: "700",
+    opacity: 0.5,
+    marginBottom: 12,
+    paddingLeft: 4,
+    textTransform: "uppercase",
+    letterSpacing: 1.1,
+  },
+  sessionCard: {
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    position: "relative",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.02)",
+  },
+  sessionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   sessionTypeInfo: { flexDirection: "row", alignItems: "center", gap: 12 },
-  sideIndicator: { width: 32, height: 32, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  sideIndicator: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   sideIndicatorText: { color: "#fff", fontSize: 14, fontWeight: "900" },
   exerciseNameText: { fontSize: 17 },
   sessionTimeText: { fontSize: 12, opacity: 0.5 },
   sessionDetails: { gap: 16 },
   statItem: { gap: 8 },
-  statLabel: { fontSize: 10, fontWeight: "800", opacity: 0.4, letterSpacing: 1 },
-  qualityBarBg: { height: 8, backgroundColor: "rgba(0,0,0,0.05)", borderRadius: 4, overflow: "hidden" },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    opacity: 0.4,
+    letterSpacing: 1,
+  },
+  qualityBarBg: {
+    height: 8,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
   qualityBarFill: { height: "100%", borderRadius: 4 },
   metricRow: { flexDirection: "row", gap: 20 },
   miniMetric: { flexDirection: "row", alignItems: "center", gap: 6 },
-  miniMetricText: { fontSize: 13, opacity: 0.7, fontWeight: '600' },
+  miniMetricText: { fontSize: 13, opacity: 0.7, fontWeight: "600" },
   chevron: { position: "absolute", right: 20, top: "50%", marginTop: 10 },
-  emptyState: { alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 12 },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    gap: 12,
+  },
   emptyTitle: { fontSize: 20, fontWeight: "700", opacity: 0.8 },
-  emptySubtitle: { fontSize: 14, textAlign: "center", opacity: 0.5, paddingHorizontal: 40, lineHeight: 20 },
+  emptySubtitle: {
+    fontSize: 14,
+    textAlign: "center",
+    opacity: 0.5,
+    paddingHorizontal: 40,
+    lineHeight: 20,
+  },
 });

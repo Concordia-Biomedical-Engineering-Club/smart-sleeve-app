@@ -1,33 +1,42 @@
-import { StyleSheet, Text, type TextProps } from 'react-native';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { Typography } from '@/constants/theme';
+import { StyleSheet, Text, type TextProps } from "react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { Typography } from "@/constants/theme";
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: 'default' | 'title' | 'subtitle' | 'link' | 'caption' | 'label' | 'bodyBold';
+  type?:
+    | "default"
+    | "title"
+    | "defaultSemiBold"
+    | "subtitle"
+    | "link"
+    | "caption"
+    | "label"
+    | "bodyBold";
 };
 
 export function ThemedText({
   style,
   lightColor,
   darkColor,
-  type = 'default',
+  type = "default",
   ...rest
 }: ThemedTextProps) {
-  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const color = useThemeColor({ light: lightColor, dark: darkColor }, "text");
 
   return (
     <Text
       style={[
         { color },
-        type === 'default' ? styles.default : undefined,
-        type === 'title' ? styles.title : undefined,
-        type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
-        type === 'caption' ? styles.caption : undefined,
-        type === 'label' ? styles.label : undefined,
-        type === 'bodyBold' ? styles.bodyBold : undefined,
+        type === "default" ? styles.default : undefined,
+        type === "title" ? styles.title : undefined,
+        type === "defaultSemiBold" ? styles.defaultSemiBold : undefined,
+        type === "subtitle" ? styles.subtitle : undefined,
+        type === "link" ? styles.link : undefined,
+        type === "caption" ? styles.caption : undefined,
+        type === "label" ? styles.label : undefined,
+        type === "bodyBold" ? styles.bodyBold : undefined,
         style,
       ]}
       {...rest}
@@ -38,6 +47,9 @@ export function ThemedText({
 const styles = StyleSheet.create({
   default: {
     ...Typography.body,
+  },
+  defaultSemiBold: {
+    ...Typography.bodyBold,
   },
   bodyBold: {
     ...Typography.bodyBold,
@@ -56,6 +68,6 @@ const styles = StyleSheet.create({
   },
   link: {
     ...Typography.body,
-    color: '#00B8A9', // Using palette medical teal for links
+    color: "#00B8A9", // Using palette medical teal for links
   },
 });

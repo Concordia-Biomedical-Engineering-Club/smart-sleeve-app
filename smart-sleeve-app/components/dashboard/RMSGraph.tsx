@@ -3,7 +3,7 @@ import { View, Dimensions, StyleSheet } from "react-native";
 import Svg, { Path, Line, Defs, LinearGradient, Stop } from "react-native-svg";
 import { useSelector } from "react-redux";
 import { selectLatestFeatures } from "../../store/deviceSlice";
-import { Colors, Shadows, Typography } from "@/constants/theme";
+import { Colors, Shadows } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { ThemedText } from "../themed-text";
 import { selectShowNormalized } from "@/store/userSlice";
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...Shadows.card,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.02)',
+    borderColor: "rgba(0,0,0,0.02)",
   },
   header: {
     marginBottom: 16,

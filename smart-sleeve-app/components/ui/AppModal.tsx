@@ -79,10 +79,12 @@ export function AppModal({
   );
 }
 
+
+
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   dismissArea: {
@@ -91,40 +93,49 @@ const styles = StyleSheet.create({
   modalBox: {
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)', // This will be overridden by borderTopColor in inline style
     paddingTop: 12,
-    maxHeight: '90%',
+    maxHeight: '92%',
     ...Shadows.card,
   },
   modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
+    width: 36,
+    height: 5,
+    borderRadius: 2.5,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   modalTitle: {
     textAlign: 'center',
     marginBottom: 8,
+    fontSize: 22,
+    fontWeight: '700',
   },
   modalSubtitle: {
     textAlign: 'center',
-    fontSize: 15,
-    marginBottom: 24,
+    fontSize: 14,
+    marginBottom: 32,
     lineHeight: 20,
+    opacity: 0.8,
   },
   content: {
-    gap: 16,
+    gap: 20,
   },
   footer: {
     padding: 24,
-    paddingTop: 0,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.03)',
     gap: 12,
     ...Platform.select({
-      ios: { paddingBottom: 40 },
+      ios: { paddingBottom: 44 },
       android: { paddingBottom: 24 }
     })
   },

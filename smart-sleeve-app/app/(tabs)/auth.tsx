@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Modal,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -51,7 +50,7 @@ export default function AuthScreen() {
       setPassword("");
       setRetypePassword("");
       setError("");
-    }, [])
+    }, []),
   );
 
   const handleAuth = async () => {
@@ -101,6 +100,41 @@ export default function AuthScreen() {
     }
   };
 
+  const handlePasswordReset = async () => {
+    setResetMessage("");
+    setError("");
+
+    if (!resetEmail) {
+      setError("Please enter your email.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(resetEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    setLoading(true);
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+      setError(
+        "Request taking too long. Please check your connection and try again.",
+      );
+    }, 10000);
+
+    try {
+      await sendResetPasswordEmail(resetEmail);
+      setResetMessage("Password reset email sent! Check your inbox.");
+      setResetEmail("");
+    } catch (resetError) {
+      setError((resetError as Error).message || "Failed to send reset email.");
+    } finally {
+      clearTimeout(timeoutId);
+      setLoading(false);
+    }
+  };
+
   const toggleAuth = () => {
     setIsLogin(!isLogin);
     setError("");
@@ -108,10 +142,32 @@ export default function AuthScreen() {
 
   if (user.isLoggedIn) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: theme.background,
+            justifyContent: "center",
+            alignItems: "center",
+          },
+        ]}
+      >
         <Text style={[styles.title, { color: theme.text }]}>Hello again!</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary, marginBottom: 24 }]}>{user.email}</Text>
-        <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary, width: '80%' }]} onPress={handleLogout}>
+        <Text
+          style={[
+            styles.subtitle,
+            { color: theme.textSecondary, marginBottom: 24 },
+          ]}
+        >
+          {user.email}
+        </Text>
+        <TouchableOpacity
+          style={[
+            styles.button,
+            { backgroundColor: theme.primary, width: "80%" },
+          ]}
+          onPress={handleLogout}
+        >
           <Text style={styles.buttonText}>Logout</Text>
         </TouchableOpacity>
       </View>
@@ -123,11 +179,21 @@ export default function AuthScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerContainer}>
-          <View style={[styles.brandBadge, { backgroundColor: theme.primary + '15' }]}>
-             <Text style={[styles.brandBadgeText, { color: theme.primary }]}>TRUE NORTH BIOMEDICAL</Text>
+          <View
+            style={[
+              styles.brandBadge,
+              { backgroundColor: theme.primary + "15" },
+            ]}
+          >
+            <Text style={[styles.brandBadgeText, { color: theme.primary }]}>
+              TRUE NORTH BIOMEDICAL
+            </Text>
           </View>
           <Text style={[styles.projectTitle, { color: theme.text }]}>
             Knee Companion
@@ -137,16 +203,30 @@ export default function AuthScreen() {
           </Text>
         </View>
 
-        <View style={[styles.authBox, { backgroundColor: theme.cardBackground, ...Shadows.card }]}>
+        <View
+          style={[
+            styles.authBox,
+            { backgroundColor: theme.cardBackground, ...Shadows.card },
+          ]}
+        >
           <Text style={[styles.title, { color: theme.text }]}>
             {isLogin ? "Welcome Back" : "Get Started"}
           </Text>
 
           <View style={styles.formContainer}>
             <View style={styles.inputWrapper}>
-              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>EMAIL</Text>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                EMAIL
+              </Text>
               <TextInput
-                style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.secondaryCard }]}
+                style={[
+                  styles.input,
+                  {
+                    color: theme.text,
+                    borderColor: theme.border,
+                    backgroundColor: theme.secondaryCard,
+                  },
+                ]}
                 placeholder="athlete@example.com"
                 placeholderTextColor={theme.textTertiary}
                 value={email}
@@ -157,9 +237,18 @@ export default function AuthScreen() {
             </View>
 
             <View style={styles.inputWrapper}>
-              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>PASSWORD</Text>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                PASSWORD
+              </Text>
               <TextInput
-                style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.secondaryCard }]}
+                style={[
+                  styles.input,
+                  {
+                    color: theme.text,
+                    borderColor: theme.border,
+                    backgroundColor: theme.secondaryCard,
+                  },
+                ]}
                 placeholder="••••••••"
                 placeholderTextColor={theme.textTertiary}
                 value={password}
@@ -170,9 +259,20 @@ export default function AuthScreen() {
 
             {!isLogin && (
               <View style={styles.inputWrapper}>
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>CONFIRM PASSWORD</Text>
+                <Text
+                  style={[styles.inputLabel, { color: theme.textSecondary }]}
+                >
+                  CONFIRM PASSWORD
+                </Text>
                 <TextInput
-                  style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.secondaryCard }]}
+                  style={[
+                    styles.input,
+                    {
+                      color: theme.text,
+                      borderColor: theme.border,
+                      backgroundColor: theme.secondaryCard,
+                    },
+                  ]}
                   placeholder="••••••••"
                   placeholderTextColor={theme.textTertiary}
                   value={retypePassword}
@@ -183,8 +283,13 @@ export default function AuthScreen() {
             )}
 
             {isLogin && (
-              <TouchableOpacity onPress={() => setShowResetModal(true)} style={styles.forgotPasswordContainer}>
-                <Text style={[styles.forgotPassword, { color: theme.primary }]}>Forgot Password?</Text>
+              <TouchableOpacity
+                onPress={() => setShowResetModal(true)}
+                style={styles.forgotPasswordContainer}
+              >
+                <Text style={[styles.forgotPassword, { color: theme.primary }]}>
+                  Forgot Password?
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -207,7 +312,9 @@ export default function AuthScreen() {
 
           <TouchableOpacity onPress={toggleAuth} style={styles.switchContainer}>
             <Text style={[styles.switch, { color: theme.textSecondary }]}>
-              {isLogin ? "New to Knee Companion? " : "Already have an account? "}
+              {isLogin
+                ? "New to Knee Companion? "
+                : "Already have an account? "}
               <Text style={[styles.switchHighlight, { color: theme.primary }]}>
                 {isLogin ? "Register" : "Login"}
               </Text>
@@ -216,22 +323,41 @@ export default function AuthScreen() {
         </View>
       </ScrollView>
 
-      <AppModal 
-        visible={showResetModal} 
-        onClose={() => setShowResetModal(false)}
+      <AppModal
+        visible={showResetModal}
+        onClose={() => {
+          setShowResetModal(false);
+          setResetMessage("");
+          setError("");
+        }}
         title="Reset Password"
         subtitle="Enter your email to receive a password reset link."
-        footer={(
-          <TouchableOpacity 
-            style={[styles.button, { backgroundColor: theme.primary, marginTop: 0 }]} 
-            onPress={() => setShowResetModal(false)}
+        footer={
+          <TouchableOpacity
+            style={[
+              styles.button,
+              { backgroundColor: theme.primary, marginTop: 0 },
+            ]}
+            onPress={handlePasswordReset}
+            disabled={loading}
           >
-            <Text style={styles.buttonText}>Send Link</Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Send Link</Text>
+            )}
           </TouchableOpacity>
-        )}
+        }
       >
         <TextInput
-          style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.secondaryCard }]}
+          style={[
+            styles.input,
+            {
+              color: theme.text,
+              borderColor: theme.border,
+              backgroundColor: theme.secondaryCard,
+            },
+          ]}
           placeholder="athlete@example.com"
           placeholderTextColor={theme.textTertiary}
           value={resetEmail}
@@ -239,6 +365,10 @@ export default function AuthScreen() {
           autoCapitalize="none"
           keyboardType="email-address"
         />
+        {resetMessage ? (
+          <Text style={styles.success}>{resetMessage}</Text>
+        ) : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </AppModal>
     </KeyboardAvoidingView>
   );
@@ -276,7 +406,7 @@ const styles = StyleSheet.create({
     ...Typography.body,
     textAlign: "center",
     marginTop: 8,
-    maxWidth: '80%',
+    maxWidth: "80%",
   },
   authBox: {
     width: "100%",
@@ -324,12 +454,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: "center",
   },
+  success: {
+    ...Typography.caption,
+    color: "#00A878",
+    textAlign: "center",
+  },
   forgotPasswordContainer: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
   forgotPassword: {
     ...Typography.caption,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   switchContainer: {
     marginTop: 24,

@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  useWindowDimensions,
-} from "react-native";
+import { View, Image, StyleSheet } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors, Shadows } from "@/constants/theme";
 
@@ -31,21 +25,35 @@ const ProfileAvatarCard: React.FC<ProfileAvatarCardProps> = ({
     <View style={styles.container}>
       {/* Avatar Container */}
       <View style={styles.avatarWrapper}>
-        <View style={[styles.avatarBorder, { borderColor: theme.primary + '20' }]}>
+        <View
+          style={[styles.avatarBorder, { borderColor: theme.primary + "20" }]}
+        >
           <View style={[styles.innerBorder, { borderColor: theme.primary }]}>
             <Image source={avatar} style={styles.avatar} />
           </View>
         </View>
         {starIcon && (
-          <View style={[styles.badgeContainer, { backgroundColor: theme.cardBackground, ...Shadows.card }]}>
-             <Image source={starIcon} style={styles.starIcon} />
+          <View
+            style={[
+              styles.badgeContainer,
+              { backgroundColor: theme.cardBackground, ...Shadows.card },
+            ]}
+          >
+            <Image source={starIcon} style={styles.starIcon} />
           </View>
         )}
       </View>
 
       {/* Info Section */}
-      <ThemedText type="subtitle" style={styles.name}>{name}</ThemedText>
-      <View style={[styles.membershipBadge, { backgroundColor: theme.primary + '10' }]}>
+      <ThemedText type="subtitle" style={styles.name}>
+        {name}
+      </ThemedText>
+      <View
+        style={[
+          styles.membershipBadge,
+          { backgroundColor: theme.primary + "10" },
+        ]}
+      >
         <ThemedText style={[styles.membership, { color: theme.primary }]}>
           {membership.toUpperCase()}
         </ThemedText>
@@ -67,7 +75,7 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 100,
     borderWidth: 1,
-    borderStyle: 'dashed',
+    borderStyle: "dashed",
   },
   innerBorder: {
     padding: 4,
@@ -89,7 +97,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: "#fff",
   },
   starIcon: {
     width: 24,
