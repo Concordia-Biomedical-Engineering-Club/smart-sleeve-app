@@ -1,8 +1,12 @@
 import deviceReducer, {
+  calibrationSampleReceived,
+  connectionChanged,
   emgFrameReceived,
   imuFrameReceived,
   clearBuffers,
   selectEmgBufferLength,
+  setCalibrationScenarioOverride,
+  signalWarmupChanged,
   DeviceState,
   startWorkout,
 } from "@/store/deviceSlice";
@@ -16,8 +20,11 @@ describe("deviceSlice", () => {
     latestEMG: null,
     latestIMU: null,
     latestFeatures: null,
+    latestCalibrationSample: null,
     emgBuffer: [],
     kneeAngleBuffer: [],
+    calibrationScenarioOverride: null,
+    isSignalWarmedUp: false,
     workout: {
       phase: "IDLE",
       exerciseId: null,
@@ -194,5 +201,43 @@ describe("deviceSlice", () => {
     const action = { type: "device/setFilteringEnabled", payload: false };
     const state = deviceReducer(initialState, action);
     expect(state.isFilteringEnabled).toBe(false);
+  });
+
+  test("should store calibration scenario override and latest calibration sample", () => {
+    let state = deviceReducer(
+      initialState,
+      setCalibrationScenarioOverride("REST"),
+    );
+    state = deviceReducer(
+      state,
+      calibrationSampleReceived([0.1, -0.1, 0.2, -0.2]),
+    );
+
+    expect(state.calibrationScenarioOverride).toBe("REST");
+    expect(state.latestCalibrationSample).toEqual([0.1, -0.1, 0.2, -0.2]);
+  });
+
+  test("should track signal warmup state", () => {
+    const state = deviceReducer(initialState, signalWarmupChanged(true));
+    expect(state.isSignalWarmedUp).toBe(true);
+  });
+
+  test("should clear calibration runtime state when disconnected", () => {
+    const connectedState: DeviceState = {
+      ...initialState,
+      connection: { connected: true },
+      latestCalibrationSample: [0.2, 0.3, 0.4, 0.5],
+      calibrationScenarioOverride: "FLEX",
+      isSignalWarmedUp: true,
+    };
+
+    const state = deviceReducer(
+      connectedState,
+      connectionChanged({ connected: false }),
+    );
+
+    expect(state.latestCalibrationSample).toBeNull();
+    expect(state.calibrationScenarioOverride).toBeNull();
+    expect(state.isSignalWarmedUp).toBe(false);
   });
 });
