@@ -1,7 +1,13 @@
 import React from "react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from "@testing-library/react-native";
+import { Animated } from "react-native";
 import OnboardingPairing from "@/app/onboarding/pairing";
 import userReducer from "@/store/userSlice";
 import deviceReducer from "@/store/deviceSlice";
@@ -33,6 +39,15 @@ jest.mock("@/hooks/useSleeve", () => ({
 describe("OnboardingPairing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(Animated, "loop").mockReturnValue({
+      start: jest.fn(),
+      stop: jest.fn(),
+    } as any);
+  });
+
+  afterEach(() => {
+    cleanup();
+    jest.restoreAllMocks();
   });
 
   function renderScreen() {
