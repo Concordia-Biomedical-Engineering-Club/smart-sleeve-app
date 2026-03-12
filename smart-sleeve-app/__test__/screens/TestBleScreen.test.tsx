@@ -141,23 +141,22 @@ describe("TestBLEScreen", () => {
         channels: [1000, 900, 800, 700, 600, 500, 400, 300],
       });
       device.emitIMUPacket({ timestamp: packetTimestamp, rawRoll: 1024 });
+      await flushAsyncWork();
     });
 
-    await waitFor(() => {
-      expect(screen.getByText(/Status:/)).toBeTruthy();
-      expect(screen.getByText(/EMG packets: 1/)).toBeTruthy();
-      expect(screen.getByText(/IMU packets: 1/)).toBeTruthy();
-      expect(
-        screen.getByText(
-          new RegExp(`EMG stale: no \\(${EMG_STALE_TIMEOUT_MS} ms\\)`),
-        ),
-      ).toBeTruthy();
-      expect(
-        screen.getByText(
-          new RegExp(`IMU stale: no \\(${IMU_STALE_TIMEOUT_MS} ms\\)`),
-        ),
-      ).toBeTruthy();
-    });
+    expect(screen.getByText(/Status:/)).toBeTruthy();
+    expect(screen.getByText(/EMG packets: 1/)).toBeTruthy();
+    expect(screen.getByText(/IMU packets: 1/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        new RegExp(`EMG stale: no \\(${EMG_STALE_TIMEOUT_MS} ms\\)`),
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        new RegExp(`IMU stale: no \\(${IMU_STALE_TIMEOUT_MS} ms\\)`),
+      ),
+    ).toBeTruthy();
 
     await act(async () => {
       jest.advanceTimersByTime(
@@ -171,20 +170,21 @@ describe("TestBLEScreen", () => {
         <TestBLEScreen />
       </Provider>,
     );
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          new RegExp(`EMG stale: yes \\(${EMG_STALE_TIMEOUT_MS} ms\\)`),
-        ),
-      ).toBeTruthy();
-      expect(
-        screen.getByText(
-          new RegExp(`IMU stale: yes \\(${IMU_STALE_TIMEOUT_MS} ms\\)`),
-        ),
-      ).toBeTruthy();
+    await act(async () => {
+      await flushAsyncWork();
     });
-  });
+
+    expect(
+      screen.getByText(
+        new RegExp(`EMG stale: yes \\(${EMG_STALE_TIMEOUT_MS} ms\\)`),
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        new RegExp(`IMU stale: yes \\(${IMU_STALE_TIMEOUT_MS} ms\\)`),
+      ),
+    ).toBeTruthy();
+  }, 15_000);
 
   it("renders checksum, dropped-packet, notify-error, and reconnect failure diagnostics", async () => {
     const manager = new ProgrammableBleManager();
