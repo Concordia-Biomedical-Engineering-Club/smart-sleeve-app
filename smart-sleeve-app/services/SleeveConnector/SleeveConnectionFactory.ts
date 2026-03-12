@@ -6,9 +6,10 @@
  * -----------------------------------------------------
  */
 
-import { ISleeveConnector } from './ISleeveConnector';
-import { MockSleeveConnector } from '../MockBleService/MockSleeveConnector';
-import { RealSleeveConnector } from './RealSleeveConnector';
+import { NativeModules } from "react-native";
+import { ISleeveConnector } from "./ISleeveConnector";
+import { MockSleeveConnector } from "../MockBleService/MockSleeveConnector";
+import { RealSleeveConnector } from "./RealSleeveConnector";
 
 export class SleeveConnectionFactory {
   private static instance: ISleeveConnector | null = null;
@@ -19,14 +20,22 @@ export class SleeveConnectionFactory {
    */
   public static getConnector(): ISleeveConnector {
     if (!this.instance) {
-      // Default to Mock if env is unset or 'false'
-      const useMock = process.env.EXPO_PUBLIC_USE_MOCK_HARDWARE !== 'false';
-      
+      const useMock = process.env.EXPO_PUBLIC_USE_MOCK_HARDWARE !== "false";
+
       if (useMock) {
-        console.log('[SleeveConnectionFactory] Initializing MockSleeveConnector');
+        console.log(
+          "[SleeveConnectionFactory] Initializing MockSleeveConnector",
+        );
+        this.instance = new MockSleeveConnector();
+      } else if (!this.isBleNativeModuleAvailable()) {
+        console.warn(
+          "[SleeveConnectionFactory] BlePlx native module unavailable, falling back to MockSleeveConnector. Use a rebuilt native dev client for real BLE.",
+        );
         this.instance = new MockSleeveConnector();
       } else {
-        console.log('[SleeveConnectionFactory] Initializing RealSleeveConnector');
+        console.log(
+          "[SleeveConnectionFactory] Initializing RealSleeveConnector",
+        );
         this.instance = new RealSleeveConnector();
       }
     }
@@ -39,6 +48,10 @@ export class SleeveConnectionFactory {
    */
   public static resetInstance(): void {
     this.instance = null;
+  }
+
+  private static isBleNativeModuleAvailable(): boolean {
+    return NativeModules.BlePlx != null;
   }
 }
 

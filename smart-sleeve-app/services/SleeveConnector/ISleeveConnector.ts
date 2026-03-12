@@ -11,7 +11,7 @@
  * High-level scenario used by the mock data generator.
  * This matches the movement profiles defined in the spec.
  */
-export type SleeveScenario = 'REST' | 'FLEX' | 'SQUAT';
+export type SleeveScenario = "REST" | "FLEX" | "SQUAT";
 
 /**
  * EMGData
@@ -33,19 +33,19 @@ export interface EMGData {
  * IMUData
  * -----------------------------------------------------
  * Represents one motion/angle frame coming from the sleeve.
- * 
+ *
  * HARDWARE NOTE (AS5048A Magnetic Encoder):
  * With the AS5048A magnetic encoder integration, this structure
  * now primarily represents knee flexion angle measurement:
- * 
+ *
  * - roll: Knee flexion angle in degrees (0-140°)
  *   - 0° = Full knee extension (standing straight)
  *   - 90° = Right angle bend
  *   - 120-140° = Deep squat position
- * 
+ *
  * - pitch: Unused (set to 0) - reserved for future multi-axis sensing
  * - yaw: Unused (set to 0) - reserved for future multi-axis sensing
- * 
+ *
  * Legacy IMU Support:
  * If using a traditional IMU (gyro/accelerometer), the fields
  * retain their original meaning (roll, pitch, yaw orientation).
@@ -54,9 +54,9 @@ export interface EMGData {
 export interface IMUData {
   header: number;
   timestamp: number;
-  roll: number;      // Knee flexion angle (0-140°) with AS5048A encoder
-  pitch: number;     // Unused with encoder (0), or pitch angle with IMU
-  yaw: number;       // Unused with encoder (0), or yaw angle with IMU
+  roll: number; // Knee flexion angle (0-140°) with AS5048A encoder
+  pitch: number; // Unused with encoder (0), or pitch angle with IMU
+  yaw: number; // Unused with encoder (0), or yaw angle with IMU
   checksum: number;
 }
 
@@ -116,7 +116,9 @@ export interface ISleeveConnector {
    * Subscribe to connection status updates so the UI
    * can react to connect/disconnect events.
    */
-  onConnectionStatusChange(callback: (status: ConnectionStatus) => void): void;
+  onConnectionStatusChange(
+    callback: (status: ConnectionStatus) => void,
+  ): () => void;
 
   /**
    * Update the movement scenario (Mock only, no-op for Real).

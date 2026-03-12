@@ -9,7 +9,11 @@
  * -----------------------------------------------------
  */
 
-import { EMGData, IMUData, SleeveScenario } from '../SleeveConnector/ISleeveConnector';
+import {
+  EMGData,
+  IMUData,
+  SleeveScenario,
+} from "../SleeveConnector/ISleeveConnector";
 
 /**
  * Computes a simple checksum over a list of numeric values.
@@ -31,18 +35,18 @@ function computeChecksum(values: number[]): number {
 export class SleeveDataGenerator {
   private scenario: SleeveScenario;
   private readonly startTime: number;
-  
+
   // Smoothing state for "Target Glide"
   private currentEMGAmplitude: number = 0.05;
   private currentKneeAngle: number = 0;
 
-  constructor(initialScenario: SleeveScenario = 'REST') {
+  constructor(initialScenario: SleeveScenario = "REST") {
     this.scenario = initialScenario;
     this.startTime = Date.now();
-    
+
     // Set initial values based on scenario
-    this.currentEMGAmplitude = initialScenario === 'REST' ? 0.05 : 0.5;
-    this.currentKneeAngle = initialScenario === 'REST' ? 0 : 45;
+    this.currentEMGAmplitude = initialScenario === "REST" ? 0.05 : 0.5;
+    this.currentKneeAngle = initialScenario === "REST" ? 0 : 45;
   }
 
   /**
@@ -65,18 +69,19 @@ export class SleeveDataGenerator {
 
     // Base amplitude for the envelope
     const targetAmplitude =
-      this.scenario === 'REST'
+      this.scenario === "REST"
         ? 0.05
-        : this.scenario === 'FLEX'
-        ? 0.8
-        : this.scenario === 'SQUAT'
-        ? 0.5
-        : 0.1;
+        : this.scenario === "FLEX"
+          ? 0.8
+          : this.scenario === "SQUAT"
+            ? 0.5
+            : 0.1;
 
     // Smoothly transition the current amplitude toward the target
     const smoothingFactor = 0.15; // Adjusted for human contraction speed (~200ms)
-    this.currentEMGAmplitude += (targetAmplitude - this.currentEMGAmplitude) * smoothingFactor;
-    
+    this.currentEMGAmplitude +=
+      (targetAmplitude - this.currentEMGAmplitude) * smoothingFactor;
+
     const amplitude = this.currentEMGAmplitude;
 
     // Time in seconds for frequency generation
@@ -84,11 +89,11 @@ export class SleeveDataGenerator {
 
     // Simulate raw EMG signal components:
     // 1. High Frequency "Muscle Sizzle" (50Hz - 150Hz white noise bursts) - KEPT by Bandpass
-    const muscleSignal = () => (Math.random() - 0.5) * 2 * amplitude; 
+    const muscleSignal = () => (Math.random() - 0.5) * 2 * amplitude;
 
-    // 2. Line Interference (60Hz Sine Wave) - REMOVED by Notch 
+    // 2. Line Interference (60Hz Sine Wave) - REMOVED by Notch
     // DISABLED at 50Hz sampling due to aliasing (aliases to 10Hz, which passes through HPF)
-    const lineNoise = 0; 
+    const lineNoise = 0;
 
     // 3. Motion Artifact (Low Frequency drift < 5Hz) - REMOVED by High Pass
     // Kept deliberately small (0.15) so REST muscle data looks clean even
@@ -97,35 +102,37 @@ export class SleeveDataGenerator {
 
     // Combine them
     const generateValue = (channelIdx: number) => {
-       // Zero-centered random noise floor
-       const noiseFloor = (Math.random() - 0.5) * 0.02; // Quiet noise floor
-       
-       // CLINICAL WEIGHTING:
-       // CH0, CH1 = Quads (VMO, VL)
-       // CH2, CH3 = Hamstrings (Semi, Biceps Fem)
-       let channelWeight = 1.0;
-       
-       if (this.scenario === 'FLEX') {
-         // Quad-focused exercises: Quads are high, Hamstrings are low (antagonist)
-         if (channelIdx >= 2) channelWeight = 0.2; 
-       } else if (this.scenario === 'SQUAT') {
-         // Squatting: Co-contraction of both Quads and Hamstrings for stability
-         channelWeight = 0.7 + (Math.random() * 0.3);
-       } else if (this.scenario === 'REST') {
-         channelWeight = 1.0; // All low anyway
-       }
+      // Zero-centered random noise floor
+      const noiseFloor = (Math.random() - 0.5) * 0.02; // Quiet noise floor
 
-       const signal = muscleSignal() * channelWeight;
-       
-       if (this.scenario === 'REST') {
-           // REST: pure low-amplitude noise + tiny motion artifact only
-           // The HPF will clean the motion artifact; what's left should be ~0
-           return noiseFloor + motionArtifact;
-       }
-       return signal + noiseFloor + motionArtifact;
+      // CLINICAL WEIGHTING:
+      // CH0, CH1 = Quads (VMO, VL)
+      // CH2, CH3 = Hamstrings (Semi, Biceps Fem)
+      let channelWeight = 1.0;
+
+      if (this.scenario === "FLEX") {
+        // Quad-focused exercises: Quads are high, Hamstrings are low (antagonist)
+        if (channelIdx >= 2) channelWeight = 0.2;
+      } else if (this.scenario === "SQUAT") {
+        // Squatting: Co-contraction of both Quads and Hamstrings for stability
+        channelWeight = 0.7 + Math.random() * 0.3;
+      } else if (this.scenario === "REST") {
+        channelWeight = 1.0; // All low anyway
+      }
+
+      const signal = muscleSignal() * channelWeight;
+
+      if (this.scenario === "REST") {
+        // REST: pure low-amplitude noise + tiny motion artifact only
+        // The HPF will clean the motion artifact; what's left should be ~0
+        return noiseFloor + motionArtifact;
+      }
+      return signal + noiseFloor + motionArtifact;
     };
 
-    const channels = Array.from({ length: numChannels }, (_, idx) => generateValue(idx));
+    const channels = Array.from({ length: numChannels }, (_, idx) =>
+      generateValue(idx),
+    );
 
     const checksum = computeChecksum(channels);
 
@@ -139,13 +146,13 @@ export class SleeveDataGenerator {
 
   /**
    * Generate a single IMUData frame for the current scenario.
-   * 
+   *
    * NOTE: With AS5048A magnetic encoder integration, this now
    * simulates knee flexion angle measurement:
    * - roll: Knee flexion angle (0-140°, where 0° = full extension)
    * - pitch: Unused (set to 0)
    * - yaw: Unused (set to 0)
-   * 
+   *
    * Realistic knee flexion ranges:
    * - REST: 0-10° (standing/slight bend)
    * - FLEX: 60-120° (active knee flexion exercise)
@@ -158,17 +165,17 @@ export class SleeveDataGenerator {
     let targetKneeAngle = 0;
 
     switch (this.scenario) {
-      case 'REST':
+      case "REST":
         // Standing position with small natural sway (0-10°)
         targetKneeAngle = 5 + Math.sin(t * 0.5) * 5;
         break;
 
-      case 'FLEX':
+      case "FLEX":
         // Active knee flexion exercise (60-120° oscillation at ~0.5 Hz)
         targetKneeAngle = 90 + Math.sin(t * Math.PI) * 30;
         break;
 
-      case 'SQUAT':
+      case "SQUAT":
         // Full squat cycle (0-120° at ~0.3 Hz)
         const squatCycle = Math.abs(Math.sin(t * 0.6));
         targetKneeAngle = squatCycle * 120;
@@ -182,8 +189,9 @@ export class SleeveDataGenerator {
     // Smoothly transition the current angle toward the target
     // Factor of 0.1 at 50Hz gives a nice organic movement
     const angleSmoothingFactor = 0.1;
-    this.currentKneeAngle += (targetKneeAngle - this.currentKneeAngle) * angleSmoothingFactor;
-    
+    this.currentKneeAngle +=
+      (targetKneeAngle - this.currentKneeAngle) * angleSmoothingFactor;
+
     let kneeFlexionAngle = this.currentKneeAngle;
 
     // Add small noise to simulate AS5048A resolution (±0.05° typical accuracy)
@@ -198,11 +206,10 @@ export class SleeveDataGenerator {
     return {
       header: 0xb1, // Protocol header for angle/IMU frames
       timestamp,
-      roll: kneeFlexionAngle,  // AS5048A knee flexion angle (0-140°)
-      pitch: 0,                 // Unused with magnetic encoder
-      yaw: 0,                   // Unused with magnetic encoder
+      roll: kneeFlexionAngle, // AS5048A knee flexion angle (0-140°)
+      pitch: 0, // Unused with magnetic encoder
+      yaw: 0, // Unused with magnetic encoder
       checksum,
     };
   }
-
 }

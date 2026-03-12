@@ -52,14 +52,16 @@ export function useSleeveDevice(connector: ISleeveConnector) {
   }, [calibrationScenarioOverride, scenario, connector]);
 
   useEffect(() => {
-    connector.onConnectionStatusChange((status) => {
-      dispatch(connectionChanged(status));
-      if (!status.connected) {
-        processor.reset();
-        rollingBuffer.current = [];
-        isSignalWarmedUpRef.current = false;
-      }
-    });
+    const unsubscribeConnectionStatus = connector.onConnectionStatusChange(
+      (status) => {
+        dispatch(connectionChanged(status));
+        if (!status.connected) {
+          processor.reset();
+          rollingBuffer.current = [];
+          isSignalWarmedUpRef.current = false;
+        }
+      },
+    );
 
     const unsubscribeEMG = connector.subscribeToEMG((rawFrame) => {
       let frameToDispatch = rawFrame;
@@ -99,6 +101,7 @@ export function useSleeveDevice(connector: ISleeveConnector) {
     });
 
     return () => {
+      unsubscribeConnectionStatus();
       unsubscribeEMG();
       unsubscribeIMU();
       connector.disconnect();

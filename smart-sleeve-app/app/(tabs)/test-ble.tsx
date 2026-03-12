@@ -1,10 +1,17 @@
 import { LineChart } from "react-native-chart-kit";
-import { Dimensions , View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import {
+  Dimensions,
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
 import React, { useState, useEffect, useRef } from "react";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { useSleeve } from "@/hooks/useSleeve";
+import { MockSleeveConnector } from "@/services/MockBleService/MockSleeveConnector";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { scenarioChanged, setFilteringEnabled } from "@/store/deviceSlice";
@@ -15,16 +22,24 @@ export default function TestBLEScreen() {
   const latestEMG = useSelector((state: RootState) => state.device.latestEMG);
   const latestIMU = useSelector((state: RootState) => state.device.latestIMU);
   const scenario = useSelector((state: RootState) => state.device.scenario);
-  const connectionStatus = useSelector((state: RootState) => state.device.connection);
-  const isFilteringEnabled = useSelector((state: RootState) => state.device.isFilteringEnabled);
-  
+  const connectionStatus = useSelector(
+    (state: RootState) => state.device.connection,
+  );
+  const isFilteringEnabled = useSelector(
+    (state: RootState) => state.device.isFilteringEnabled,
+  );
+
   const lastChartUpdateRef = useRef(0);
-  
+
   const [chartData, setChartData] = useState<number[]>(new Array(50).fill(0));
   const MAX_POINTS = 50;
   const [devices, setDevices] = useState<string[]>([]);
   const [isScanning, setIsScanningState] = useState(false);
-  const isMock = process.env.EXPO_PUBLIC_USE_MOCK_HARDWARE !== 'false';
+  const requestedMockMode =
+    process.env.EXPO_PUBLIC_USE_MOCK_HARDWARE !== "false";
+  const isUsingMockConnector = connector instanceof MockSleeveConnector;
+  const isFallbackRoute = !requestedMockMode && isUsingMockConnector;
+  const isMock = isUsingMockConnector;
 
   // Update Chart Data (Channel 1 only for viz) - Throttled for readability
   useEffect(() => {
@@ -32,9 +47,10 @@ export default function TestBLEScreen() {
     const now = Date.now();
     if (now - lastChartUpdateRef.current > 100) {
       lastChartUpdateRef.current = now;
-      setChartData(prev => {
+      setChartData((prev) => {
         const newData = [...prev, latestEMG.channels[0]];
-        if (newData.length > MAX_POINTS) return newData.slice(newData.length - MAX_POINTS);
+        if (newData.length > MAX_POINTS)
+          return newData.slice(newData.length - MAX_POINTS);
         return newData;
       });
     }
@@ -75,7 +91,9 @@ export default function TestBLEScreen() {
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <ThemedText type="title" style={styles.title}>
-          {isMock ? "Mock BLE Service Test" : "Real Hardware BLE Test"}
+          {requestedMockMode
+            ? "Mock BLE Service Test"
+            : "Real Hardware BLE Test"}
         </ThemedText>
 
         {/* Device Discovery (Real Mode Only) */}
@@ -83,7 +101,11 @@ export default function TestBLEScreen() {
           <View style={styles.section}>
             <ThemedText type="subtitle">Device Discovery</ThemedText>
             <TouchableOpacity
-              style={[styles.button, isScanning && styles.buttonDisabled, { marginTop: 12 }]}
+              style={[
+                styles.button,
+                isScanning && styles.buttonDisabled,
+                { marginTop: 12 },
+              ]}
               onPress={handleScan}
               disabled={isScanning || connectionStatus.connected}
             >
@@ -100,7 +122,9 @@ export default function TestBLEScreen() {
                     style={styles.deviceItem}
                     onPress={() => handleConnect(id)}
                   >
-                    <ThemedText style={styles.deviceItemText}>Connect to: {id}</ThemedText>
+                    <ThemedText style={styles.deviceItemText}>
+                      Connect to: {id}
+                    </ThemedText>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -112,11 +136,23 @@ export default function TestBLEScreen() {
         <View style={styles.section}>
           <ThemedText type="subtitle">
             Status:{" "}
-            <ThemedText style={{ color: connectionStatus.connected ? Colors.light.success : Colors.light.warning }}>
-               {connectionStatus.connected ? "Connected" : "Disconnected"}
+            <ThemedText
+              style={{
+                color: connectionStatus.connected
+                  ? Colors.light.success
+                  : Colors.light.warning,
+              }}
+            >
+              {connectionStatus.connected ? "Connected" : "Disconnected"}
             </ThemedText>
           </ThemedText>
-          
+
+          {isFallbackRoute && (
+            <ThemedText style={styles.routeHint}>
+              Connecting route: bridge
+            </ThemedText>
+          )}
+
           {isMock && (
             <View style={styles.buttonRow}>
               <TouchableOpacity
@@ -127,7 +163,9 @@ export default function TestBLEScreen() {
                 onPress={() => handleConnect("mock-device-id")}
                 disabled={connectionStatus.connected}
               >
-                <ThemedText style={styles.buttonText}>Connect Mock</ThemedText>
+                <ThemedText style={styles.buttonText}>
+                  {isFallbackRoute ? "Connect" : "Connect Mock"}
+                </ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -144,74 +182,89 @@ export default function TestBLEScreen() {
           )}
 
           {!isMock && connectionStatus.connected && (
-             <TouchableOpacity
-                style={[styles.button, styles.disconnectButton, { marginTop: 12 }]}
-                onPress={handleDisconnect}
-              >
-                <ThemedText style={styles.buttonText}>Force Disconnect</ThemedText>
-              </TouchableOpacity>
-          )}
-        </View>
-        
-        {/* Filter Toggle */}
-        <View style={styles.section}>
-             <ThemedText type="subtitle">Signal Processing</ThemedText>
-             <TouchableOpacity
+            <TouchableOpacity
               style={[
                 styles.button,
-                { marginTop: 12, backgroundColor: isFilteringEnabled ? Colors.light.success : Colors.light.icon }
+                styles.disconnectButton,
+                { marginTop: 12 },
               ]}
-              onPress={() => dispatch(setFilteringEnabled(!isFilteringEnabled))}
+              onPress={handleDisconnect}
             >
               <ThemedText style={styles.buttonText}>
-                {isFilteringEnabled ? "Filters ON" : "Filters OFF (Raw)"}
+                Force Disconnect
               </ThemedText>
             </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Filter Toggle */}
+        <View style={styles.section}>
+          <ThemedText type="subtitle">Signal Processing</ThemedText>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              {
+                marginTop: 12,
+                backgroundColor: isFilteringEnabled
+                  ? Colors.light.success
+                  : Colors.light.icon,
+              },
+            ]}
+            onPress={() => dispatch(setFilteringEnabled(!isFilteringEnabled))}
+          >
+            <ThemedText style={styles.buttonText}>
+              {isFilteringEnabled ? "Filters ON" : "Filters OFF (Raw)"}
+            </ThemedText>
+          </TouchableOpacity>
         </View>
 
         {/* Real-time Chart */}
         <View style={styles.section}>
-            <ThemedText type="subtitle">Live Signal (CH1)</ThemedText>
-            <LineChart
-                data={{
-                labels: [], // No labels for cleaner look
-                datasets: [
-                    {
-                    data: chartData,
-                    strokeWidth: 2, // optional
-                    },
-                ],
-                }}
-                width={screenWidth - 64} // from react-native
-                height={220}
-                yAxisInterval={1} // optional, defaults to 1
-                withDots={false}
-                withInnerLines={false}
-                withOuterLines={false}
-                chartConfig={{
-                    backgroundColor: isFilteringEnabled ? "#0B5345" : "#022173",
-                    backgroundGradientFrom: isFilteringEnabled ? "#0B5345" : "#022173",
-                    backgroundGradientTo: isFilteringEnabled ? "#1D8348" : "#1b3fa0",
-                    decimalPlaces: 2, // optional, defaults to 2dp
-                    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                    style: {
-                        borderRadius: 16
-                    },
-                    propsForDots: {
-                        r: "3",
-                        strokeWidth: "2",
-                        stroke: "#ffa726"
-                    }
-                }}
-                style={{
-                    marginVertical: 8,
-                    borderRadius: 16
-                }}
-            />
-            <ThemedText style={styles.instruction}>
-                {isFilteringEnabled ? "Signal is stabilized (DC/Line noise removed)" : "Signal contains randomized noise + drift"}
-            </ThemedText>
+          <ThemedText type="subtitle">Live Signal (CH1)</ThemedText>
+          <LineChart
+            data={{
+              labels: [], // No labels for cleaner look
+              datasets: [
+                {
+                  data: chartData,
+                  strokeWidth: 2, // optional
+                },
+              ],
+            }}
+            width={screenWidth - 64} // from react-native
+            height={220}
+            yAxisInterval={1} // optional, defaults to 1
+            withDots={false}
+            withInnerLines={false}
+            withOuterLines={false}
+            chartConfig={{
+              backgroundColor: isFilteringEnabled ? "#0B5345" : "#022173",
+              backgroundGradientFrom: isFilteringEnabled
+                ? "#0B5345"
+                : "#022173",
+              backgroundGradientTo: isFilteringEnabled ? "#1D8348" : "#1b3fa0",
+              decimalPlaces: 2, // optional, defaults to 2dp
+              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+              style: {
+                borderRadius: 16,
+              },
+              propsForDots: {
+                r: "3",
+                strokeWidth: "2",
+                stroke: "#ffa726",
+              },
+            }}
+            style={{
+              marginVertical: 8,
+              borderRadius: 16,
+            }}
+          />
+          <ThemedText style={styles.instruction}>
+            {isFilteringEnabled
+              ? "Signal is stabilized (DC/Line noise removed)"
+              : "Signal contains randomized noise + drift"}
+          </ThemedText>
         </View>
 
         {/* Scenario Controls */}
@@ -257,7 +310,9 @@ export default function TestBLEScreen() {
         {/* Data Counters */}
         <View style={styles.section}>
           <ThemedText type="subtitle">Data Received (Live)</ThemedText>
-          <ThemedText>Values: {latestEMG?.channels[0].toFixed(3) ?? '0.00'}</ThemedText>
+          <ThemedText>
+            Values: {latestEMG?.channels[0].toFixed(3) ?? "0.00"}
+          </ThemedText>
         </View>
 
         {/* Latest EMG Data */}
@@ -314,19 +369,27 @@ export default function TestBLEScreen() {
                 style={[
                   styles.monoText,
                   styles.highlight,
-                  { fontSize: 18, marginTop: 8 }
+                  { fontSize: 18, marginTop: 8 },
                 ]}
               >
                 🦵 Knee Flexion: {latestIMU.roll.toFixed(1)}°
               </ThemedText>
               <ThemedText style={styles.monoText}>
                 {latestIMU.roll < 15 && "  → Standing (Full Extension)"}
-                {latestIMU.roll >= 15 && latestIMU.roll < 45 && "  → Slight Bend"}
-                {latestIMU.roll >= 45 && latestIMU.roll < 90 && "  → Moderate Flexion"}
-                {latestIMU.roll >= 90 && latestIMU.roll < 110 && "  → Deep Flexion (90°+)"}
+                {latestIMU.roll >= 15 &&
+                  latestIMU.roll < 45 &&
+                  "  → Slight Bend"}
+                {latestIMU.roll >= 45 &&
+                  latestIMU.roll < 90 &&
+                  "  → Moderate Flexion"}
+                {latestIMU.roll >= 90 &&
+                  latestIMU.roll < 110 &&
+                  "  → Deep Flexion (90°+)"}
                 {latestIMU.roll >= 110 && "  → Squat Position (110°+)"}
               </ThemedText>
-              <ThemedText style={[styles.monoText, { marginTop: 8, opacity: 0.6 }]}>
+              <ThemedText
+                style={[styles.monoText, { marginTop: 8, opacity: 0.6 }]}
+              >
                 Pitch: {latestIMU.pitch.toFixed(2)}° (unused)
               </ThemedText>
               <ThemedText style={[styles.monoText, { opacity: 0.6 }]}>
@@ -403,6 +466,12 @@ const styles = StyleSheet.create({
   instruction: {
     marginTop: 4,
     opacity: 0.8,
+  },
+  routeHint: {
+    marginTop: 6,
+    fontSize: 12,
+    opacity: 0.45,
+    letterSpacing: 0.3,
   },
   highlight: {
     marginTop: 8,
