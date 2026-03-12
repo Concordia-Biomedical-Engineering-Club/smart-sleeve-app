@@ -1,4 +1,5 @@
 import { ISleeveConnector } from "@/services/SleeveConnector/ISleeveConnector";
+import { MockSleeveConnector } from "@/services/MockBleService/MockSleeveConnector";
 import { useAppDispatch } from "./storeHooks";
 import { useEffect, useMemo, useRef } from "react";
 import {
@@ -8,6 +9,7 @@ import {
   featuresUpdated,
   imuFrameReceived,
   signalWarmupChanged,
+  transportDiagnosticsChanged,
 } from "@/store/deviceSlice";
 import { SignalProcessor } from "@/services/SignalProcessing/SignalProcessor";
 import { FeatureExtractor } from "@/services/SignalProcessing/FeatureExtractor";
@@ -50,6 +52,22 @@ export function useSleeveDevice(connector: ISleeveConnector) {
     // Calibration owns the mock scenario temporarily; outside calibration we fall back to workout-driven behavior.
     connector.setScenario(calibrationScenarioOverride ?? scenario);
   }, [calibrationScenarioOverride, scenario, connector]);
+
+  useEffect(() => {
+    const requestedTransportMode =
+      process.env.EXPO_PUBLIC_USE_MOCK_HARDWARE !== "false" ? "mock" : "real";
+    const activeTransportMode =
+      connector instanceof MockSleeveConnector ? "mock" : "real";
+
+    dispatch(
+      transportDiagnosticsChanged({
+        requestedTransportMode,
+        activeTransportMode,
+        usingFallbackTransport:
+          requestedTransportMode === "real" && activeTransportMode === "mock",
+      }),
+    );
+  }, [connector, dispatch]);
 
   useEffect(() => {
     const unsubscribeConnectionStatus = connector.onConnectionStatusChange(

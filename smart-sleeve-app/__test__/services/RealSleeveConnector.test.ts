@@ -107,9 +107,17 @@ describe("RealSleeveConnector", () => {
 
   it("connects, discovers characteristics, and subscribes to EMG and IMU notifications", async () => {
     const connector = new RealSleeveConnector(manager as any);
-    const statuses: boolean[] = [];
+    const statuses: Array<{
+      connected: boolean;
+      phase?: string;
+      discoveredCharacteristics?: string[];
+    }> = [];
     connector.onConnectionStatusChange((status) => {
-      statuses.push(status.connected);
+      statuses.push({
+        connected: status.connected,
+        phase: status.phase,
+        discoveredCharacteristics: status.discoveredCharacteristics,
+      });
     });
 
     await connector.connect("device-1");
@@ -128,7 +136,18 @@ describe("RealSleeveConnector", () => {
       IMU_CHAR_UUID,
       expect.any(Function),
     );
-    expect(statuses).toEqual([true]);
+    expect(statuses).toEqual([
+      {
+        connected: false,
+        phase: "connecting",
+        discoveredCharacteristics: undefined,
+      },
+      {
+        connected: true,
+        phase: "connected",
+        discoveredCharacteristics: [EMG_CHAR_UUID, IMU_CHAR_UUID],
+      },
+    ]);
   });
 
   it("removes active notification subscriptions on disconnect", async () => {
@@ -151,5 +170,30 @@ describe("RealSleeveConnector", () => {
 
     expect(manager.connectToDevice).toHaveBeenCalledTimes(2);
     expect(manager.connectToDevice).toHaveBeenLastCalledWith("device-1");
+  });
+
+  it("does not reconnect after manual disconnect", async () => {
+    const connector = new RealSleeveConnector(manager as any);
+
+    await connector.connect("device-1");
+    await connector.disconnect();
+
+    disconnectCallback?.(new Error("user ended session"), { id: "device-1" });
+    jest.advanceTimersByTime(1500);
+
+    expect(manager.connectToDevice).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops an active scan when connect begins", async () => {
+    const connector = new RealSleeveConnector(manager as any);
+
+    const scanPromise = connector.scan();
+    await Promise.resolve();
+
+    await connector.connect("device-1");
+    jest.runAllTimers();
+    await scanPromise;
+
+    expect(manager.stopDeviceScan).toHaveBeenCalled();
   });
 });

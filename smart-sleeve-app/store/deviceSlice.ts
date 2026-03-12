@@ -15,6 +15,21 @@ export type WorkoutPhase =
   | "COMPLETING";
 
 export type SessionStatus = "IDLE" | "RECORDING" | "SAVING";
+export type TransportMode = "mock" | "real";
+
+export interface TransportDiagnostics {
+  requestedTransportMode: TransportMode;
+  activeTransportMode: TransportMode;
+  usingFallbackTransport: boolean;
+  lastConnectionPhase: NonNullable<ConnectionStatus["phase"]>;
+  lastConnectionReason: string | null;
+  reconnectAttemptCount: number;
+  lastEMGPacketTimestamp: number | null;
+  lastIMUPacketTimestamp: number | null;
+  emgPacketCount: number;
+  imuPacketCount: number;
+  discoveredCharacteristics: string[];
+}
 
 export interface WorkoutSession {
   phase: WorkoutPhase;
@@ -49,6 +64,7 @@ export interface DeviceState {
   /** Time-series recording buffer — flushed to SQLite on endSession */
   recordingBuffer: EMGData[];
   recordingKneeAngles: IMUData[];
+  transportDiagnostics: TransportDiagnostics;
 }
 
 const initialWorkout: WorkoutSession = {
@@ -82,6 +98,19 @@ const initialState: DeviceState = {
   sessionStartTime: null,
   recordingBuffer: [],
   recordingKneeAngles: [],
+  transportDiagnostics: {
+    requestedTransportMode: "mock",
+    activeTransportMode: "mock",
+    usingFallbackTransport: false,
+    lastConnectionPhase: "disconnected",
+    lastConnectionReason: null,
+    reconnectAttemptCount: 0,
+    lastEMGPacketTimestamp: null,
+    lastIMUPacketTimestamp: null,
+    emgPacketCount: 0,
+    imuPacketCount: 0,
+    discoveredCharacteristics: [],
+  },
 };
 
 const syncScenario = (state: DeviceState) => {
@@ -99,6 +128,17 @@ const deviceSlice = createSlice({
   reducers: {
     connectionChanged(state, action: PayloadAction<ConnectionStatus>) {
       state.connection = action.payload;
+      state.transportDiagnostics.lastConnectionPhase =
+        action.payload.phase ??
+        (action.payload.connected ? "connected" : "disconnected");
+      state.transportDiagnostics.lastConnectionReason =
+        action.payload.reason ?? null;
+      state.transportDiagnostics.reconnectAttemptCount =
+        action.payload.reconnectAttempt ??
+        state.transportDiagnostics.reconnectAttemptCount;
+      state.transportDiagnostics.discoveredCharacteristics =
+        action.payload.discoveredCharacteristics ??
+        state.transportDiagnostics.discoveredCharacteristics;
       if (!action.payload.connected) {
         state.latestEMG = null;
         state.latestIMU = null;
@@ -109,6 +149,22 @@ const deviceSlice = createSlice({
         state.calibrationScenarioOverride = null;
         state.isSignalWarmedUp = false;
       }
+    },
+    transportDiagnosticsChanged(
+      state,
+      action: PayloadAction<
+        Pick<
+          TransportDiagnostics,
+          | "requestedTransportMode"
+          | "activeTransportMode"
+          | "usingFallbackTransport"
+        >
+      >,
+    ) {
+      state.transportDiagnostics = {
+        ...state.transportDiagnostics,
+        ...action.payload,
+      };
     },
     scenarioChanged(state, action: PayloadAction<DeviceState["scenario"]>) {
       state.scenario = action.payload;
@@ -124,6 +180,9 @@ const deviceSlice = createSlice({
     },
     emgFrameReceived(state, action: PayloadAction<EMGData>) {
       state.latestEMG = action.payload;
+      state.transportDiagnostics.lastEMGPacketTimestamp =
+        action.payload.timestamp;
+      state.transportDiagnostics.emgPacketCount += 1;
       state.emgBuffer.push(action.payload);
       if (state.emgBuffer.length > 500) {
         state.emgBuffer.shift();
@@ -147,6 +206,9 @@ const deviceSlice = createSlice({
     },
     imuFrameReceived(state, action: PayloadAction<IMUData>) {
       state.latestIMU = action.payload;
+      state.transportDiagnostics.lastIMUPacketTimestamp =
+        action.payload.timestamp;
+      state.transportDiagnostics.imuPacketCount += 1;
       state.kneeAngleBuffer.push(action.payload.roll);
       if (state.kneeAngleBuffer.length > 500) {
         state.kneeAngleBuffer.shift();
@@ -290,6 +352,7 @@ const deviceSlice = createSlice({
 
 export const {
   connectionChanged,
+  transportDiagnosticsChanged,
   scenarioChanged,
   setCalibrationScenarioOverride,
   setIsScanning,
@@ -317,6 +380,11 @@ const selectDevice = (state: RootState) => state.device;
 export const selectConnectionStatus = createSelector(
   [selectDevice],
   (device) => device.connection.connected,
+);
+
+export const selectTransportDiagnostics = createSelector(
+  [selectDevice],
+  (device) => device.transportDiagnostics,
 );
 export const selectIsScanning = createSelector(
   [selectDevice],

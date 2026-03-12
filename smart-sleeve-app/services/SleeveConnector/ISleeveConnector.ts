@@ -69,6 +69,16 @@ export interface ConnectionStatus {
   connected: boolean;
   deviceId?: string;
   lastUpdated?: number;
+  phase?:
+    | "disconnected"
+    | "scanning"
+    | "connecting"
+    | "connected"
+    | "reconnecting"
+    | "failed";
+  reconnectAttempt?: number;
+  reason?: string;
+  discoveredCharacteristics?: string[];
 }
 
 /**

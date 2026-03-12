@@ -14,7 +14,11 @@ import { useSleeve } from "@/hooks/useSleeve";
 import { MockSleeveConnector } from "@/services/MockBleService/MockSleeveConnector";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
-import { scenarioChanged, setFilteringEnabled } from "@/store/deviceSlice";
+import {
+  scenarioChanged,
+  selectTransportDiagnostics,
+  setFilteringEnabled,
+} from "@/store/deviceSlice";
 
 export default function TestBLEScreen() {
   const dispatch = useDispatch();
@@ -28,6 +32,7 @@ export default function TestBLEScreen() {
   const isFilteringEnabled = useSelector(
     (state: RootState) => state.device.isFilteringEnabled,
   );
+  const transportDiagnostics = useSelector(selectTransportDiagnostics);
 
   const lastChartUpdateRef = useRef(0);
 
@@ -40,6 +45,13 @@ export default function TestBLEScreen() {
   const isUsingMockConnector = connector instanceof MockSleeveConnector;
   const isFallbackRoute = !requestedMockMode && isUsingMockConnector;
   const isMock = isUsingMockConnector;
+  const now = Date.now();
+  const lastEmgAgeMs = transportDiagnostics.lastEMGPacketTimestamp
+    ? now - transportDiagnostics.lastEMGPacketTimestamp
+    : null;
+  const lastImuAgeMs = transportDiagnostics.lastIMUPacketTimestamp
+    ? now - transportDiagnostics.lastIMUPacketTimestamp
+    : null;
 
   // Update Chart Data (Channel 1 only for viz) - Throttled for readability
   useEffect(() => {
@@ -216,6 +228,40 @@ export default function TestBLEScreen() {
               {isFilteringEnabled ? "Filters ON" : "Filters OFF (Raw)"}
             </ThemedText>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle">Transport Diagnostics</ThemedText>
+          <ThemedText>
+            Requested: {transportDiagnostics.requestedTransportMode}
+          </ThemedText>
+          <ThemedText>
+            Active: {transportDiagnostics.activeTransportMode}
+          </ThemedText>
+          <ThemedText>
+            Phase: {transportDiagnostics.lastConnectionPhase}
+          </ThemedText>
+          <ThemedText>
+            Reconnect attempts: {transportDiagnostics.reconnectAttemptCount}
+          </ThemedText>
+          <ThemedText>
+            EMG packets: {transportDiagnostics.emgPacketCount}
+          </ThemedText>
+          <ThemedText>
+            IMU packets: {transportDiagnostics.imuPacketCount}
+          </ThemedText>
+          <ThemedText>
+            Last EMG age: {lastEmgAgeMs == null ? "-" : `${lastEmgAgeMs} ms`}
+          </ThemedText>
+          <ThemedText>
+            Last IMU age: {lastImuAgeMs == null ? "-" : `${lastImuAgeMs} ms`}
+          </ThemedText>
+          <ThemedText>
+            Characteristics:{" "}
+            {transportDiagnostics.discoveredCharacteristics.length > 0
+              ? transportDiagnostics.discoveredCharacteristics.join(", ")
+              : "-"}
+          </ThemedText>
         </View>
 
         {/* Real-time Chart */}

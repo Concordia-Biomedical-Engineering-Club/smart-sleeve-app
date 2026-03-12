@@ -5,8 +5,10 @@ import deviceReducer, {
   imuFrameReceived,
   clearBuffers,
   selectEmgBufferLength,
+  selectTransportDiagnostics,
   setCalibrationScenarioOverride,
   signalWarmupChanged,
+  transportDiagnosticsChanged,
   DeviceState,
   startWorkout,
 } from "@/store/deviceSlice";
@@ -42,6 +44,19 @@ describe("deviceSlice", () => {
     sessionStartTime: null,
     recordingBuffer: [],
     recordingKneeAngles: [],
+    transportDiagnostics: {
+      requestedTransportMode: "mock",
+      activeTransportMode: "mock",
+      usingFallbackTransport: false,
+      lastConnectionPhase: "disconnected",
+      lastConnectionReason: null,
+      reconnectAttemptCount: 0,
+      lastEMGPacketTimestamp: null,
+      lastIMUPacketTimestamp: null,
+      emgPacketCount: 0,
+      imuPacketCount: 0,
+      discoveredCharacteristics: [],
+    },
   };
 
   test("should handle initial state", () => {
@@ -67,6 +82,8 @@ describe("deviceSlice", () => {
     expect(state.emgBuffer.length).toBe(500);
     expect(state.latestEMG?.timestamp).toBe(504);
     expect(state.emgBuffer[0].timestamp).toBe(5);
+    expect(state.transportDiagnostics.lastEMGPacketTimestamp).toBe(504);
+    expect(state.transportDiagnostics.emgPacketCount).toBe(505);
   });
 
   test("should append IMU roll to kneeAngleBuffer and maintain 500 max length", () => {
@@ -87,6 +104,10 @@ describe("deviceSlice", () => {
     expect(state.kneeAngleBuffer.length).toBe(500);
     expect(state.latestIMU?.roll).toBe(504);
     expect(state.kneeAngleBuffer[0]).toBe(5);
+    expect(state.transportDiagnostics.lastIMUPacketTimestamp).toBe(
+      mockIMU.timestamp,
+    );
+    expect(state.transportDiagnostics.imuPacketCount).toBe(505);
   });
 
   test("should clear buffers", () => {
@@ -239,5 +260,51 @@ describe("deviceSlice", () => {
     expect(state.latestCalibrationSample).toBeNull();
     expect(state.calibrationScenarioOverride).toBeNull();
     expect(state.isSignalWarmedUp).toBe(false);
+  });
+
+  test("should track transport mode and fallback state", () => {
+    const state = deviceReducer(
+      initialState,
+      transportDiagnosticsChanged({
+        requestedTransportMode: "real",
+        activeTransportMode: "mock",
+        usingFallbackTransport: true,
+      }),
+    );
+
+    expect(state.transportDiagnostics.requestedTransportMode).toBe("real");
+    expect(state.transportDiagnostics.activeTransportMode).toBe("mock");
+    expect(state.transportDiagnostics.usingFallbackTransport).toBe(true);
+  });
+
+  test("should track connection phase, reconnect attempts, and discovered characteristics", () => {
+    const state = deviceReducer(
+      initialState,
+      connectionChanged({
+        connected: true,
+        phase: "connected",
+        reconnectAttempt: 2,
+        discoveredCharacteristics: ["emg-char", "imu-char"],
+        reason: "ready",
+      }),
+    );
+
+    expect(state.transportDiagnostics.lastConnectionPhase).toBe("connected");
+    expect(state.transportDiagnostics.reconnectAttemptCount).toBe(2);
+    expect(state.transportDiagnostics.discoveredCharacteristics).toEqual([
+      "emg-char",
+      "imu-char",
+    ]);
+    expect(state.transportDiagnostics.lastConnectionReason).toBe("ready");
+  });
+
+  test("selectTransportDiagnostics should return diagnostics state", () => {
+    const state = {
+      device: initialState,
+    };
+    // @ts-ignore - partial state for testing
+    expect(selectTransportDiagnostics(state)).toEqual(
+      initialState.transportDiagnostics,
+    );
   });
 });

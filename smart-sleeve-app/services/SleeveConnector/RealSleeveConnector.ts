@@ -76,6 +76,8 @@ export class RealSleeveConnector implements ISleeveConnector {
   private notificationSubscriptions: RemovableSubscription[] = [];
   private disconnectSubscription: RemovableSubscription | null = null;
   private scanTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private scanResolve: ((deviceIds: string[]) => void) | null = null;
+  private scanResults: string[] = [];
   private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private lastDeviceId: string | null = null;
   private reconnectAttempts = 0;
@@ -128,14 +130,20 @@ export class RealSleeveConnector implements ISleeveConnector {
     const hasPermission = await this.requestPermissions();
     if (!hasPermission) {
       console.warn("[RealSleeveConnector] Bluetooth permissions denied.");
+      this.emitConnectionStatus(false, {
+        phase: "failed",
+        reason: "permissions-denied",
+      });
       return [];
     }
 
     this.stopScan();
+    this.scanResults = [];
     console.log("[RealSleeveConnector] Starting scan for:", SERVICE_UUID);
-    const devicesFound: string[] = [];
+    this.emitConnectionStatus(false, { phase: "scanning" });
 
     return new Promise((resolve) => {
+      this.scanResolve = resolve;
       this.isScanning = true;
       this.manager.startDeviceScan(
         [SERVICE_UUID],
@@ -144,7 +152,11 @@ export class RealSleeveConnector implements ISleeveConnector {
           if (error) {
             console.error("[RealSleeveConnector] Scan error:", error);
             this.stopScan();
-            resolve(devicesFound);
+            this.emitConnectionStatus(false, {
+              phase: "failed",
+              reason: "scan-error",
+            });
+            this.resolveScan(this.scanResults);
             return;
           }
 
@@ -154,8 +166,8 @@ export class RealSleeveConnector implements ISleeveConnector {
               device.name,
               device.id,
             );
-            if (!devicesFound.includes(device.id)) {
-              devicesFound.push(device.id);
+            if (!this.scanResults.includes(device.id)) {
+              this.scanResults.push(device.id);
             }
           }
         },
@@ -163,7 +175,8 @@ export class RealSleeveConnector implements ISleeveConnector {
 
       this.scanTimeoutId = setTimeout(() => {
         this.stopScan();
-        resolve(devicesFound);
+        this.emitConnectionStatus(false, { phase: "disconnected" });
+        this.resolveScan(this.scanResults);
       }, SCAN_TIMEOUT_MS);
     });
   }
@@ -176,6 +189,12 @@ export class RealSleeveConnector implements ISleeveConnector {
     this.clearReconnectTimer();
     this.lastDeviceId = deviceId;
     this.isManualDisconnect = false;
+    const reconnectAttempt = this.reconnectAttempts;
+
+    this.emitConnectionStatus(false, {
+      phase: reconnectAttempt > 0 ? "reconnecting" : "connecting",
+      reconnectAttempt,
+    });
 
     try {
       console.log(`[RealSleeveConnector] Connecting to ${deviceId}...`);
@@ -185,7 +204,6 @@ export class RealSleeveConnector implements ISleeveConnector {
       this.teardownSubscriptions();
       this.connectedDevice = device;
       this.reconnectAttempts = 0;
-      this.emitConnectionStatus(true);
 
       this.disconnectSubscription?.remove();
       this.disconnectSubscription = device.onDisconnected(
@@ -196,7 +214,13 @@ export class RealSleeveConnector implements ISleeveConnector {
           );
           this.teardownSubscriptions();
           this.connectedDevice = null;
-          this.emitConnectionStatus(false);
+          this.emitConnectionStatus(false, {
+            phase: "disconnected",
+            reason: this.isManualDisconnect
+              ? "manual-disconnect"
+              : "unexpected-disconnect",
+            reconnectAttempt: this.reconnectAttempts,
+          });
           if (!this.isManualDisconnect) {
             this.scheduleReconnect(deviceId);
           }
@@ -204,10 +228,18 @@ export class RealSleeveConnector implements ISleeveConnector {
       );
 
       this.setupNotifications(device);
+      this.emitConnectionStatus(true, {
+        phase: "connected",
+        discoveredCharacteristics: [EMG_CHAR_UUID, IMU_CHAR_UUID],
+      });
     } catch (err) {
       console.error("[RealSleeveConnector] Connection failed:", err);
       this.connectedDevice = null;
-      this.emitConnectionStatus(false);
+      this.emitConnectionStatus(false, {
+        phase: "failed",
+        reconnectAttempt,
+        reason: "connect-failed",
+      });
       throw err;
     }
   }
@@ -278,7 +310,10 @@ export class RealSleeveConnector implements ISleeveConnector {
       this.connectedDevice = null;
     }
 
-    this.emitConnectionStatus(false);
+    this.emitConnectionStatus(false, {
+      phase: "disconnected",
+      reason: "manual-disconnect",
+    });
   }
 
   subscribeToEMG(callback: (data: EMGData) => void): () => void {
@@ -315,11 +350,16 @@ export class RealSleeveConnector implements ISleeveConnector {
     );
   }
 
-  private emitConnectionStatus(connected: boolean): void {
+  private emitConnectionStatus(
+    connected: boolean,
+    overrides: Partial<ConnectionStatus> = {},
+  ): void {
     const status: ConnectionStatus = {
       connected,
       deviceId: this.connectedDevice?.id,
       lastUpdated: Date.now(),
+      phase: connected ? "connected" : "disconnected",
+      ...overrides,
     };
     this.connectionSubscribers.forEach((callback) => callback(status));
   }
@@ -334,6 +374,13 @@ export class RealSleeveConnector implements ISleeveConnector {
       clearTimeout(this.scanTimeoutId);
       this.scanTimeoutId = null;
     }
+    this.resolveScan(this.scanResults);
+  }
+
+  private resolveScan(deviceIds: string[]): void {
+    this.scanResolve?.(deviceIds);
+    this.scanResolve = null;
+    this.scanResults = [];
   }
 
   private clearReconnectTimer(): void {
@@ -356,11 +403,20 @@ export class RealSleeveConnector implements ISleeveConnector {
   private scheduleReconnect(deviceId: string): void {
     if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
       console.warn("[RealSleeveConnector] Reconnect attempts exhausted");
+      this.emitConnectionStatus(false, {
+        phase: "failed",
+        reconnectAttempt: this.reconnectAttempts,
+        reason: "reconnect-exhausted",
+      });
       return;
     }
 
     this.clearReconnectTimer();
     this.reconnectAttempts += 1;
+    this.emitConnectionStatus(false, {
+      phase: "reconnecting",
+      reconnectAttempt: this.reconnectAttempts,
+    });
     this.reconnectTimeoutId = setTimeout(() => {
       this.connect(deviceId).catch((error) => {
         console.error("[RealSleeveConnector] Reconnect attempt failed:", error);
