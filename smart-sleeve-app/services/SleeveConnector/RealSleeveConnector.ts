@@ -5,7 +5,7 @@
  *
  * HARDWARE INTEGRATION (ESP32 / MyoWare 2.0 Wireless Shield):
  * - EMG: 8-channel muscle activity data via BLE notifications
- * - Angle Sensor: AS5048A magnetic encoder for knee flexion (0-140°)
+ * - Angle Sensor: magnetic encoder for knee flexion (0-140°)
  *
  * BLE Characteristics:
  * - SERVICE_UUID: e0d10001-6b6e-4c52-9c3b-6a8e858c5d93

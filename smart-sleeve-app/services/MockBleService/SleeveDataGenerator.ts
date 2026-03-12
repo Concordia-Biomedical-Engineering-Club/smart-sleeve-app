@@ -147,7 +147,7 @@ export class SleeveDataGenerator {
   /**
    * Generate a single IMUData frame for the current scenario.
    *
-   * NOTE: With AS5048A magnetic encoder integration, this now
+   * NOTE: With the magnetic encoder integration, this now
    * simulates knee flexion angle measurement:
    * - roll: Knee flexion angle (0-140°, where 0° = full extension)
    * - pitch: Unused (set to 0)
@@ -194,7 +194,7 @@ export class SleeveDataGenerator {
 
     let kneeFlexionAngle = this.currentKneeAngle;
 
-    // Add small noise to simulate AS5048A resolution (±0.05° typical accuracy)
+    // Add small noise to simulate encoder measurement jitter.
     const encoderNoise = (Math.random() - 0.5) * 0.1;
     kneeFlexionAngle += encoderNoise;
 
@@ -206,7 +206,7 @@ export class SleeveDataGenerator {
     return {
       header: 0xb1, // Protocol header for angle/IMU frames
       timestamp,
-      roll: kneeFlexionAngle, // AS5048A knee flexion angle (0-140°)
+      roll: kneeFlexionAngle, // Knee flexion angle (0-140°)
       pitch: 0, // Unused with magnetic encoder
       yaw: 0, // Unused with magnetic encoder
       checksum,

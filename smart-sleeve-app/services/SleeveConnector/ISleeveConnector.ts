@@ -34,8 +34,8 @@ export interface EMGData {
  * -----------------------------------------------------
  * Represents one motion/angle frame coming from the sleeve.
  *
- * HARDWARE NOTE (AS5048A Magnetic Encoder):
- * With the AS5048A magnetic encoder integration, this structure
+ * HARDWARE NOTE (Magnetic Encoder):
+ * With the magnetic encoder integration, this structure
  * now primarily represents knee flexion angle measurement:
  *
  * - roll: Knee flexion angle in degrees (0-140°)
@@ -54,7 +54,7 @@ export interface EMGData {
 export interface IMUData {
   header: number;
   timestamp: number;
-  roll: number; // Knee flexion angle (0-140°) with AS5048A encoder
+  roll: number; // Knee flexion angle (0-140°) with magnetic encoder
   pitch: number; // Unused with encoder (0), or pitch angle with IMU
   yaw: number; // Unused with encoder (0), or yaw angle with IMU
   checksum: number;

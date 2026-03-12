@@ -7,7 +7,9 @@ export const IMU_PACKET_LENGTH = 12;
 const EMG_CHANNEL_COUNT = 8;
 const EMG_ADC_MAX = 4095;
 const IMU_FAULT_SENTINEL = 0x7fff;
-const IMU_ENCODER_TICKS = 16384;
+const AS5600_ENCODER_TICKS = 4096;
+const LEGACY_ENCODER_TICKS = 16384;
+const AS5600_MAX_RAW_VALUE = AS5600_ENCODER_TICKS - 1;
 const IMU_MAX_KNEE_DEGREES = 140;
 
 export interface ParsedPacket<T> {
@@ -85,19 +87,11 @@ export function parseIMUPacketBytes(
   const yaw = buf.readInt16LE(9);
   const checksum = buf.readUInt8(IMU_PACKET_LENGTH - 1);
 
-  const roll =
-    rawRoll === IMU_FAULT_SENTINEL
-      ? 0
-      : Math.max(
-          0,
-          Math.min(IMU_MAX_KNEE_DEGREES, (rawRoll * 360) / IMU_ENCODER_TICKS),
-        );
-
   return {
     frame: {
       header,
       timestamp,
-      roll,
+      roll: decodeKneeFlexionDegrees(rawRoll),
       pitch,
       yaw,
       checksum,
@@ -112,4 +106,21 @@ function computeChecksum(buf: Buffer, packetLength: number): number {
     computedChecksum ^= buf.readUInt8(index);
   }
   return computedChecksum;
+}
+
+function decodeKneeFlexionDegrees(rawRoll: number): number {
+  if (rawRoll === IMU_FAULT_SENTINEL || rawRoll < 0) {
+    return 0;
+  }
+
+  const encoderTicks =
+    rawRoll > AS5600_MAX_RAW_VALUE
+      ? LEGACY_ENCODER_TICKS
+      : AS5600_ENCODER_TICKS;
+
+  return clampKneeFlexion((rawRoll * 360) / encoderTicks);
+}
+
+function clampKneeFlexion(value: number): number {
+  return Math.max(0, Math.min(IMU_MAX_KNEE_DEGREES, value));
 }

@@ -61,7 +61,7 @@ describe("packetParsers", () => {
     expect(parseEMGPacketBytes(bytes)).toBeNull();
   });
 
-  it("parses IMU packets and converts encoder ticks to knee degrees", () => {
+  it("parses IMU packets and converts AS5600 12-bit counts to knee degrees", () => {
     const bytes = new Uint8Array(IMU_PACKET_LENGTH);
     bytes[0] = IMU_HEADER;
     bytes[1] = 0xef;
@@ -82,6 +82,19 @@ describe("packetParsers", () => {
     expect(parsed?.frame.roll).toBeCloseTo(90, 4);
     expect(parsed?.frame.pitch).toBe(12);
     expect(parsed?.frame.yaw).toBe(-8);
+  });
+
+  it("falls back to legacy 14-bit count conversion for values above 12-bit range", () => {
+    const bytes = new Uint8Array(IMU_PACKET_LENGTH);
+    bytes[0] = IMU_HEADER;
+
+    const dataView = new DataView(bytes.buffer);
+    dataView.setInt16(5, 4096, true);
+
+    const parsed = parseIMUPacketBytes(withChecksum(Array.from(bytes)));
+
+    expect(parsed).not.toBeNull();
+    expect(parsed?.frame.roll).toBeCloseTo(90, 4);
   });
 
   it("maps IMU fault sentinel to zero degrees and reports checksum validity", () => {

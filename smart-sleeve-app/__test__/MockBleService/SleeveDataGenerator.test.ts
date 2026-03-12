@@ -96,7 +96,7 @@ describe("SleeveDataGenerator", () => {
 
       // At least some channels should be different due to time-based sin/cos
       const hasDifference = frame1.channels.some(
-        (val, idx) => Math.abs(val - frame2.channels[idx]) > 0.001
+        (val, idx) => Math.abs(val - frame2.channels[idx]) > 0.001,
       );
 
       expect(hasDifference).toBe(true);
@@ -110,15 +110,15 @@ describe("SleeveDataGenerator", () => {
      */
     it("should generate larger amplitude for FLEX scenario", () => {
       generator.setScenario("FLEX");
-      
+
       // FLEX target is 0.8, but smoothed transition takes time
       for (let i = 0; i < 40; i++) generator.generateEMGFrame();
 
       const frames = Array.from({ length: 50 }, () =>
-        generator.generateEMGFrame()
+        generator.generateEMGFrame(),
       );
       const maxValues = frames.map((f) =>
-        Math.max(...f.channels.map(Math.abs))
+        Math.max(...f.channels.map(Math.abs)),
       );
       const avgMax = maxValues.reduce((a, b) => a + b, 0) / maxValues.length;
 
@@ -136,10 +136,10 @@ describe("SleeveDataGenerator", () => {
       generator.setScenario("REST");
 
       const frames = Array.from({ length: 10 }, () =>
-        generator.generateEMGFrame()
+        generator.generateEMGFrame(),
       );
       const maxValues = frames.map((f) =>
-        Math.max(...f.channels.map(Math.abs))
+        Math.max(...f.channels.map(Math.abs)),
       );
       const avgMax = maxValues.reduce((a, b) => a + b, 0) / maxValues.length;
 
@@ -160,10 +160,10 @@ describe("SleeveDataGenerator", () => {
       for (let i = 0; i < 20; i++) generator.generateEMGFrame();
 
       const frames = Array.from({ length: 10 }, () =>
-        generator.generateEMGFrame()
+        generator.generateEMGFrame(),
       );
       const maxValues = frames.map((f) =>
-        Math.max(...f.channels.map(Math.abs))
+        Math.max(...f.channels.map(Math.abs)),
       );
       const avgMax = maxValues.reduce((a, b) => a + b, 0) / maxValues.length;
 
@@ -212,7 +212,7 @@ describe("SleeveDataGenerator", () => {
 
     /**
      * Test: Verify pitch and yaw are always 0 (Magnetic Encoder constraint)
-     * Why: AS5048A measures a single axis (knee flexion).
+     * Why: The magnetic encoder measures a single axis (knee flexion).
      * Fails if: Implementation adds rotation to unused axes.
      */
     it("should generate pitch and yaw of 0 for all scenarios (single-axis constraint)", () => {
@@ -236,7 +236,7 @@ describe("SleeveDataGenerator", () => {
       generator.setScenario("REST");
 
       const frames = Array.from({ length: 10 }, () =>
-        generator.generateIMUFrame()
+        generator.generateIMUFrame(),
       );
       const maxRoll = Math.max(...frames.map((f) => f.roll));
       const minRoll = Math.min(...frames.map((f) => f.roll));
@@ -260,14 +260,15 @@ describe("SleeveDataGenerator", () => {
       // We will mock Date.now() to simulate 2 seconds of movement
       const realDateNow = Date.now;
       let currentTime = realDateNow();
-      
+
       const frames: number[] = [];
-      for (let i = 0; i < 150; i++) { // Generate 3 seconds of data at 50Hz equivalent (20ms steps)
+      for (let i = 0; i < 150; i++) {
+        // Generate 3 seconds of data at 50Hz equivalent (20ms steps)
         global.Date.now = jest.fn(() => currentTime);
         frames.push(generator.generateIMUFrame().roll);
         currentTime += 20; // Advance 20ms each frame (realistic frequency)
       }
-      
+
       // Restore Date.now
       global.Date.now = realDateNow;
 
@@ -276,7 +277,7 @@ describe("SleeveDataGenerator", () => {
 
       // FLEX should oscillate in the 60-120° range
       // Peaks at 90 + 30 = 120, Dips at 90 - 30 = 60
-      expect(maxRoll).toBeGreaterThan(115); 
+      expect(maxRoll).toBeGreaterThan(115);
       expect(minRoll).toBeLessThan(65);
     });
   });
@@ -314,12 +315,12 @@ describe("SleeveDataGenerator", () => {
       // FLEX should generally produce larger values than REST
       // Note: Due to randomness, we check multiple frames
       const flexFrames = Array.from({ length: 5 }, () =>
-        generator.generateEMGFrame()
+        generator.generateEMGFrame(),
       );
       const avgFlexMax =
         flexFrames.reduce(
           (sum, f) => sum + Math.max(...f.channels.map(Math.abs)),
-          0
+          0,
         ) / 5;
 
       expect(avgFlexMax).toBeGreaterThan(restMax);
@@ -339,7 +340,7 @@ describe("SleeveDataGenerator", () => {
 
       // Since channels are random, data will almost always differ
       const hasDifferentChannels = frame1.channels.some(
-        (val, idx) => val !== frame2.channels[idx]
+        (val, idx) => val !== frame2.channels[idx],
       );
 
       // At least channels should be different (due to randomness)

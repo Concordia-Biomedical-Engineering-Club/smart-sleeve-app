@@ -400,9 +400,7 @@ export default function TestBLEScreen() {
 
         {/* Latest IMU Data */}
         <View style={styles.section}>
-          <ThemedText type="subtitle">
-            Knee Flexion Angle (AS5048A Encoder)
-          </ThemedText>
+          <ThemedText type="subtitle">Knee Flexion Angle (Encoder)</ThemedText>
           {latestIMU ? (
             <View style={styles.dataBox}>
               <ThemedText style={styles.monoText}>
