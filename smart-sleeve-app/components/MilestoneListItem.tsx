@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet, Image } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Colors, Shadows } from "@/constants/theme";
+import { Colors, Typography, Shadows } from "@/constants/theme";
 import { IconSymbol } from "./ui/icon-symbol";
 import { ThemedText } from "./themed-text";
 
@@ -25,7 +25,10 @@ export default function MilestoneListItem({
     <View
       style={[
         styles.card,
-        { backgroundColor: unlocked ? theme.cardBackground : theme.secondaryCard, borderColor: unlocked ? 'transparent' : theme.border },
+        { 
+          backgroundColor: unlocked ? theme.cardBackground : theme.secondaryCard, 
+          borderColor: unlocked ? 'transparent' : theme.border 
+        },
         unlocked && Shadows.card,
       ]}
     >
@@ -38,6 +41,7 @@ export default function MilestoneListItem({
 
       <View style={styles.textContainer}>
         <ThemedText
+          type="bodyBold"
           style={[
             styles.title,
             !unlocked && { color: theme.textTertiary },
@@ -79,9 +83,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 60,
+    height: 60,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -89,30 +93,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   subtitle: {
-    fontSize: 12,
-    opacity: 0.7,
+    ...Typography.caption,
   },
   lockedSubtitle: {
-    fontSize: 12,
+    ...Typography.caption,
     fontStyle: 'italic',
   },
   icon: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     resizeMode: 'contain',
   },
   lockedIcon: {
     opacity: 0.2,
   },
   statusBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },

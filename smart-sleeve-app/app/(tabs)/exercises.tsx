@@ -18,6 +18,9 @@ import { Colors, Typography, Shadows } from '@/constants/theme';
 import { EXERCISE_LIBRARY, Exercise } from '@/constants/exercises';
 import { startWorkout } from '@/store/deviceSlice';
 
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { AppModal } from "@/components/ui/AppModal";
+
 const FOCUS_COLORS: Record<string, string> = {
   'VMO / VL Balance': '#0B74E6',
   'Quad Recruitment': '#00A878',
@@ -51,16 +54,12 @@ export default function ExercisesScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => router.push('/modal')} style={styles.iconButton}>
-          <IconSymbol name="gearshape.fill" size={24} color={theme.textSecondary} />
-        </TouchableOpacity>
-        <View style={styles.brandBadge}>
-           <ThemedText style={[styles.brandBadgeText, { color: theme.primary }]}>REHAB LIBRARY</ThemedText>
-        </View>
-        <TouchableOpacity onPress={() => console.log("Notification")} style={styles.iconButton}>
-          <IconSymbol name="bell.fill" size={24} color={theme.textSecondary} />
-        </TouchableOpacity>
+      <View style={styles.headerLayout}>
+        <ScreenHeader 
+          badgeLabel="REHAB LIBRARY"
+          onRightPress={() => console.log("Notification")}
+          rightIcon="bell.fill"
+        />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -82,7 +81,7 @@ export default function ExercisesScreen() {
                 <View style={[styles.accentTag, { backgroundColor: accentColor }]} />
                 <View style={styles.cardBody}>
                   <View style={styles.cardHeader}>
-                    <ThemedText type="defaultSemiBold" style={styles.exerciseName}>{exercise.name}</ThemedText>
+                    <ThemedText type="bodyBold" style={styles.exerciseName}>{exercise.name}</ThemedText>
                     <View style={[styles.focusBadge, { backgroundColor: accentColor + '10' }]}>
                       <Text style={[styles.focusText, { color: accentColor }]}>{exercise.focus.toUpperCase()}</Text>
                     </View>
@@ -120,50 +119,46 @@ export default function ExercisesScreen() {
         </View>
       </ScrollView>
 
-      <Modal visible={selectedExercise !== null} animationType="fade" transparent onRequestClose={() => setSelectedExercise(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { backgroundColor: theme.cardBackground }]}>
-            <View style={styles.modalHandle} />
-            <ThemedText type="subtitle" style={styles.modalTitle}>{selectedExercise?.name}</ThemedText>
-            <ThemedText style={[styles.modalSubtitle, { color: theme.textSecondary }]}>Select the limb you are rehabbing today</ThemedText>
-            
-            <View style={styles.sideRow}>
-              {(['LEFT', 'RIGHT'] as const).map((side) => (
-                <TouchableOpacity
-                  key={side}
-                  style={[
-                    styles.sideButton, 
-                    { backgroundColor: selectedSide === side ? theme.primary : theme.secondaryCard, borderColor: selectedSide === side ? theme.primary : theme.border }
-                  ]}
-                  onPress={() => setSelectedSide(side)}
-                >
-                  <ThemedText style={[styles.sideButtonText, { color: selectedSide === side ? '#fff' : theme.textSecondary }]}>
-                    {side === 'LEFT' ? 'Left Knee' : 'Right Knee'}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
-            </View>
-
+      <AppModal 
+        visible={selectedExercise !== null} 
+        onClose={() => setSelectedExercise(null)}
+        title={selectedExercise?.name}
+        subtitle="Select the limb you are rehabbing today"
+        footer={(
+          <>
             <TouchableOpacity style={[styles.confirmButton, { backgroundColor: theme.success, ...Shadows.button }]} onPress={handleStartSession}>
               <ThemedText style={styles.confirmButtonText}>Begin Session</ThemedText>
             </TouchableOpacity>
-            
             <TouchableOpacity style={styles.cancelLink} onPress={() => setSelectedExercise(null)}>
               <ThemedText style={{ color: theme.textSecondary }}>Go Back</ThemedText>
             </TouchableOpacity>
-          </View>
+          </>
+        )}
+      >
+        <View style={styles.sideRow}>
+          {(['LEFT', 'RIGHT'] as const).map((side) => (
+            <TouchableOpacity
+              key={side}
+              style={[
+                styles.sideButton, 
+                { backgroundColor: selectedSide === side ? theme.primary : theme.secondaryCard, borderColor: selectedSide === side ? theme.primary : theme.border }
+              ]}
+              onPress={() => setSelectedSide(side)}
+            >
+              <ThemedText style={[styles.sideButtonText, { color: selectedSide === side ? '#fff' : theme.textSecondary }]}>
+                {side === 'LEFT' ? 'Left Knee' : 'Right Knee'}
+              </ThemedText>
+            </TouchableOpacity>
+          ))}
         </View>
-      </Modal>
+      </AppModal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  headerContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 12 },
-  brandBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.03)' },
-  brandBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 1 },
-  iconButton: { padding: 8 },
+  headerLayout: { paddingHorizontal: 24, paddingVertical: 12 },
   scrollContent: { padding: 24, paddingBottom: 40 },
   greeting: { marginBottom: 4 },
   subtitle: { fontSize: 15, marginBottom: 32, lineHeight: 22 },
@@ -185,15 +180,10 @@ const styles = StyleSheet.create({
   tipText: { fontSize: 12, fontStyle: 'italic', opacity: 0.8 },
   startButton: { borderRadius: 16, paddingVertical: 14, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 4 },
   startButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalBox: { borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, gap: 20 },
-  modalHandle: { width: 40, height: 4, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
-  modalTitle: { textAlign: 'center' },
-  modalSubtitle: { textAlign: 'center', fontSize: 15, marginBottom: 8 },
   sideRow: { flexDirection: 'row', gap: 12 },
   sideButton: { flex: 1, paddingVertical: 16, borderRadius: 16, alignItems: 'center', borderWidth: 1 },
   sideButtonText: { fontSize: 15, fontWeight: '700' },
-  confirmButton: { paddingVertical: 18, borderRadius: 18, alignItems: 'center', marginTop: 8 },
+  confirmButton: { paddingVertical: 18, borderRadius: 18, alignItems: 'center' },
   confirmButtonText: { color: '#fff', fontWeight: '700', fontSize: 17 },
   cancelLink: { alignItems: 'center', paddingVertical: 12 },
 });

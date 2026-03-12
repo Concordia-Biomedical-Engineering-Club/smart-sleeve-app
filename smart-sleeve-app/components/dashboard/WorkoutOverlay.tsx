@@ -29,7 +29,7 @@ const PHASE_CONFIG = {
   IDLE: { label: '', colorKey: 'transparent', emoji: '' },
   COUNTDOWN: { label: 'Get Ready…', colorKey: 'warning', emoji: '⏳' },
   ACTIVE_WORK: { label: 'FLEX NOW', colorKey: 'success', emoji: '💪' },
-  ACTIVE_REST: { label: 'RELAX', colorKey: 'tint', emoji: '😮‍💨' },
+  ACTIVE_REST: { label: 'RELAX', colorKey: 'primary', emoji: '😮‍' },
   COMPLETING: { label: 'Session Complete!', colorKey: 'primary', emoji: '🏆' },
 };
 
@@ -85,7 +85,7 @@ function PhaseBanner({
         <View style={styles.phaseTextContent}>
           <ThemedText style={[styles.phaseLabel, { color: phaseColor }]}>{config.label}</ThemedText>
           {phase !== 'COMPLETING' && (
-            <ThemedText type="defaultSemiBold" style={{ color: theme.textSecondary }}>
+            <ThemedText type="bodyBold" style={{ color: theme.textSecondary }}>
               {workout.phaseSecondsRemaining}s remain
             </ThemedText>
           )}
@@ -115,7 +115,7 @@ function CoachingCard({ tip, theme, phaseColor }: { tip: string, theme: any, pha
   return (
     <ThemedView style={[styles.cueCard, { borderLeftColor: phaseColor, backgroundColor: theme.cardBackground + 'F2' }, Shadows.card]}>
       <ThemedText style={[styles.cueLabel, { color: theme.textSecondary }]}>FORM TIP</ThemedText>
-      <ThemedText type="defaultSemiBold" style={{ color: theme.text, fontStyle: 'italic', fontSize: 15 }}>
+      <ThemedText type="bodyBold" style={{ color: theme.text, fontStyle: 'italic', fontSize: 15 }}>
         {tip}
       </ThemedText>
     </ThemedView>
@@ -180,12 +180,12 @@ export function WorkoutOverlay() {
       {/* COMPACT TOP HUD */}
       <View style={styles.hudTopSection}>
         <View style={styles.exerciseHeader}>
-          <ThemedText type="defaultSemiBold" style={{ color: theme.text, opacity: 0.8 }}>
+          <ThemedText type="bodyBold" style={{ color: theme.text, opacity: 0.8 }}>
             {workout.exerciseName ?? 'Exercise'}
           </ThemedText>
           {(isLeft || isRight) && (
-            <View style={[styles.sideBadge, { backgroundColor: theme.tint + '26' }]}>
-              <ThemedText style={[styles.sideBadgeText, { color: theme.tint }]}>
+            <View style={[styles.sideBadge, { backgroundColor: theme.primary + '26' }]}>
+              <ThemedText style={[styles.sideBadgeText, { color: theme.primary }]}>
                 {isLeft ? 'L' : 'R'}
               </ThemedText>
             </View>
@@ -224,7 +224,7 @@ export function WorkoutOverlay() {
               {sessionStatus === 'SAVING' ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <ThemedText type="defaultSemiBold" style={{ color: '#fff' }}>Finish Session</ThemedText>
+                <ThemedText type="bodyBold" style={{ color: '#fff' }}>Finish Session</ThemedText>
               )}
             </TouchableOpacity>
           ) : (
@@ -237,7 +237,7 @@ export function WorkoutOverlay() {
                 {sessionStatus === 'SAVING' ? (
                   <ActivityIndicator color={theme.success} />
                 ) : (
-                  <ThemedText type="defaultSemiBold" style={{ color: theme.success }}>Stop & Save</ThemedText>
+                  <ThemedText type="bodyBold" style={{ color: theme.success }}>Stop & Save</ThemedText>
                 )}
               </TouchableOpacity>
 
@@ -245,7 +245,7 @@ export function WorkoutOverlay() {
                 style={[styles.outlineButton, { flex: 0.4, borderColor: theme.warning, backgroundColor: theme.warning + '1A' }]}
                 onPress={handleCancel}
               >
-                <ThemedText type="defaultSemiBold" style={{ color: theme.warning }}>Cancel</ThemedText>
+                <ThemedText type="bodyBold" style={{ color: theme.warning }}>Cancel</ThemedText>
               </TouchableOpacity>
             </View>
           )}

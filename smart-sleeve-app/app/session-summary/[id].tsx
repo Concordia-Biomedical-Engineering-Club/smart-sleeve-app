@@ -30,6 +30,8 @@ import {
   generateSessionRecommendation,
 } from "@/services/ProgressAnalysis";
 
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+
 const screenWidth = Dimensions.get("window").width;
 
 export default function SessionSummaryScreen() {
@@ -123,9 +125,6 @@ export default function SessionSummaryScreen() {
     const downsampled = samples.filter((_, i) => i % step === 0);
 
     // Compute smoothed, rectified muscle activation envelope.
-    // vmo_rms is a bipolar filtered EMG value (-1..+1 range).
-    // We rectify (abs), apply a 5-sample rolling average, then scale
-    // to the same 0–120° axis as knee angle for visual comparison.
     const SMOOTH_WINDOW = 5;
     const EMG_SCALE = 120; // maps 1.0 -> 120 (same range as max knee angle)
     const rawAbs = downsampled.map((s) => Math.abs(s.vmo_rms));
@@ -158,23 +157,21 @@ export default function SessionSummaryScreen() {
       <View
         style={[styles.loadingContainer, { backgroundColor: theme.background }]}
       >
-        <ActivityIndicator size="large" color={theme.tint} />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
-  }
-
-  if (!session) {
+  }  if (!session) {
     return (
       <View
         style={[styles.loadingContainer, { backgroundColor: theme.background }]}
       >
-        <ThemedText>{errorMessage ?? "Session not found"}</ThemedText>
+        <ThemedText style={{ marginBottom: 16 }}>{errorMessage ?? "Session not found"}</ThemedText>
         <TouchableOpacity
           accessibilityLabel="Back"
           onPress={() => router.back()}
-          style={styles.backButton}
+          style={[styles.doneButton, { backgroundColor: theme.primary, width: '60%' }]}
         >
-          <ThemedText style={{ color: theme.tint }}>Go Back</ThemedText>
+          <ThemedText type="bodyBold" style={{ color: '#fff' }}>Go Back</ThemedText>
         </TouchableOpacity>
       </View>
     );
@@ -184,23 +181,13 @@ export default function SessionSummaryScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
-      <View style={styles.header}>
-        <TouchableOpacity
-          accessibilityLabel="Back"
-          onPress={() => router.back()}
-          style={styles.iconButton}
-        >
-          <IconSymbol name="chevron.left" size={28} color={theme.text} />
-        </TouchableOpacity>
-        <ThemedText style={Typography.heading2}>Session Summary</ThemedText>
-        <TouchableOpacity
-          accessibilityLabel="Share session"
-          onPress={handleShare}
-          style={styles.iconButton}
-        >
-          <IconSymbol name="square.and.arrow.up" size={24} color={theme.text} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        badgeLabel="SESSION SUMMARY"
+        onLeftPress={() => router.back()}
+        leftIcon="chevron.left"
+        rightIcon="square.and.arrow.up"
+        onRightPress={handleShare}
+      />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -216,7 +203,7 @@ export default function SessionSummaryScreen() {
               },
             ]}
           >
-            <ThemedText style={{ color: theme.warning }}>
+            <ThemedText style={{ ...Typography.caption, color: theme.warning }}>
               {errorMessage}
             </ThemedText>
           </View>
@@ -239,10 +226,10 @@ export default function SessionSummaryScreen() {
             <ThemedText style={styles.qualityLabel}>QUALITY</ThemedText>
           </View>
           <View style={styles.heroTextContent}>
-            <ThemedText style={styles.exerciseTitle}>
+            <ThemedText type="subtitle" style={styles.exerciseTitle}>
               {exerciseInfo?.name || "General Session"}
             </ThemedText>
-            <ThemedText style={styles.sessionDate}>
+            <ThemedText style={[styles.sessionDate, { color: theme.textSecondary }]}>
               {new Date(session.timestamp).toLocaleDateString([], {
                 month: "long",
                 day: "numeric",
@@ -256,10 +243,10 @@ export default function SessionSummaryScreen() {
               ]}
             >
               <ThemedText
+                type="label"
                 style={{
                   color: theme.primary,
-                  fontSize: 12,
-                  fontWeight: "700",
+                  fontSize: 10,
                 }}
               >
                 {session.side} LEG
@@ -271,12 +258,11 @@ export default function SessionSummaryScreen() {
         <View
           style={[
             styles.comparisonCard,
-            { backgroundColor: theme.cardBackground },
-            Shadows.card,
+            { backgroundColor: theme.secondaryCard, borderColor: theme.border },
           ]}
         >
           <View style={styles.comparisonHeader}>
-            <ThemedText style={Typography.heading3}>
+            <ThemedText type="bodyBold">
               Progress Comparison
             </ThemedText>
             <ThemedText
@@ -304,7 +290,7 @@ export default function SessionSummaryScreen() {
                   {comparison.qualityDelta >= 0 ? "+" : ""}
                   {comparison.qualityDelta.toFixed(1)}%
                 </ThemedText>
-                <ThemedText style={styles.comparisonLabel}>Quality</ThemedText>
+                <ThemedText type="label" style={[styles.comparisonLabel, { color: theme.textSecondary }]}>Quality</ThemedText>
               </View>
               <View style={styles.comparisonMetric}>
                 <ThemedText
@@ -321,7 +307,7 @@ export default function SessionSummaryScreen() {
                   {comparison.romDelta >= 0 ? "+" : ""}
                   {comparison.romDelta.toFixed(1)}°
                 </ThemedText>
-                <ThemedText style={styles.comparisonLabel}>ROM</ThemedText>
+                <ThemedText type="label" style={[styles.comparisonLabel, { color: theme.textSecondary }]}>ROM</ThemedText>
               </View>
               <View style={styles.comparisonMetric}>
                 <ThemedText
@@ -330,14 +316,14 @@ export default function SessionSummaryScreen() {
                   {comparison.durationDelta >= 0 ? "+" : ""}
                   {comparison.durationDelta.toFixed(0)}s
                 </ThemedText>
-                <ThemedText style={styles.comparisonLabel}>Duration</ThemedText>
+                <ThemedText type="label" style={[styles.comparisonLabel, { color: theme.textSecondary }]}>Duration</ThemedText>
               </View>
             </View>
           ) : (
             <ThemedText
               style={[
                 styles.comparisonFallback,
-                { color: theme.textSecondary },
+                { ...Typography.caption, color: theme.textSecondary },
               ]}
             >
               This is your first saved session for this exercise and side.
@@ -346,84 +332,47 @@ export default function SessionSummaryScreen() {
           )}
         </View>
 
+        {/* CLINICAL INSIGHTS */}
+        <View
+          style={[
+            styles.insightCard,
+            {
+              backgroundColor: theme.primary + "08",
+              borderColor: theme.primary + "20",
+            },
+          ]}
+        >
+          <View style={styles.insightHeader}>
+            <IconSymbol name="lightbulb.fill" size={18} color={theme.primary} />
+            <ThemedText type="label" style={{ color: theme.primary }}>
+              {recommendation?.title ?? "Clinician's Insight"}
+            </ThemedText>
+          </View>
+          <ThemedText style={[styles.insightText, { color: theme.textSecondary }]}>
+            {recommendation?.message}
+          </ThemedText>
+        </View>
+
         {/* STATS GRID */}
         <View style={styles.statsGrid}>
           <View style={styles.row}>
             <StatCard
               label="Duration"
               value={`${Math.floor(session.duration / 60)}m ${session.duration % 60}s`}
-              image={require("@/assets/images/fire.png")}
-              imageStyle={{
-                width: 60,
-                height: 60,
-                bottom: -5,
-                right: -5,
-                opacity: 0.1,
-              }}
             />
             <StatCard
               label="Max Flexion"
               value={`${Math.round(session.analytics.romDegrees)}°`}
-              image={require("@/assets/images/trophy.png")}
-              imageStyle={{
-                width: 60,
-                height: 60,
-                bottom: -5,
-                right: -5,
-                opacity: 0.1,
-              }}
             />
           </View>
           <View style={styles.row}>
             <StatCard
               label="Avg. Activation"
               value={`${Math.round(session.analytics.avgActivation * 100)}%`}
-              image={require("@/assets/images/target.png")}
-              imageStyle={{
-                width: 60,
-                height: 60,
-                bottom: -5,
-                right: -5,
-                opacity: 0.1,
-              }}
             />
             <StatCard
               label="Fatigue Score"
               value={`${Math.round(session.analytics.fatigueScore)}/10`}
-              image={require("@/assets/images/woman.png")}
-              imageStyle={{
-                width: 60,
-                height: 60,
-                bottom: -5,
-                right: -5,
-                opacity: 0.1,
-              }}
-            />
-          </View>
-          <View style={styles.row}>
-            <StatCard
-              label="Completion"
-              value={`${completionRate}%`}
-              image={require("@/assets/images/fire.png")}
-              imageStyle={{
-                width: 60,
-                height: 60,
-                bottom: -5,
-                right: -5,
-                opacity: 0.1,
-              }}
-            />
-            <StatCard
-              label="Intensity"
-              value={`${intensityScore}/10`}
-              image={require("@/assets/images/target.png")}
-              imageStyle={{
-                width: 60,
-                height: 60,
-                bottom: -5,
-                right: -5,
-                opacity: 0.1,
-              }}
             />
           </View>
         </View>
@@ -436,11 +385,11 @@ export default function SessionSummaryScreen() {
             Shadows.card,
           ]}
         >
-          <ThemedText style={Typography.heading3}>Session Analytics</ThemedText>
+          <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>Session Analytics</ThemedText>
           <ThemedText
             style={[
               Typography.caption,
-              { color: theme.textSecondary, marginBottom: 16 },
+              { color: theme.textSecondary, marginBottom: 24 },
             ]}
           >
             Muscle activation vs. Extension angle
@@ -449,7 +398,7 @@ export default function SessionSummaryScreen() {
           {chartData ? (
             <LineChart
               data={chartData}
-              width={screenWidth - 72}
+              width={screenWidth - 88}
               height={220}
               chartConfig={{
                 backgroundColor: theme.cardBackground,
@@ -490,32 +439,11 @@ export default function SessionSummaryScreen() {
           </View>
         </View>
 
-        {/* CLINICAL INSIGHTS */}
-        <View
-          style={[
-            styles.insightCard,
-            {
-              backgroundColor: theme.primary + "10",
-              borderColor: theme.primary + "30",
-            },
-          ]}
-        >
-          <View style={styles.insightHeader}>
-            <IconSymbol name="lightbulb.fill" size={20} color={theme.primary} />
-            <ThemedText style={[styles.insightTitle, { color: theme.primary }]}>
-              {recommendation?.title ?? "Clinician's Insight"}
-            </ThemedText>
-          </View>
-          <ThemedText style={styles.insightText}>
-            {recommendation?.message}
-          </ThemedText>
-        </View>
-
         <TouchableOpacity
-          style={[styles.doneButton, { backgroundColor: theme.tint }]}
-          onPress={() => router.push("/(tabs)/dashboard")}
+          style={[styles.doneButton, { backgroundColor: theme.primary, ...Shadows.button }]}
+          onPress={() => router.replace("/(tabs)/dashboard" as any)}
         >
-          <ThemedText style={styles.doneButtonText}>
+          <ThemedText type="bodyBold" style={styles.doneButtonText}>
             Back to Dashboard
           </ThemedText>
         </TouchableOpacity>
@@ -532,50 +460,43 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 16,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 24,
   },
   iconButton: {
     padding: 8,
   },
   errorBanner: {
-    padding: 12,
+    padding: 16,
     borderRadius: 16,
     borderWidth: 1,
   },
   scrollContent: {
-    padding: 20,
+    padding: 24,
     paddingBottom: 40,
-    gap: 20,
+    gap: 24,
   },
   heroCard: {
     flexDirection: "row",
     padding: 24,
-    borderRadius: 24,
+    borderRadius: 32,
     alignItems: "center",
     gap: 20,
   },
   qualityRing: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     borderWidth: 8,
     justifyContent: "center",
     alignItems: "center",
   },
   qualityValue: {
-    fontSize: 24,
-    fontWeight: "800",
+    fontSize: 22,
+    fontWeight: "900",
   },
   qualityLabel: {
     fontSize: 9,
-    fontWeight: "700",
+    fontWeight: "800",
     opacity: 0.5,
   },
   heroTextContent: {
@@ -583,27 +504,26 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   exerciseTitle: {
-    fontSize: 20,
-    fontWeight: "800",
+    marginBottom: 2,
   },
   sessionDate: {
     fontSize: 14,
-    opacity: 0.6,
   },
   sideBadge: {
     alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
     marginTop: 8,
   },
   statsGrid: {
-    gap: 12,
+    gap: 16,
   },
   comparisonCard: {
-    padding: 20,
+    padding: 24,
     borderRadius: 24,
-    gap: 16,
+    borderWidth: 1,
+    gap: 20,
   },
   comparisonHeader: {
     gap: 4,
@@ -620,25 +540,21 @@ const styles = StyleSheet.create({
   },
   comparisonValue: {
     fontSize: 20,
-    fontWeight: "800",
+    fontWeight: "900",
   },
   comparisonLabel: {
-    fontSize: 12,
-    opacity: 0.6,
-    fontWeight: "600",
     textTransform: "uppercase",
   },
   comparisonFallback: {
-    fontSize: 14,
     lineHeight: 20,
   },
   row: {
     flexDirection: "row",
-    gap: 12,
+    gap: 16,
   },
   chartCard: {
-    padding: 20,
-    borderRadius: 24,
+    padding: 24,
+    borderRadius: 32,
   },
   chart: {
     marginVertical: 8,
@@ -666,44 +582,33 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   legendText: {
-    fontSize: 12,
-    opacity: 0.6,
-    fontWeight: "600",
+    ...Typography.caption,
+    fontWeight: "700",
   },
   insightCard: {
-    padding: 20,
-    borderRadius: 20,
+    padding: 24,
+    borderRadius: 24,
     borderWidth: 1,
     gap: 12,
   },
   insightHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-  },
-  insightTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1,
+    gap: 10,
   },
   insightText: {
+    ...Typography.body,
     fontSize: 14,
-    lineHeight: 20,
-    opacity: 0.8,
+    lineHeight: 22,
   },
   doneButton: {
     paddingVertical: 18,
-    borderRadius: 16,
+    borderRadius: 18,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 8,
   },
   doneButtonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  backButton: {
-    padding: 12,
+    fontSize: 17,
   },
 });

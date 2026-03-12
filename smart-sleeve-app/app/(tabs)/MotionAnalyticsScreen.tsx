@@ -11,15 +11,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Colors, Typography } from "@/constants/theme";
+import { Colors,Shadows } from "@/constants/theme";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/themed-text";
 import { SegmentedControl } from "@/components/dashboard/SegmentedControl";
 import { TrendChart } from "@/components/analytics/TrendChart";
 
 export default function MotionAnalyticsScreen() {
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
+  const colorScheme = useColorScheme() ?? "light";
+  const theme = Colors[colorScheme];
   const [timeframe, setTimeframe] = useState("Weekly");
 
   // Mock data for the chart
@@ -42,28 +43,20 @@ export default function MotionAnalyticsScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <View style={styles.headerContainer}>
-        <View style={styles.topRow}>
-          <TouchableOpacity onPress={() => router.push("/modal")} style={styles.iconButton}>
-             <IconSymbol name="gearshape.fill" size={24} color={theme.textSecondary} />
-          </TouchableOpacity>
-          <View style={styles.brandBadge}>
-             <ThemedText style={[styles.brandBadgeText, { color: theme.primary }]}>BIOMETRIC ANALYTICS</ThemedText>
-          </View>
-          <TouchableOpacity onPress={() => console.log("Notification")} style={styles.iconButton}>
-            <IconSymbol name="bell.fill" size={24} color={theme.textSecondary} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScreenHeader 
+          badgeLabel="BIOMETRIC ANALYTICS"
+          onRightPress={() => console.log("Notification")}
+          rightIcon="bell.fill"
+        />
+
         <ThemedText type="title" style={styles.pageTitle}>Motion Patterns</ThemedText>
         
         <View style={styles.selectorWrapper}>
           <SegmentedControl
             options={["Daily", "Weekly", "Monthly"]}
             selectedOption={timeframe}
-            onSelect={setTimeframe}
+            onSelect={setTimeframe as any}
           />
         </View>
 
@@ -76,11 +69,27 @@ export default function MotionAnalyticsScreen() {
           />
         </View>
 
-        <View style={styles.insightsGrid}>
-           <ThemedText type="label" style={styles.sectionLabel}>Key Insights</ThemedText>
-           <View style={[styles.insightCard, { backgroundColor: theme.secondaryCard }]}>
-              <IconSymbol name="checkmark.seal.fill" size={20} color={theme.success} />
-              <ThemedText style={styles.insightText}>Your flexion has improved by 12% over the last 3 days. Keep the persistence!</ThemedText>
+        <View style={styles.insightsSection}>
+           <ThemedText type="label" style={[styles.sectionLabel, { color: theme.textSecondary }]}>KEY INSIGHTS</ThemedText>
+           
+           <View style={[styles.insightCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }, Shadows.card]}>
+              <View style={[styles.iconBox, { backgroundColor: theme.success + '15' }]}>
+                <IconSymbol name="checkmark.seal.fill" size={20} color={theme.success} />
+              </View>
+              <View style={styles.insightContent}>
+                <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>Improvement Detected</ThemedText>
+                <ThemedText style={[styles.insightText, { color: theme.textSecondary }]}>Your flexion has improved by 12% over the last 3 days. Keep the persistence!</ThemedText>
+              </View>
+           </View>
+
+           <View style={[styles.insightCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }, Shadows.card]}>
+              <View style={[styles.iconBox, { backgroundColor: theme.primary + '15' }]}>
+                <IconSymbol name="lightbulb.fill" size={20} color={theme.primary} />
+              </View>
+              <View style={styles.insightContent}>
+                <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>Coach Recommendation</ThemedText>
+                <ThemedText style={[styles.insightText, { color: theme.textSecondary }]}>Consider adding 2 more sets of Quad Sets to your daily routine to stabilize the joint.</ThemedText>
+              </View>
            </View>
         </View>
 
@@ -92,16 +101,13 @@ export default function MotionAnalyticsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   scrollContent: { padding: 24, paddingBottom: 40 },
-  headerContainer: { paddingHorizontal: 24, paddingVertical: 12 },
-  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  brandBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.03)' },
-  brandBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 1 },
-  iconButton: { padding: 8 },
   pageTitle: { marginBottom: 24 },
   selectorWrapper: { marginBottom: 32 },
-  chartContainer: { marginBottom: 32 },
-  insightsGrid: { gap: 16 },
-  sectionLabel: { color: "#64748B", marginBottom: 8 },
-  insightCard: { padding: 20, borderRadius: 20, flexDirection: 'row', gap: 16, alignItems: 'center' },
-  insightText: { flex: 1, fontSize: 14, lineHeight: 20, opacity: 0.8 },
+  chartContainer: { marginBottom: 40 },
+  insightsSection: { gap: 16 },
+  sectionLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 8 },
+  insightCard: { padding: 20, borderRadius: 24, flexDirection: 'row', gap: 16, alignItems: 'flex-start', borderWidth: 1 },
+  iconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  insightContent: { flex: 1 },
+  insightText: { fontSize: 14, lineHeight: 20 },
 });

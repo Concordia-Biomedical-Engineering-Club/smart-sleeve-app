@@ -38,12 +38,14 @@ import { EXERCISE_LIBRARY } from "@/constants/exercises";
 import { WorkoutOverlay } from "@/components/dashboard/WorkoutOverlay";
 import CalibrationOverlay from "@/components/dashboard/CalibrationOverlay";
 
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+
 const getChannels = (injuredSide: 'LEFT' | 'RIGHT' | null, theme: any) => {
   const isLeftInjured = (injuredSide ?? 'LEFT') === 'LEFT';
   const injured = (name: string) => `${name} (Injured)`;
   const healthy = (name: string) => `${name} (Healthy)`;
   return [
-    { id: 0, label: isLeftInjured ? injured('VMO') : healthy('VMO'), color: theme.tint },
+    { id: 0, label: isLeftInjured ? injured('VMO') : healthy('VMO'), color: theme.primary },
     { id: 1, label: isLeftInjured ? injured('VL') : healthy('VL'), color: "#FF6B6B" },
     { id: 2, label: isLeftInjured ? injured('Semitendinosus') : healthy('Semitendinosus'), color: "#4ECDC4" },
     { id: 3, label: isLeftInjured ? injured('Biceps Femoris') : healthy('Biceps Femoris'), color: "#FFE66D" },
@@ -114,17 +116,11 @@ export default function DashboardScreen() {
 
         {!isWorkoutActive ? (
           <View style={styles.headerContainer}>
-            <View style={styles.topRow}>
-              <TouchableOpacity onPress={() => router.push("/modal")} style={styles.iconButton}>
-                 <IconSymbol name="gearshape.fill" size={24} color={theme.textSecondary} />
-              </TouchableOpacity>
-              <View style={styles.brandBadge}>
-                 <ThemedText style={[styles.brandBadgeText, { color: theme.primary }]}>REHAB CO-PILOT</ThemedText>
-              </View>
-              <TouchableOpacity onPress={() => console.log("Notification")} style={styles.iconButton}>
-                <IconSymbol name="bell.fill" size={24} color={theme.textSecondary} />
-              </TouchableOpacity>
-            </View>
+            <ScreenHeader 
+              badgeLabel="REHAB CO-PILOT"
+              onRightPress={() => console.log("Notification")}
+              rightIcon="bell.fill"
+            />
             <ThemedText type="title" style={styles.greeting}>Hey {userName}!</ThemedText>
             {injuredSide && (
               <ThemedText style={[styles.sideLabel, { color: theme.textSecondary }]}>
@@ -249,10 +245,6 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0 },
   scrollContent: { padding: 24, paddingBottom: 40 },
   headerContainer: { marginBottom: 32 },
-  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 24 },
-  brandBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.03)' },
-  brandBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 1 },
-  iconButton: { padding: 8 },
   greeting: { marginBottom: 4 },
   sideLabel: { fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
   calibrationRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 24 },

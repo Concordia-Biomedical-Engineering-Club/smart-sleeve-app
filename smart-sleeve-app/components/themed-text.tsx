@@ -5,7 +5,7 @@ import { Typography } from '@/constants/theme';
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link' | 'caption' | 'label';
+  type?: 'default' | 'title' | 'subtitle' | 'link' | 'caption' | 'label' | 'bodyBold';
 };
 
 export function ThemedText({
@@ -23,11 +23,11 @@ export function ThemedText({
         { color },
         type === 'default' ? styles.default : undefined,
         type === 'title' ? styles.title : undefined,
-        type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
         type === 'subtitle' ? styles.subtitle : undefined,
         type === 'link' ? styles.link : undefined,
         type === 'caption' ? styles.caption : undefined,
         type === 'label' ? styles.label : undefined,
+        type === 'bodyBold' ? styles.bodyBold : undefined,
         style,
       ]}
       {...rest}
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
   default: {
     ...Typography.body,
   },
-  defaultSemiBold: {
+  bodyBold: {
     ...Typography.bodyBold,
   },
   title: {
@@ -56,6 +56,6 @@ const styles = StyleSheet.create({
   },
   link: {
     ...Typography.body,
-    color: '#0a7ea4', // Keeping link color legacy or should use theme action color?
+    color: '#00B8A9', // Using palette medical teal for links
   },
 });

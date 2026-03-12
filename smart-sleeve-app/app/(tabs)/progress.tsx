@@ -23,6 +23,8 @@ import { RootState } from "@/store/store";
 import { SegmentedControl } from "@/components/dashboard/SegmentedControl";
 import { buildMetricTrend, TimeframeOption } from "@/services/ProgressAnalysis";
 
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+
 type SideFilter = "BOTH" | "LEFT" | "RIGHT";
 
 /**
@@ -85,7 +87,7 @@ function SessionHistoryCard({
               {session.side[0]}
             </ThemedText>
           </View>
-          <ThemedText type="defaultSemiBold" style={styles.exerciseNameText}>
+          <ThemedText type="bodyBold" style={styles.exerciseNameText}>
             {exerciseName}
           </ThemedText>
         </View>
@@ -269,7 +271,7 @@ export default function ProgressScreen() {
       <View
         style={[styles.loadingContainer, { backgroundColor: theme.background }]}
       >
-        <ActivityIndicator size="large" color={theme.tint} />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -285,25 +287,15 @@ export default function ProgressScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={theme.tint}
+            tintColor={theme.primary}
           />
         }
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.push("/modal")} style={styles.iconButton}>
-            <IconSymbol name="gearshape.fill" size={24} color={theme.textSecondary} />
-          </TouchableOpacity>
-          <View style={styles.brandBadge}>
-            <ThemedText style={[styles.brandBadgeText, { color: theme.primary }]}>SESSION HISTORY</ThemedText>
-          </View>
-          <TouchableOpacity onPress={onRefresh} style={styles.iconButton}>
-            <IconSymbol
-              name="arrow.triangle.2.circlepath"
-              size={20}
-              color={theme.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader 
+          badgeLabel="SESSION HISTORY"
+          rightIcon="arrow.triangle.2.circlepath"
+          onRightPress={onRefresh}
+        />
 
         <ThemedText type="title" style={styles.pageTitle}>Progress Log</ThemedText>
 
@@ -499,10 +491,6 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   scrollContent: { padding: 24, paddingBottom: 40 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 24 },
-  brandBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.03)' },
-  brandBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 1 },
-  iconButton: { padding: 8 },
   pageTitle: { marginBottom: 24 },
   errorBanner: { borderRadius: 16, borderWidth: 1, padding: 12, marginBottom: 16 },
   filterCard: { padding: 20, borderRadius: 24, marginBottom: 32, borderWidth: 1 },

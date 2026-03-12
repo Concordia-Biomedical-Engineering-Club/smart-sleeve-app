@@ -47,7 +47,7 @@ export const RMSGraph: React.FC<RMSGraphProps> = ({
 }) => {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
-  const strokeColor = lineColor || theme.tint;
+  const strokeColor = lineColor || theme.primary;
 
   // Redux Selection
   const latestFeatures = useSelector(selectLatestFeatures);
@@ -102,7 +102,7 @@ export const RMSGraph: React.FC<RMSGraphProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: theme.cardBackground }]}>
       <View style={styles.header}>
-        <ThemedText type="defaultSemiBold">{label}</ThemedText>
+        <ThemedText type="bodyBold">{label}</ThemedText>
       </View>
       <View style={styles.graphContainer}>
         <Svg height={height} width={width}>

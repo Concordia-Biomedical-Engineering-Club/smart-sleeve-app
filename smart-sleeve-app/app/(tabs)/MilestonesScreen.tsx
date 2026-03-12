@@ -14,7 +14,7 @@ import MilestoneListItem from "../../components/MilestoneListItem";
 import { Colors, Typography } from "@/constants/theme";
 import { router } from "expo-router";
 
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ThemedText } from "@/components/themed-text";
 
 // Mock Data
@@ -47,22 +47,11 @@ export default function MilestonesScreen() {
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      {/* Brand Header */}
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.push('/modal')} style={styles.iconButton}>
-          <IconSymbol name="gearshape.fill" size={24} color={theme.textSecondary} />
-        </TouchableOpacity>
-        
-        <View style={styles.brandBadge}>
-          <ThemedText style={[styles.brandBadgeText, { color: theme.primary }]}>PLAYER PROFILE</ThemedText>
-        </View>
+      <ScreenHeader 
+        badgeLabel="PLAYER PROFILE"
+        rightIcon="trophy.fill"
+      />
 
-        <TouchableOpacity style={styles.iconButton}>
-          <IconSymbol name="trophy.fill" size={24} color={theme.textSecondary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Profile Avatar Section */}
       <ProfileAvatarCard
         name="Emily Watson"
         membership="Premium Athlete"
@@ -70,7 +59,6 @@ export default function MilestonesScreen() {
         starIcon={require("../../assets/images/star.png")}
       />
 
-      {/* Billboard Stats Section */}
       <View style={styles.statsContainer}>
         <View style={styles.row}>
           <StatCard
@@ -131,10 +119,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   listContent: { padding: 24, paddingBottom: 40 },
   headerContainer: { marginBottom: 32 },
-  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: 'center', marginBottom: 24 },
-  brandBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.03)' },
-  brandBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 1 },
-  iconButton: { padding: 8 },
   statsContainer: { gap: 16, marginBottom: 40 },
   row: { flexDirection: "row", gap: 16 },
   sectionTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

@@ -26,6 +26,7 @@ import {
   mapFirebaseError,
 } from "../../services/auth";
 import { StatusBar } from "expo-status-bar";
+import { AppModal } from "@/components/ui/AppModal";
 
 export default function AuthScreen() {
   const dispatch = useDispatch();
@@ -215,28 +216,30 @@ export default function AuthScreen() {
         </View>
       </ScrollView>
 
-      {/* Reset Modal - Standardizing styles */}
-      <Modal visible={showResetModal} animationType="fade" transparent>
-        <View style={styles.modalOverlay}>
-           <View style={[styles.modalBox, { backgroundColor: theme.cardBackground, padding: 24, borderRadius: 24, width: '85%' }]}>
-              <Text style={[styles.modalTitle, { color: theme.text, ...Typography.heading3, marginBottom: 24, textAlign: 'center' }]}>Reset Password</Text>
-              <TextInput
-                style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.secondaryCard, marginBottom: 16, borderRadius: 14, padding: 14, borderWidth: 1 }]}
-                placeholder="Enter your email"
-                placeholderTextColor={theme.textTertiary}
-                value={resetEmail}
-                onChangeText={setResetEmail}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary, padding: 16, borderRadius: 14, alignItems: 'center' }]} onPress={() => setShowResetModal(false)}>
-                 <Text style={styles.buttonText}>Send Link</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowResetModal(false)} style={{ marginTop: 16 }}>
-                 <Text style={{ color: theme.textSecondary, textAlign: 'center' }}>Cancel</Text>
-              </TouchableOpacity>
-           </View>
-        </View>
-      </Modal>
+      <AppModal 
+        visible={showResetModal} 
+        onClose={() => setShowResetModal(false)}
+        title="Reset Password"
+        subtitle="Enter your email to receive a password reset link."
+        footer={(
+          <TouchableOpacity 
+            style={[styles.button, { backgroundColor: theme.primary, marginTop: 0 }]} 
+            onPress={() => setShowResetModal(false)}
+          >
+            <Text style={styles.buttonText}>Send Link</Text>
+          </TouchableOpacity>
+        )}
+      >
+        <TextInput
+          style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.secondaryCard }]}
+          placeholder="athlete@example.com"
+          placeholderTextColor={theme.textTertiary}
+          value={resetEmail}
+          onChangeText={setResetEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+      </AppModal>
     </KeyboardAvoidingView>
   );
 }
@@ -338,12 +341,6 @@ const styles = StyleSheet.create({
   },
   switchHighlight: {
     fontWeight: "700",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
   },
   modalBox: {},
   modalTitle: {},
