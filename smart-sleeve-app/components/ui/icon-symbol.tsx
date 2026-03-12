@@ -6,24 +6,41 @@ import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
 type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
-type IconSymbolName = keyof typeof MAPPING;
 
 /**
  * Add your SF Symbols to Material Icons mappings here.
  * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
-const MAPPING = {
+export const MAPPING = {
   'house.fill': 'home',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
+  'chevron.left': 'chevron-left',
   'chevron.right': 'chevron-right',
   'chart.bar.fill': 'dashboard',
   'figure.run': 'fitness-center',
   'waveform.path.ecg': 'timeline',
   'trophy.fill': 'emoji-events',
   'antenna.radiowaves.left.and.right': 'bluetooth',
+  'cylinder.split.1x2': 'storage',
+  'person.crop.circle.fill': 'person',
+  'chart.line.uptrend.xyaxis': 'trending-up',
+  'checkmark.seal.fill': 'verified',
+  'clock.fill': 'schedule',
+  'figure.walk': 'directions-walk',
+  'timer': 'timer',
+  'flame.fill': 'whatshot',
+  'arrow.triangle.2.circlepath': 'sync',
+  'square.and.arrow.up': 'share',
+  'clipboard.fill': 'assignment',
+  'bell.fill': 'notifications',
+  'lightbulb.fill': 'lightbulb',
+  'gearshape.fill': 'settings',
+  'waveform': 'gesture',
 } as IconMapping;
+
+export type IconSymbolName = keyof typeof MAPPING;
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.

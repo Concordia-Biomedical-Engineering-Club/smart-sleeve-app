@@ -5,6 +5,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import {
   persistStore,
   persistReducer,
+  createMigrate,
   FLUSH,
   REHYDRATE,
   PAUSE,
@@ -14,8 +15,8 @@ import {
 } from "redux-persist";
 import userReducer from "./userSlice";
 import deviceReducer from "./deviceSlice";
+import { migrations } from "./migrations";
 
-// Fallback storage for SSR (Web)
 const storage =
   Platform.OS === "web" && typeof window === "undefined"
     ? {
@@ -28,13 +29,15 @@ const storage =
 const rootPersistConfig = {
   key: "root",
   storage,
-  whitelist: ["user"], // user persists via root
+  version: 6,
+  migrate: createMigrate(migrations, { debug: false }),
+  whitelist: ["user"],
 };
 
 const devicePersistConfig = {
-  key: 'device',
+  key: "device",
   storage,
-  whitelist: ['isFilteringEnabled'], // ONLY persist preferences, not live buffers
+  whitelist: ["isFilteringEnabled"],
 };
 
 const rootReducer = combineReducers({

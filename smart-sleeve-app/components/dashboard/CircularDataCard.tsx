@@ -30,21 +30,22 @@ export function CircularDataCard({
 
   return (
     <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
-      <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
+      <Text style={[styles.title, { color: theme.textSecondary, ...Typography.label }]}>{title}</Text>
       
       <View style={styles.contentRow}>
         <View style={styles.chartContainer}>
            <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-             {/* Background Circle */}
+              {/* Background Circle */}
             <Circle
               cx={size / 2}
               cy={size / 2}
               r={radius}
-              stroke={theme.border} // Use a subtle color for background
+              stroke={theme.border}
               strokeWidth={strokeWidth}
               fill="none"
+              strokeOpacity={0.3}
             />
-             {/* Foreground Circle - Rotated to start from top */}
+             {/* Foreground Circle */}
             <Circle
               cx={size / 2}
               cy={size / 2}
@@ -60,14 +61,16 @@ export function CircularDataCard({
           </Svg>
           
           <View style={styles.internalTextContainer}>
-            <Text style={[styles.internalLabel, { color: theme.textSecondary }]}>Goal:</Text>
-            <Text style={[styles.internalValue, { color: theme.text }]}>{percentage.toFixed(1)} %</Text>
+            <Text style={[styles.internalValue, { color: theme.text }]}>{currentValue}</Text>
+            <Text style={[styles.internalLabel, { color: theme.textSecondary }]}>{percentage.toFixed(0)}%</Text>
           </View>
         </View>
 
         <View style={styles.legendContainer}>
-             <Text style={[styles.mainValue, { color: theme.text }]}>{currentValue}</Text>
              <Text style={[styles.goalLabel, { color: theme.textSecondary }]}>{goalValue}</Text>
+             <View style={[styles.trendBadge, { backgroundColor: theme.success + '15' }]}>
+                <Text style={[styles.trendText, { color: theme.success }]}>↑ Progressing</Text>
+             </View>
         </View>
       </View>
     </View>
@@ -80,19 +83,16 @@ const styles = StyleSheet.create({
     padding: 24,
     marginBottom: 20,
     ...Shadows.card,
-    alignItems: 'center',
+    width: '100%',
   },
   title: {
-    ...Typography.heading3,
-    marginBottom: 20,
-    textAlign: 'center',
+    marginBottom: 16,
+    textAlign: 'left',
   },
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    width: '100%',
-    gap: 20,
+    justifyContent: 'space-between',
   },
   chartContainer: {
     position: 'relative',
@@ -104,22 +104,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   internalLabel: {
-      fontSize: 12,
-      fontWeight: '500',
+    ...Typography.caption,
+    marginTop: -4,
   },
   internalValue: {
-     fontSize: 18,
-     fontWeight: '700',
+    ...Typography.heading2,
+    fontSize: 28,
   },
   legendContainer: {
-      alignItems: 'flex-start',
-  },
-  mainValue: {
-      fontSize: 32,
-      fontWeight: '700',
+    flex: 1,
+    paddingLeft: 24,
+    gap: 8,
   },
   goalLabel: {
-      fontSize: 14,
-      fontWeight: '400',
+    ...Typography.body,
+    fontWeight: '500',
+  },
+  trendBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  trendText: {
+    ...Typography.label,
+    fontSize: 10,
   }
 });

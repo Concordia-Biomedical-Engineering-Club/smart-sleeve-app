@@ -30,6 +30,19 @@ export class SleeveConnectionFactory {
         this.instance = new RealSleeveConnector();
       }
     }
-    return this.instance;
+    return this.instance!;
+  }
+
+  /**
+   * Destroys the current singleton so the next getConnector() call
+   * creates a fresh instance. Use in tests or after a full Fast Refresh.
+   */
+  public static resetInstance(): void {
+    this.instance = null;
   }
 }
+
+// Invalidate the singleton on every module re-evaluation.
+// On web, Fast Refresh re-runs this module → instance gets cleared automatically.
+// On iOS/Hermes, full reload (press 'r') is still required for module-level code to re-run.
+SleeveConnectionFactory.resetInstance();

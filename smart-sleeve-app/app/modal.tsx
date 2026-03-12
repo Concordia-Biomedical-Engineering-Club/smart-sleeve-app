@@ -36,6 +36,9 @@ export default function ModalScreen() {
         <TouchableOpacity onPress={() => handleNavigate('/(tabs)/progress')} style={styles.link}>
           <ThemedText type="link">Go to Progress</ThemedText>
         </TouchableOpacity>
+        <TouchableOpacity onPress={() => handleNavigate('/debug-db')} style={styles.link}>
+          <ThemedText type="link" style={{ color: '#0B74E6' }}>🗄️ Database Debug (Issue #54)</ThemedText>
+        </TouchableOpacity>
       </View>
       
       {/* Expo Router modal dismiss feature */}

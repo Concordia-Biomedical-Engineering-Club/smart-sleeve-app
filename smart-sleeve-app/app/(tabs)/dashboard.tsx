@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   ScrollView,
@@ -6,7 +6,6 @@ import {
   Platform,
   StatusBar,
   TouchableOpacity,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector, useDispatch } from "react-redux";
@@ -15,11 +14,28 @@ import {
   selectKneeAngleBuffer,
   selectIsWorkoutActive,
   selectWorkout,
-  startWorkout,
 } from "../../store/deviceSlice";
-import { RootState } from "../../store/store";
+import { fetchSessionsByFilters } from "@/services/Database";
+import {
+  findLatestBilateralComparison,
+  type BilateralComparisonResult,
+} from "@/services/SymmetryService";
+import {
+  selectIsCalibrated,
+  selectShowNormalized,
+  toggleNormalizedMode,
+  setCalibration,
+  selectInjuredSide,
+  selectMeasurementSide,
+  setMeasurementSide,
+} from "../../store/userSlice";
+import type {
+  CalibrationCoefficients,
+  InjuredSide,
+} from "../../store/userSlice";
+import type { RootState } from "../../store/store";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Colors } from "@/constants/theme";
+import { Colors, Shadows } from "@/constants/theme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/themed-text";
 import { SegmentedControl } from "@/components/dashboard/SegmentedControl";
@@ -28,13 +44,39 @@ import StatCard from "@/components/StatCard";
 import { RMSGraph } from "@/components/dashboard/RMSGraph";
 import { EXERCISE_LIBRARY } from "@/constants/exercises";
 import { WorkoutOverlay } from "@/components/dashboard/WorkoutOverlay";
+import CalibrationOverlay from "@/components/dashboard/CalibrationOverlay";
+import {
+  getSignalBadgeLabel,
+  getSignalToggleLabel,
+} from "@/components/dashboard/signalDisplay";
+import SymmetryCard from "@/components/dashboard/SymmetryCard";
 
-const ALL_CHANNELS = (theme: any) => [
-  { id: 0, label: "Vastus Medialis (VMO)", color: theme.tint },
-  { id: 1, label: "Vastus Lateralis (VL)", color: "#FF6B6B" },
-  { id: 2, label: "Semitendinosus (Medial)", color: "#4ECDC4" },
-  { id: 3, label: "Biceps Femoris (Lateral)", color: "#FFE66D" },
-];
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+
+const getChannels = (theme: any) => {
+  return [
+    {
+      id: 0,
+      label: "VMO",
+      color: theme.primary,
+    },
+    {
+      id: 1,
+      label: "VL",
+      color: "#FF6B6B",
+    },
+    {
+      id: 2,
+      label: "Semitendinosus",
+      color: "#4ECDC4",
+    },
+    {
+      id: 3,
+      label: "Biceps Femoris",
+      color: "#FFE66D",
+    },
+  ];
+};
 
 export default function DashboardScreen() {
   const dispatch = useDispatch();
@@ -42,6 +84,17 @@ export default function DashboardScreen() {
   const kneeAngleBuffer = useSelector(selectKneeAngleBuffer);
   const isWorkoutActive = useSelector(selectIsWorkoutActive);
   const workout = useSelector(selectWorkout);
+  const isCalibrated = useSelector(selectIsCalibrated);
+  const showNormalized = useSelector(selectShowNormalized);
+  const latestCalibrationSample = useSelector(
+    (state: RootState) => state.device.latestCalibrationSample,
+  );
+  const injuredSide = useSelector(selectInjuredSide);
+  const measurementSide = useSelector(selectMeasurementSide);
+
+  const [showCalibration, setShowCalibration] = useState(false);
+  const [comparison, setComparison] =
+    useState<BilateralComparisonResult | null>(null);
 
   const currentKneeAngle =
     kneeAngleBuffer.length > 0
@@ -50,36 +103,92 @@ export default function DashboardScreen() {
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
-  const [timeframe, setTimeframe] = useState("Daily");
 
-  const userName = user?.email ? user.email.split("@")[0] : "Emily";
-  
-  const channels = ALL_CHANNELS(theme);
+  const userName = user?.email ? user.email.split("@")[0] : "Athlete";
+  const channels = getChannels(theme);
+  const healthySide = injuredSide === "LEFT" ? "RIGHT" : "LEFT";
+  const measurementOptions: { label: string; side: InjuredSide }[] = injuredSide
+    ? [
+        {
+          label: injuredSide === "LEFT" ? "Injured Left" : "Injured Right",
+          side: injuredSide,
+        },
+        {
+          label: healthySide === "LEFT" ? "Healthy Left" : "Healthy Right",
+          side: healthySide,
+        },
+      ]
+    : [
+        { label: "Left Leg", side: "LEFT" as const },
+        { label: "Right Leg", side: "RIGHT" as const },
+      ];
+  const selectedMeasurementLabel =
+    measurementOptions.find((option) => option.side === measurementSide)
+      ?.label ?? "Left Leg";
 
-  const handleStartSession = () => {
-    dispatch(
-      startWorkout({
-        exerciseId: "quad-sets",
-        exerciseName: "Quad Sets",
-        targetSide: "LEFT",
-        totalReps: 5,
-        workDurationSec: 5,
-        restDurationSec: 3,
-      })
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadComparison() {
+      if (!injuredSide) {
+        if (isActive) setComparison(null);
+        return;
+      }
+
+      try {
+        const sessions = await fetchSessionsByFilters({
+          userId: user.email ?? "guest_user",
+        });
+
+        if (!isActive) return;
+        setComparison(findLatestBilateralComparison(sessions, injuredSide));
+      } catch (error) {
+        if (!isActive) return;
+        console.error("Failed to load bilateral comparison", error);
+        setComparison(null);
+      }
+    }
+
+    void loadComparison();
+
+    return () => {
+      isActive = false;
+    };
+  }, [injuredSide, isWorkoutActive, user.email]);
+
+  const handleCalibrationComplete = (coeffs: CalibrationCoefficients) => {
+    dispatch(setCalibration(coeffs));
+    setShowCalibration(false);
+  };
+
+  const handleToggleNormalized = () => {
+    dispatch(toggleNormalizedMode());
+  };
+
+  const handleMeasurementSideChange = (optionLabel: string) => {
+    const option = measurementOptions.find(
+      (item) => item.label === optionLabel,
     );
+    if (!option) return;
+    dispatch(setMeasurementSide(option.side));
   };
 
   const sortedChannels = React.useMemo(() => {
     if (!isWorkoutActive || !workout.exerciseId) return channels;
-    
-    const exerciseData = EXERCISE_LIBRARY.find(ex => ex.id === workout.exerciseId);
+    const exerciseData = EXERCISE_LIBRARY.find(
+      (ex) => ex.id === workout.exerciseId,
+    );
     if (!exerciseData) return channels;
-
-    const primaries = channels.filter(c => exerciseData.primaryChannels.includes(c.id));
-    const secondaries = channels.filter(c => !exerciseData.primaryChannels.includes(c.id));
-    
+    const primaries = channels.filter((c) =>
+      exerciseData.primaryChannels.includes(c.id),
+    );
+    const secondaries = channels.filter(
+      (c) => !exerciseData.primaryChannels.includes(c.id),
+    );
     return [...primaries, ...secondaries];
   }, [isWorkoutActive, workout.exerciseId, channels]);
+
+  const liveCalibrationSample = latestCalibrationSample ?? [];
 
   return (
     <SafeAreaView
@@ -89,40 +198,24 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* DYNAMIC HEADER: Integrated Session HUD or Standard Greeting */}
         {!isWorkoutActive ? (
           <View style={styles.headerContainer}>
-            <View style={styles.topRow}>
-              <TouchableOpacity
-                onPress={() => router.push("/modal")}
-                style={styles.iconButton}
+            <ScreenHeader
+              badgeLabel="REHAB CO-PILOT"
+              onRightPress={() => console.log("Notification")}
+              rightIcon="bell.fill"
+            />
+            <ThemedText type="title" style={styles.greeting}>
+              Hey {userName}!
+            </ThemedText>
+            {injuredSide && (
+              <ThemedText
+                style={[styles.sideLabel, { color: theme.textSecondary }]}
               >
-                <Image
-                  source={require("../../assets/images/settings.png")}
-                  style={{
-                    width: 24,
-                    height: 24,
-                    resizeMode: "contain",
-                    tintColor: theme.icon ?? theme.text,
-                  }}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => console.log("Notification")}
-                style={styles.iconButton}
-              >
-                <IconSymbol name="bell.fill" size={24} color={theme.text} />
-              </TouchableOpacity>
-            </View>
-            <ThemedText style={styles.greeting}>Hey {userName},</ThemedText>
-            
-            <View style={{ marginTop: 16 }}>
-              <SegmentedControl
-                options={["Daily", "Weekly", "Monthly"]}
-                selectedOption={timeframe}
-                onSelect={setTimeframe}
-              />
-            </View>
+                RECOVERY TARGET: {injuredSide === "LEFT" ? "Left" : "Right"}{" "}
+                Knee
+              </ThemedText>
+            )}
           </View>
         ) : (
           <View style={styles.workoutHudHeader}>
@@ -130,52 +223,124 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* GUIDED SESSION ACTION (Hidden during active workout) */}
         {!isWorkoutActive && (
-          <TouchableOpacity 
-            style={[styles.libraryAction, { backgroundColor: theme.tint + '15', borderColor: theme.tint }]}
-            onPress={() => router.push('/(tabs)/exercises')}
-          >
-            <View style={styles.actionTextContainer}>
-              <ThemedText style={[styles.actionTitle, { color: theme.tint }]}>Start Exercise Session</ThemedText>
-              <ThemedText style={[styles.actionSubtitle, { color: theme.textSecondary }]}>Choose from your clinical library</ThemedText>
-            </View>
-            <IconSymbol name="chevron.right" size={24} color={theme.tint} />
-          </TouchableOpacity>
+          <View style={styles.measurementSection}>
+            <ThemedText
+              type="label"
+              style={[styles.sectionTitle, { color: theme.textSecondary }]}
+            >
+              Measuring Today
+            </ThemedText>
+            <SegmentedControl
+              options={measurementOptions.map((option) => option.label)}
+              selectedOption={selectedMeasurementLabel}
+              onSelect={handleMeasurementSideChange}
+            />
+          </View>
         )}
 
-        {/* PRIMARY METRIC: Transition to semi-transparent during workout or hide optional parts */}
-        <CircularDataCard
-          title="Flexion Angle"
-          currentValue={`${currentKneeAngle}°`}
-          goalValue="Goal: 120°"
-          percentage={(currentKneeAngle / 120) * 100}
-        />
+        <View style={styles.calibrationRow}>
+          <TouchableOpacity
+            style={[
+              styles.calibrateBtn,
+              {
+                backgroundColor: theme.primary + "10",
+                borderColor: theme.primary,
+              },
+            ]}
+            onPress={() => setShowCalibration(true)}
+          >
+            <IconSymbol name="waveform" size={16} color={theme.primary} />
+            <ThemedText
+              style={[styles.calibrateBtnText, { color: theme.primary }]}
+            >
+              {isCalibrated
+                ? `Recalibrate ${selectedMeasurementLabel}`
+                : `Calibrate ${selectedMeasurementLabel}`}
+            </ThemedText>
+          </TouchableOpacity>
+
+          {isCalibrated && (
+            <TouchableOpacity
+              style={[
+                styles.toggleBtn,
+                {
+                  backgroundColor: showNormalized
+                    ? theme.primary
+                    : theme.secondaryCard,
+                  borderColor: theme.border,
+                },
+              ]}
+              onPress={handleToggleNormalized}
+            >
+              <ThemedText
+                style={[
+                  styles.toggleBtnText,
+                  { color: showNormalized ? "#fff" : theme.textSecondary },
+                ]}
+              >
+                {getSignalToggleLabel(showNormalized)}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {!isWorkoutActive && (
           <TouchableOpacity
-            style={[styles.startButton, { backgroundColor: theme.success }]}
-            onPress={handleStartSession}
+            style={[
+              styles.libraryAction,
+              { backgroundColor: theme.primary, ...Shadows.button },
+            ]}
+            onPress={() => router.push("/(tabs)/exercises")}
           >
-            <ThemedText style={styles.startButtonText}>
-              ▶  Quick Start (Quad Sets)
-            </ThemedText>
+            <View style={styles.actionTextContainer}>
+              <ThemedText style={[styles.actionTitle, { color: "#fff" }]}>
+                Start Measurement Session
+              </ThemedText>
+              <ThemedText
+                style={[
+                  styles.actionSubtitle,
+                  { color: "rgba(255,255,255,0.8)" },
+                ]}
+              >
+                Record the healthy or injured leg with the same protocol
+              </ThemedText>
+            </View>
+            <IconSymbol name="chevron.right" size={24} color="#fff" />
           </TouchableOpacity>
         )}
 
-        {/* BIOFEEDBACK SECTION: Always high visibility */}
+        <CircularDataCard
+          title="Flexion Range of Motion"
+          currentValue={`${currentKneeAngle}°`}
+          goalValue="Target: 120°"
+          percentage={(currentKneeAngle / 120) * 100}
+        />
+
         <View style={styles.sectionContainer}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Live Muscle Activation
-          </ThemedText>
-          
-          {sortedChannels.map((channel, index) => {
-            const isPrimary = isWorkoutActive && 
-              EXERCISE_LIBRARY.find(ex => ex.id === workout.exerciseId)?.primaryChannels.includes(channel.id);
-            
-            // During workout, shrink the height of "antagonist" or secondary muscles to save space
+          <View style={styles.sectionTitleRow}>
+            <ThemedText
+              type="label"
+              style={[styles.sectionTitle, { color: theme.textSecondary }]}
+            >
+              Live Muscle Activation
+            </ThemedText>
+            {isCalibrated && (
+              <View style={[styles.pill, { backgroundColor: theme.border }]}>
+                <ThemedText style={styles.unitLabel}>
+                  {getSignalBadgeLabel(showNormalized)}
+                </ThemedText>
+              </View>
+            )}
+          </View>
+
+          {sortedChannels.map((channel) => {
+            const isPrimary =
+              isWorkoutActive &&
+              EXERCISE_LIBRARY.find(
+                (ex) => ex.id === workout.exerciseId,
+              )?.primaryChannels.includes(channel.id);
             const graphHeight = isWorkoutActive && !isPrimary ? 80 : 120;
-            
             return (
               <RMSGraph
                 key={channel.id}
@@ -188,20 +353,62 @@ export default function DashboardScreen() {
           })}
         </View>
 
-        {/* GRID STATS (Hidden during workout to clear space) */}
+        {!isWorkoutActive && injuredSide && (
+          <View style={styles.sectionTitleRow}>
+            <ThemedText
+              type="label"
+              style={[styles.sectionTitle, { color: theme.textSecondary }]}
+            >
+              Healthy vs Injured Comparison
+            </ThemedText>
+          </View>
+        )}
+
+        {!isWorkoutActive && comparison && (
+          <SymmetryCard comparison={comparison} />
+        )}
+
+        {!isWorkoutActive && injuredSide && !comparison && (
+          <View
+            style={[
+              styles.comparisonHintCard,
+              {
+                backgroundColor: theme.secondaryCard,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <ThemedText type="bodyBold" style={{ color: theme.text }}>
+              Symmetry Score appears after both legs are recorded.
+            </ThemedText>
+            <ThemedText style={{ color: theme.textSecondary }}>
+              Complete one calibrated session on the healthy leg and one on the
+              injured leg for the same exercise. The comparison card will appear
+              here on the Dashboard.
+            </ThemedText>
+          </View>
+        )}
+
         {!isWorkoutActive && (
           <View style={styles.gridContainer}>
             <View style={styles.gridRow}>
-              <StatCard value="-1°" label="Goal: 0°" />
-              <StatCard value="12 Days" label="Current Streak" />
+              <StatCard value="-1°" label="Extension Deficit" />
+              <StatCard value="12 Days" label="Rehab Streak" />
             </View>
             <View style={styles.gridRow}>
-              <StatCard value="5 of 6" label="Exercises" />
-              <StatCard value="3/10" label="Pain Level" />
+              <StatCard value="5/6" label="Today's Exercises" />
+              <StatCard value="Mild" label="Clinical Fatigue" />
             </View>
           </View>
         )}
       </ScrollView>
+
+      <CalibrationOverlay
+        visible={showCalibration}
+        liveSample={liveCalibrationSample}
+        onComplete={handleCalibrationComplete}
+        onDismiss={() => setShowCalibration(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -211,76 +418,69 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+  scrollContent: { padding: 24, paddingBottom: 40 },
+  headerContainer: { marginBottom: 32 },
+  greeting: { marginBottom: 4 },
+  sideLabel: { fontSize: 13, fontWeight: "600", letterSpacing: 0.5 },
+  calibrationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 24,
   },
-  headerContainer: {
-    marginBottom: 20,
-    paddingHorizontal: 4,
+  measurementSection: { gap: 12, marginBottom: 20 },
+  calibrateBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
   },
-  topRow: {
+  calibrateBtnText: { fontSize: 14, fontWeight: "700" },
+  toggleBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  toggleBtnText: { fontSize: 13, fontWeight: "700" },
+  sectionContainer: { marginVertical: 24 },
+  sectionTitleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
   },
-  iconButton: {
-    padding: 8,
+  sectionTitle: { fontSize: 12, fontWeight: "700", letterSpacing: 1 },
+  pill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  unitLabel: { fontSize: 9, fontWeight: "800", color: "#64748B" },
+  comparisonHintCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 18,
+    gap: 8,
+    marginBottom: 16,
   },
-  greeting: {
-    fontSize: 28,
-    fontWeight: "bold",
-  },
-  startButton: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  startButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  sectionContainer: {
-    marginVertical: 20,
-  },
-  sectionTitle: {
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  gridContainer: {
-    gap: 12,
-  },
+  gridContainer: { gap: 16, marginTop: 12 },
   gridRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    gap: 12,
+    gap: 16,
   },
   libraryAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 12,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+    padding: 20,
+    borderRadius: 20,
+    justifyContent: "space-between",
   },
-  actionTextContainer: {
-    gap: 4,
-  },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  actionSubtitle: {
-    fontSize: 13,
-  },
-  workoutHudHeader: {
-    marginBottom: 0,
-    backgroundColor: 'transparent',
-  },
+  actionTextContainer: { gap: 4 },
+  actionTitle: { fontSize: 18, fontWeight: "700" },
+  actionSubtitle: { fontSize: 14 },
+  workoutHudHeader: { marginBottom: 0, backgroundColor: "transparent" },
 });

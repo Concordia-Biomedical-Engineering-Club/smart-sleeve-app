@@ -1,18 +1,13 @@
 import React from "react";
-import {
-  View,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Image,
-  Text,
-} from "react-native";
+import { View, StyleSheet, FlatList } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import StatCard from "../../components/StatCard";
 import ProfileAvatarCard from "../../components/ProfileAvatarCard";
 import MilestoneListItem from "../../components/MilestoneListItem";
-import { Colors, Typography } from "@/constants/theme";
-import { router } from "expo-router";
+import { Colors } from "@/constants/theme";
+
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { ThemedText } from "@/components/themed-text";
 
 // Mock Data
 const MILESTONES = [
@@ -40,76 +35,44 @@ const MILESTONES = [
 
 export default function MilestonesScreen() {
   const colorScheme = useColorScheme() ?? "light";
-  console.log("Current Color Scheme:", colorScheme); // Debug log
   const theme = Colors[colorScheme];
-
-  // console.log('🏆 MilestonesScreen Theme:', colorScheme);
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      {/* Top Bar */}
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.push('/modal')} style={styles.iconButton}>
-          <Image
-            source={require("../../assets/images/settings.png")}
-            style={[styles.icon, { tintColor: theme.icon }]}
-          />
-        </TouchableOpacity>
+      <ScreenHeader badgeLabel="PLAYER PROFILE" rightIcon="trophy.fill" />
 
-        <TouchableOpacity style={styles.iconButton}>
-          <Image
-            source={require("../../assets/images/notification.png")}
-            style={[styles.icon, { tintColor: theme.icon }]}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Profile Avatar Section */}
       <ProfileAvatarCard
-        name="Emily"
-        membership="Premium Member"
+        name="Emily Watson"
+        membership="Premium Athlete"
         avatar={require("../../assets/images/avatar.png")}
         starIcon={require("../../assets/images/star.png")}
       />
 
-      {/* Stats Section */}
       <View style={styles.statsContainer}>
         <View style={styles.row}>
-          <StatCard
-            value="3/10"
-            label="Milestones"
-            image={require("../../assets/images/trophy.png")}
-            imageStyle={{ width: 72, height: 84, bottom: 10, right: 10 }}
-          />
-
-          <StatCard
-            value="12 Days"
-            label="Current Streak"
-            image={require("../../assets/images/fire.png")}
-            imageStyle={{ width: 100, height: 100, bottom: -10, right: -10 }}
-          />
+          <StatCard value="3/10" label="Milestones" />
+          <StatCard value="12 Days" label="Streak" />
         </View>
 
         <View style={styles.row}>
-          <StatCard
-            value="132"
-            label="Exercises"
-            image={require("../../assets/images/target.png")}
-            imageStyle={{ width: 89, height: 100, bottom: 5, right: 5 }}
-          />
-
-          <StatCard
-            value="94%"
-            label={"Average\nCompliance"}
-            image={require("../../assets/images/woman.png")}
-            imageStyle={{ width: 100, height: 100, bottom: -10, right: -10 }}
-          />
+          <StatCard value="132" label="Exercises" />
+          <StatCard value="94%" label="Compliance" />
         </View>
       </View>
 
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
-        Your Milestones
-      </Text>
+      <View style={styles.sectionTitleRow}>
+        <ThemedText
+          type="label"
+          style={[styles.sectionTitle, { color: theme.textSecondary }]}
+        >
+          RECENT ACHIEVEMENTS
+        </ThemedText>
+        <View style={styles.pill}>
+          <ThemedText style={[styles.pillText, { color: theme.primary }]}>
+            ALL
+          </ThemedText>
+        </View>
+      </View>
     </View>
   );
 
@@ -135,42 +98,23 @@ export default function MilestonesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  headerContainer: {
-    marginBottom: 20,
-  },
-  statsContainer: {
-    gap: 12,
-    marginBottom: 24,
-  },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 12,
-  },
-  topBar: {
+  container: { flex: 1 },
+  listContent: { padding: 24, paddingBottom: 40 },
+  headerContainer: { marginBottom: 32 },
+  statsContainer: { gap: 16, marginBottom: 40 },
+  row: { flexDirection: "row", gap: 16 },
+  sectionTitleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
-    marginTop: 10,
   },
-  iconButton: {
-    padding: 8,
+  sectionTitle: { fontSize: 12, fontWeight: "700", letterSpacing: 1 },
+  pill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: "rgba(0,0,0,0.05)",
   },
-  icon: {
-    width: 24,
-    height: 24,
-    resizeMode: "contain",
-  },
-  sectionTitle: {
-    ...Typography.heading2,
-    marginBottom: 16,
-    textAlign: "center",
-  },
+  pillText: { fontSize: 10, fontWeight: "800" },
 });

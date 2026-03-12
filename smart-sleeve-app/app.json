@@ -53,15 +53,16 @@
           }
         }
       ],
-      "react-native-ble-plx",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "minSdkVersion": 24
+        "expo-sqlite",
+        "react-native-ble-plx",
+        [
+          "expo-build-properties",
+          {
+            "android": {
+              "minSdkVersion": 24
+            }
           }
-        }
-      ]
+        ]
     ],
     "experiments": {
       "typedRoutes": true,

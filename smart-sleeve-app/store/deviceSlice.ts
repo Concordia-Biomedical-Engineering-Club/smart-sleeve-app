@@ -1,19 +1,26 @@
-import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { ConnectionStatus, EMGData, IMUData } from '@/services/SleeveConnector/ISleeveConnector';
-import { RootState } from './store';
+import { createSelector, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import {
+  ConnectionStatus,
+  EMGData,
+  IMUData,
+} from "@/services/SleeveConnector/ISleeveConnector";
+import { RootState } from "./store";
+import type { NormalizedEMGFeatures } from "@/services/SignalProcessing/FeatureExtractor";
 
 export type WorkoutPhase =
-  | 'IDLE'
-  | 'COUNTDOWN'
-  | 'ACTIVE_WORK'
-  | 'ACTIVE_REST'
-  | 'COMPLETING';
+  | "IDLE"
+  | "COUNTDOWN"
+  | "ACTIVE_WORK"
+  | "ACTIVE_REST"
+  | "COMPLETING";
+
+export type SessionStatus = "IDLE" | "RECORDING" | "SAVING";
 
 export interface WorkoutSession {
   phase: WorkoutPhase;
   exerciseId: string | null;
   exerciseName: string | null;
-  targetSide: 'LEFT' | 'RIGHT' | null;
+  targetSide: "LEFT" | "RIGHT" | null;
   startTime: number | null;
   currentRep: number;
   totalReps: number;
@@ -24,22 +31,28 @@ export interface WorkoutSession {
 
 export interface DeviceState {
   connection: ConnectionStatus;
-  scenario: 'REST' | 'FLEX' | 'SQUAT';
+  scenario: "REST" | "FLEX" | "SQUAT";
+  calibrationScenarioOverride: "REST" | "FLEX" | null;
   isScanning: boolean;
   latestEMG: EMGData | null;
   latestIMU: IMUData | null;
-  latestFeatures: {
-    rms: number[];
-    mav: number[];
-  } | null;
+  latestFeatures: NormalizedEMGFeatures | null;
+  latestCalibrationSample: number[] | null;
   emgBuffer: EMGData[];
   kneeAngleBuffer: number[];
   workout: WorkoutSession;
   isFilteringEnabled: boolean;
+  isSignalWarmedUp: boolean;
+  // ── Issue #7 — Session recording ──────────────────────────────────────────
+  sessionStatus: SessionStatus;
+  sessionStartTime: number | null;
+  /** Time-series recording buffer — flushed to SQLite on endSession */
+  recordingBuffer: EMGData[];
+  recordingKneeAngles: IMUData[];
 }
 
 const initialWorkout: WorkoutSession = {
-  phase: 'IDLE',
+  phase: "IDLE",
   exerciseId: null,
   exerciseName: null,
   targetSide: null,
@@ -53,35 +66,35 @@ const initialWorkout: WorkoutSession = {
 
 const initialState: DeviceState = {
   connection: { connected: false },
-  scenario: 'REST',
+  scenario: "REST",
+  calibrationScenarioOverride: null,
   isScanning: false,
   latestEMG: null,
   latestIMU: null,
   latestFeatures: null,
+  latestCalibrationSample: null,
   emgBuffer: [],
   kneeAngleBuffer: [],
   workout: initialWorkout,
   isFilteringEnabled: true,
+  isSignalWarmedUp: false,
+  sessionStatus: "IDLE",
+  sessionStartTime: null,
+  recordingBuffer: [],
+  recordingKneeAngles: [],
 };
 
 const syncScenario = (state: DeviceState) => {
   const { phase, exerciseId } = state.workout;
-  
-  if (phase === 'ACTIVE_WORK') {
-    // Logic to select best mock scenario for the exercise
-    if (exerciseId === 'wall-slides') {
-      state.scenario = 'SQUAT';
-    } else {
-      state.scenario = 'FLEX';
-    }
+  if (phase === "ACTIVE_WORK") {
+    state.scenario = exerciseId === "wall-slides" ? "SQUAT" : "FLEX";
   } else {
-    // Rest during REST phases, COUNTDOWN, and IDLE
-    state.scenario = 'REST';
+    state.scenario = "REST";
   }
 };
 
 const deviceSlice = createSlice({
-  name: 'device',
+  name: "device",
   initialState,
   reducers: {
     connectionChanged(state, action: PayloadAction<ConnectionStatus>) {
@@ -90,12 +103,21 @@ const deviceSlice = createSlice({
         state.latestEMG = null;
         state.latestIMU = null;
         state.latestFeatures = null;
+        state.latestCalibrationSample = null;
         state.emgBuffer = [];
         state.kneeAngleBuffer = [];
+        state.calibrationScenarioOverride = null;
+        state.isSignalWarmedUp = false;
       }
     },
-    scenarioChanged(state, action: PayloadAction<DeviceState['scenario']>) {
+    scenarioChanged(state, action: PayloadAction<DeviceState["scenario"]>) {
       state.scenario = action.payload;
+    },
+    setCalibrationScenarioOverride(
+      state,
+      action: PayloadAction<DeviceState["calibrationScenarioOverride"]>,
+    ) {
+      state.calibrationScenarioOverride = action.payload;
     },
     setIsScanning(state, action: PayloadAction<boolean>) {
       state.isScanning = action.payload;
@@ -106,9 +128,22 @@ const deviceSlice = createSlice({
       if (state.emgBuffer.length > 500) {
         state.emgBuffer.shift();
       }
+      // Append to recording buffer while session is active
+      if (state.sessionStatus === "RECORDING") {
+        state.recordingBuffer.push(action.payload);
+      }
     },
-    featuresUpdated(state, action: PayloadAction<DeviceState['latestFeatures']>) {
+    featuresUpdated(
+      state,
+      action: PayloadAction<DeviceState["latestFeatures"]>,
+    ) {
       state.latestFeatures = action.payload;
+    },
+    calibrationSampleReceived(state, action: PayloadAction<number[]>) {
+      state.latestCalibrationSample = action.payload;
+    },
+    signalWarmupChanged(state, action: PayloadAction<boolean>) {
+      state.isSignalWarmedUp = action.payload;
     },
     imuFrameReceived(state, action: PayloadAction<IMUData>) {
       state.latestIMU = action.payload;
@@ -116,25 +151,79 @@ const deviceSlice = createSlice({
       if (state.kneeAngleBuffer.length > 500) {
         state.kneeAngleBuffer.shift();
       }
+      // Append knee angle to recording buffer while session is active
+      if (state.sessionStatus === "RECORDING") {
+        state.recordingKneeAngles.push(action.payload);
+      }
     },
     clearBuffers(state) {
       state.emgBuffer = [];
       state.kneeAngleBuffer = [];
     },
+
+    // ── Issue #7 — Session recording actions ────────────────────────────────
+
+    /**
+     * Begin a recording session. Clears the recording buffer and sets
+     * sessionStatus to RECORDING so incoming frames are captured.
+     */
+    startSession(state) {
+      state.sessionStatus = "RECORDING";
+      state.sessionStartTime = Date.now();
+      state.recordingBuffer = [];
+      state.recordingKneeAngles = [];
+    },
+
+    /**
+     * Signal that saving is in progress. UI should show a saving indicator.
+     * The actual SQLite write happens in SessionService (async, outside Redux).
+     */
+    endSession(state) {
+      state.sessionStatus = "SAVING";
+    },
+
+    /**
+     * Called after SQLite write completes successfully.
+     * Clears the recording buffer and resets session state.
+     */
+    sessionSaved(state) {
+      state.sessionStatus = "IDLE";
+      state.sessionStartTime = null;
+      state.recordingBuffer = [];
+      state.recordingKneeAngles = [];
+    },
+
+    /**
+     * Called if the SQLite write fails. Resets to IDLE without clearing buffer
+     * so the caller can retry if needed.
+     */
+    sessionSaveFailed(state) {
+      state.sessionStatus = "IDLE";
+    },
+
+    // ── Workout actions (unchanged) ─────────────────────────────────────────
+
     startWorkout(
       state,
       action: PayloadAction<{
         exerciseId: string;
         exerciseName: string;
-        targetSide: 'LEFT' | 'RIGHT';
+        targetSide: "LEFT" | "RIGHT";
         totalReps: number;
         workDurationSec: number;
         restDurationSec: number;
-      }>
+      }>,
     ) {
-      const { exerciseId, exerciseName, targetSide, totalReps, workDurationSec, restDurationSec } = action.payload;
+      const {
+        exerciseId,
+        exerciseName,
+        targetSide,
+        totalReps,
+        workDurationSec,
+        restDurationSec,
+      } = action.payload;
       state.workout = {
-        phase: 'COUNTDOWN',
+        phase: "COUNTDOWN",
         exerciseId,
         exerciseName,
         targetSide,
@@ -145,32 +234,39 @@ const deviceSlice = createSlice({
         workDurationSec,
         restDurationSec,
       };
+
+      // ── Automatically start SQLite recording session ──
+      state.sessionStatus = "RECORDING";
+      state.sessionStartTime = Date.now();
+      state.recordingBuffer = [];
+      state.recordingKneeAngles = [];
+
       syncScenario(state);
     },
     workoutTick(state) {
       const w = state.workout;
-      if (w.phase === 'IDLE' || w.phase === 'COMPLETING') return;
+      if (w.phase === "IDLE" || w.phase === "COMPLETING") return;
       const next = w.phaseSecondsRemaining - 1;
       if (next > 0) {
         w.phaseSecondsRemaining = next;
         return;
       }
       switch (w.phase) {
-        case 'COUNTDOWN':
-          w.phase = 'ACTIVE_WORK';
+        case "COUNTDOWN":
+          w.phase = "ACTIVE_WORK";
           w.phaseSecondsRemaining = w.workDurationSec;
           w.currentRep = 1;
           break;
-        case 'ACTIVE_WORK':
-          w.phase = 'ACTIVE_REST';
+        case "ACTIVE_WORK":
+          w.phase = "ACTIVE_REST";
           w.phaseSecondsRemaining = w.restDurationSec;
           break;
-        case 'ACTIVE_REST':
+        case "ACTIVE_REST":
           if (w.currentRep >= w.totalReps) {
-            w.phase = 'COMPLETING';
+            w.phase = "COMPLETING";
             w.phaseSecondsRemaining = 0;
           } else {
-            w.phase = 'ACTIVE_WORK';
+            w.phase = "ACTIVE_WORK";
             w.phaseSecondsRemaining = w.workDurationSec;
             w.currentRep += 1;
           }
@@ -195,11 +291,18 @@ const deviceSlice = createSlice({
 export const {
   connectionChanged,
   scenarioChanged,
+  setCalibrationScenarioOverride,
   setIsScanning,
   emgFrameReceived,
   featuresUpdated,
+  calibrationSampleReceived,
+  signalWarmupChanged,
   imuFrameReceived,
   clearBuffers,
+  startSession,
+  endSession,
+  sessionSaved,
+  sessionSaveFailed,
   startWorkout,
   workoutTick,
   cancelWorkout,
@@ -207,43 +310,77 @@ export const {
   setFilteringEnabled,
 } = deviceSlice.actions;
 
+// ── Selectors ─────────────────────────────────────────────────────────────────
+
 const selectDevice = (state: RootState) => state.device;
 
 export const selectConnectionStatus = createSelector(
   [selectDevice],
-  (device) => device.connection.connected
+  (device) => device.connection.connected,
 );
 export const selectIsScanning = createSelector(
   [selectDevice],
-  (device) => device.isScanning
+  (device) => device.isScanning,
 );
 export const selectEmgBuffer = createSelector(
   [selectDevice],
-  (device) => device.emgBuffer
+  (device) => device.emgBuffer,
 );
 export const selectLatestFeatures = createSelector(
   [selectDevice],
-  (device) => device.latestFeatures
+  (device) => device.latestFeatures,
+);
+export const selectLatestCalibrationSample = createSelector(
+  [selectDevice],
+  (device) => device.latestCalibrationSample,
 );
 export const selectKneeAngleBuffer = createSelector(
   [selectDevice],
-  (device) => device.kneeAngleBuffer
+  (device) => device.kneeAngleBuffer,
 );
 export const selectEmgBufferLength = createSelector(
   [selectEmgBuffer],
-  (buffer) => buffer.length
+  (buffer) => buffer.length,
 );
 export const selectWorkout = createSelector(
   [selectDevice],
-  (device) => device.workout
+  (device) => device.workout,
 );
 export const selectWorkoutPhase = createSelector(
   [selectWorkout],
-  (workout) => workout.phase
+  (workout) => workout.phase,
 );
 export const selectIsWorkoutActive = createSelector(
   [selectWorkoutPhase],
-  (phase) => phase !== 'IDLE'
+  (phase) => phase !== "IDLE",
+);
+export const selectSessionStatus = createSelector(
+  [selectDevice],
+  (device) => device.sessionStatus,
+);
+export const selectIsRecording = createSelector(
+  [selectDevice],
+  (device) => device.sessionStatus === "RECORDING",
+);
+export const selectRecordingBuffer = createSelector(
+  [selectDevice],
+  (device) => device.recordingBuffer,
+);
+export const selectRecordingKneeAngles = createSelector(
+  [selectDevice],
+  (device) => device.recordingKneeAngles,
+);
+export const selectSessionStartTime = createSelector(
+  [selectDevice],
+  (device) => device.sessionStartTime,
+);
+export const selectCalibrationScenarioOverride = createSelector(
+  [selectDevice],
+  (device) => device.calibrationScenarioOverride,
+);
+export const selectIsSignalWarmedUp = createSelector(
+  [selectDevice],
+  (device) => device.isSignalWarmedUp,
 );
 
 export default deviceSlice.reducer;
