@@ -15,6 +15,7 @@ import {
 } from "redux-persist";
 import userReducer from "./userSlice";
 import deviceReducer from "./deviceSlice";
+import { migrations } from "./migrations";
 
 const storage =
   Platform.OS === "web" && typeof window === "undefined"
@@ -25,50 +26,18 @@ const storage =
       }
     : AsyncStorage;
 
-const migrations: any = {
-  2: (state: any) => ({
-    ...state,
-    user: {
-      ...state.user,
-      calibration: {
-        baseline: [0, 0, 0, 0],
-        mvc: [1, 1, 1, 1],
-        calibratedAt: null,
-      },
-      showNormalized: false,
-    },
-  }),
-  3: (state: any) => ({
-    ...state,
-    user: {
-      ...state.user,
-      injuredSide: null,
-      hasCompletedOnboarding: false,
-    },
-  }),
-  4: (state: any) => ({
-    ...state,
-    user: {
-      ...state.user,
-      injuryDetails: null,
-      therapyGoal: null,
-    },
-  }),
-  
-};
-
 const rootPersistConfig = {
   key: "root",
   storage,
-  version: 4,
+  version: 5,
   migrate: createMigrate(migrations, { debug: false }),
   whitelist: ["user"],
 };
 
 const devicePersistConfig = {
-  key: 'device',
+  key: "device",
   storage,
-  whitelist: ['isFilteringEnabled'],
+  whitelist: ["isFilteringEnabled"],
 };
 
 const rootReducer = combineReducers({

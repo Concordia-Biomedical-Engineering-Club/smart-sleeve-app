@@ -1,13 +1,17 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from "@react-navigation/native";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Provider, useSelector } from "react-redux";
 import { store, persistor } from "../store/store";
-import { PersistGate } from 'redux-persist/integration/react';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { login, logout } from '../store/userSlice';
+import { PersistGate } from "redux-persist/integration/react";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { login, logout } from "../store/userSlice";
 import { useEffect } from "react";
 import { initDatabase } from "@/services/Database";
 import type { RootState } from "@/store/store";
@@ -16,17 +20,21 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-function AppNavigator({ colorScheme }: { colorScheme: string | null | undefined }) {
-  const hasCompletedOnboarding = useSelector((state: RootState) => state.user.hasCompletedOnboarding);
+function AppNavigator({
+  colorScheme,
+}: {
+  colorScheme: string | null | undefined;
+}) {
+  const hasCompletedOnboarding = useSelector(
+    (state: RootState) => state.user.hasCompletedOnboarding,
+  );
   const isLoggedIn = useSelector((state: RootState) => state.user.isLoggedIn);
 
- 
-useEffect(() => {
-  if (isLoggedIn && !hasCompletedOnboarding) {
-    router.replace('/onboarding' as any);
-  }
-}, [isLoggedIn, hasCompletedOnboarding]);
- 
+  useEffect(() => {
+    if (isLoggedIn && !hasCompletedOnboarding) {
+      router.replace("/onboarding" as any);
+    }
+  }, [isLoggedIn, hasCompletedOnboarding]);
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
@@ -34,9 +42,18 @@ useEffect(() => {
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="debug-db" options={{ title: "Database Debug" }} />
-        <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
-        <Stack.Screen name="email-verification" options={{ headerShown: false }} />
-        <Stack.Screen name="session-summary/[id]" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="modal"
+          options={{ presentation: "modal", title: "Modal" }}
+        />
+        <Stack.Screen
+          name="email-verification"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="session-summary/[id]"
+          options={{ headerShown: false }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
@@ -50,7 +67,9 @@ export default function RootLayout() {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        store.dispatch(login({ email: user.email, isAuthenticated: user.emailVerified }));
+        store.dispatch(
+          login({ email: user.email, isAuthenticated: user.emailVerified }),
+        );
       } else {
         store.dispatch(logout());
       }
