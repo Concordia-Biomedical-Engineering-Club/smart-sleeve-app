@@ -1,15 +1,27 @@
 import { migrations } from "@/store/migrations";
 
 describe("store migrations", () => {
-  it("does not force legacy installs back through onboarding during v3 migration", () => {
+  it("routes legacy installs without an injured side back through onboarding during v3 migration", () => {
     const migrated = migrations[3]({
       user: {
         email: "existing@example.com",
       },
     });
 
-    expect(migrated.user.hasCompletedOnboarding).toBe(true);
+    expect(migrated.user.hasCompletedOnboarding).toBe(false);
     expect(migrated.user.injuredSide).toBeNull();
+  });
+
+  it("keeps legacy onboarding complete when an injured side already exists", () => {
+    const migrated = migrations[3]({
+      user: {
+        email: "existing@example.com",
+        injuredSide: "RIGHT",
+      },
+    });
+
+    expect(migrated.user.hasCompletedOnboarding).toBe(true);
+    expect(migrated.user.injuredSide).toBe("RIGHT");
   });
 
   it("preserves explicit onboarding flags when migrating v3 state", () => {

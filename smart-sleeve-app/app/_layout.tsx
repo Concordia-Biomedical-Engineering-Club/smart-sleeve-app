@@ -29,12 +29,13 @@ function AppNavigator({
     (state: RootState) => state.user.hasCompletedOnboarding,
   );
   const isLoggedIn = useSelector((state: RootState) => state.user.isLoggedIn);
+  const injuredSide = useSelector((state: RootState) => state.user.injuredSide);
 
   useEffect(() => {
-    if (isLoggedIn && !hasCompletedOnboarding) {
+    if (isLoggedIn && (!hasCompletedOnboarding || !injuredSide)) {
       router.replace("/onboarding" as any);
     }
-  }, [isLoggedIn, hasCompletedOnboarding]);
+  }, [isLoggedIn, hasCompletedOnboarding, injuredSide]);
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>

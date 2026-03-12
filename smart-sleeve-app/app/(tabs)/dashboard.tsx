@@ -103,7 +103,6 @@ export default function DashboardScreen() {
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
-  const [timeframe, setTimeframe] = useState("Daily");
 
   const userName = user?.email ? user.email.split("@")[0] : "Athlete";
   const channels = getChannels(theme);
@@ -213,16 +212,10 @@ export default function DashboardScreen() {
               <ThemedText
                 style={[styles.sideLabel, { color: theme.textSecondary }]}
               >
-                REHABBING: {injuredSide === "LEFT" ? "Left" : "Right"} Knee
+                RECOVERY TARGET: {injuredSide === "LEFT" ? "Left" : "Right"}{" "}
+                Knee
               </ThemedText>
             )}
-            <View style={{ marginTop: 24 }}>
-              <SegmentedControl
-                options={["Daily", "Weekly", "Monthly"]}
-                selectedOption={timeframe}
-                onSelect={setTimeframe}
-              />
-            </View>
           </View>
         ) : (
           <View style={styles.workoutHudHeader}>
@@ -302,7 +295,7 @@ export default function DashboardScreen() {
           >
             <View style={styles.actionTextContainer}>
               <ThemedText style={[styles.actionTitle, { color: "#fff" }]}>
-                Start Rehab Session
+                Start Measurement Session
               </ThemedText>
               <ThemedText
                 style={[
@@ -310,7 +303,7 @@ export default function DashboardScreen() {
                   { color: "rgba(255,255,255,0.8)" },
                 ]}
               >
-                Follow clinical exercise library
+                Record the healthy or injured leg with the same protocol
               </ThemedText>
             </View>
             <IconSymbol name="chevron.right" size={24} color="#fff" />
@@ -360,6 +353,17 @@ export default function DashboardScreen() {
           })}
         </View>
 
+        {!isWorkoutActive && injuredSide && (
+          <View style={styles.sectionTitleRow}>
+            <ThemedText
+              type="label"
+              style={[styles.sectionTitle, { color: theme.textSecondary }]}
+            >
+              Healthy vs Injured Comparison
+            </ThemedText>
+          </View>
+        )}
+
         {!isWorkoutActive && comparison && (
           <SymmetryCard comparison={comparison} />
         )}
@@ -375,11 +379,12 @@ export default function DashboardScreen() {
             ]}
           >
             <ThemedText type="bodyBold" style={{ color: theme.text }}>
-              Bilateral comparison unlocks after both legs are recorded.
+              Symmetry Score appears after both legs are recorded.
             </ThemedText>
             <ThemedText style={{ color: theme.textSecondary }}>
               Complete one calibrated session on the healthy leg and one on the
-              injured leg for the same exercise.
+              injured leg for the same exercise. The comparison card will appear
+              here on the Dashboard.
             </ThemedText>
           </View>
         )}

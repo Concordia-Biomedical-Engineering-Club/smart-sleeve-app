@@ -26,13 +26,15 @@ export const migrations: Record<number, (state: any) => any> = {
   },
   3: (state: any) => {
     const user = getUserState(state);
+    const injuredSide = user.injuredSide ?? null;
 
     return {
       ...state,
       user: {
         ...user,
-        injuredSide: user.injuredSide ?? null,
-        hasCompletedOnboarding: user.hasCompletedOnboarding ?? true,
+        injuredSide,
+        hasCompletedOnboarding:
+          user.hasCompletedOnboarding ?? injuredSide !== null,
       },
     };
   },

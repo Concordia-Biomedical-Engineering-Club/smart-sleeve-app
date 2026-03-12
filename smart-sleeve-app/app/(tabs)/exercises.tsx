@@ -82,7 +82,7 @@ export default function ExercisesScreen() {
           Guided Rehab
         </ThemedText>
         <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-          Choose an exercise to begin your supervised clinical session
+          Choose an exercise to begin a guided measurement session
         </ThemedText>
 
         <View style={styles.listContainer}>
@@ -190,7 +190,7 @@ export default function ExercisesScreen() {
         visible={selectedExercise !== null}
         onClose={() => setSelectedExercise(null)}
         title={selectedExercise?.name}
-        subtitle="Select the limb you are rehabbing today"
+        subtitle="Select the limb you are measuring in this session"
         footer={
           <>
             <TouchableOpacity
@@ -201,7 +201,7 @@ export default function ExercisesScreen() {
               onPress={handleStartSession}
             >
               <ThemedText style={styles.confirmButtonText}>
-                Begin Session
+                Begin Measurement Session
               </ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
