@@ -7,6 +7,7 @@ jest.mock(
 );
 
 import React from "react";
+import { PermissionsAndroid, Platform } from "react-native";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import {
@@ -66,11 +67,15 @@ describe("TestBLEScreen", () => {
   let consoleLogSpy: jest.SpyInstance;
   let consoleWarnSpy: jest.SpyInstance;
   let consoleErrorSpy: jest.SpyInstance;
+  let originalPlatformOs: string;
+  let originalPlatformVersion: string | number;
 
   beforeEach(() => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(10_000));
     jest.clearAllMocks();
+    originalPlatformOs = Platform.OS;
+    originalPlatformVersion = Platform.Version;
     process.env[USE_MOCK_HARDWARE_ENV_KEY] = "false";
     consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
     consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
@@ -80,6 +85,14 @@ describe("TestBLEScreen", () => {
   afterEach(() => {
     cleanup();
     jest.useRealTimers();
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: originalPlatformOs,
+    });
+    Object.defineProperty(Platform, "Version", {
+      configurable: true,
+      value: originalPlatformVersion,
+    });
     consoleLogSpy.mockRestore();
     consoleWarnSpy.mockRestore();
     consoleErrorSpy.mockRestore();
@@ -262,5 +275,41 @@ describe("TestBLEScreen", () => {
     await waitFor(() => {
       expect(screen.getByText(/Phase: failed/)).toBeTruthy();
     });
+  });
+
+  it("renders permission-denied diagnostics when Android BLE permissions are rejected", async () => {
+    const manager = new ProgrammableBleManager();
+    const connector = new RealSleeveConnector(manager as never);
+    const permissionsSpy = jest
+      .spyOn(PermissionsAndroid, "requestMultiple")
+      .mockResolvedValue({
+        [PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN]:
+          PermissionsAndroid.RESULTS.DENIED,
+        [PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT]:
+          PermissionsAndroid.RESULTS.GRANTED,
+        [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION]:
+          PermissionsAndroid.RESULTS.GRANTED,
+      });
+
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "android",
+    });
+    Object.defineProperty(Platform, "Version", {
+      configurable: true,
+      value: 33,
+    });
+
+    const { screen } = renderHarnessScreen(connector);
+
+    fireEvent.press(screen.getByText("Scan for Devices"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Phase: failed/)).toBeTruthy();
+      expect(screen.getByText("Scan for Devices")).toBeTruthy();
+      expect(screen.queryByText(/Connect to:/)).toBeNull();
+    });
+
+    permissionsSpy.mockRestore();
   });
 });

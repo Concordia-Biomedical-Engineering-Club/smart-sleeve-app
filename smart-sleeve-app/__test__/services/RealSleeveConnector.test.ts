@@ -6,6 +6,7 @@ jest.mock(
   { virtual: true },
 );
 
+import { PermissionsAndroid, Platform } from "react-native";
 import { RealSleeveConnector } from "@/services/SleeveConnector/RealSleeveConnector";
 import {
   BLE_SCAN_TIMEOUT_MS,
@@ -33,6 +34,8 @@ describe("RealSleeveConnector", () => {
   let consoleLogSpy: jest.SpyInstance;
   let consoleWarnSpy: jest.SpyInstance;
   let consoleErrorSpy: jest.SpyInstance;
+  let originalPlatformOs: string;
+  let originalPlatformVersion: string | number;
   let disconnectCallback: DisconnectCallback | null;
   let emgMonitor: { remove: jest.Mock };
   let imuMonitor: { remove: jest.Mock };
@@ -55,6 +58,8 @@ describe("RealSleeveConnector", () => {
 
   beforeEach(() => {
     jest.useFakeTimers();
+    originalPlatformOs = Platform.OS;
+    originalPlatformVersion = Platform.Version;
     consoleLogSpy = jest
       .spyOn(console, "log")
       .mockImplementation(() => undefined);
@@ -98,6 +103,14 @@ describe("RealSleeveConnector", () => {
   });
 
   afterEach(() => {
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: originalPlatformOs,
+    });
+    Object.defineProperty(Platform, "Version", {
+      configurable: true,
+      value: originalPlatformVersion,
+    });
     consoleLogSpy.mockRestore();
     consoleWarnSpy.mockRestore();
     consoleErrorSpy.mockRestore();
@@ -206,6 +219,57 @@ describe("RealSleeveConnector", () => {
         reason: "adapter-unavailable",
       },
     ]);
+  });
+
+  it("does not start scanning when Android BLE permissions are denied", async () => {
+    const connector = new RealSleeveConnector(manager as any);
+    const statuses: Array<{
+      connected: boolean;
+      phase?: string;
+      reason?: string;
+    }> = [];
+    const permissionsSpy = jest
+      .spyOn(PermissionsAndroid, "requestMultiple")
+      .mockResolvedValue({
+        [PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN]:
+          PermissionsAndroid.RESULTS.DENIED,
+        [PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT]:
+          PermissionsAndroid.RESULTS.GRANTED,
+        [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION]:
+          PermissionsAndroid.RESULTS.GRANTED,
+      });
+
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "android",
+    });
+    Object.defineProperty(Platform, "Version", {
+      configurable: true,
+      value: 33,
+    });
+
+    connector.onConnectionStatusChange((status) => {
+      statuses.push({
+        connected: status.connected,
+        phase: status.phase,
+        reason: status.reason,
+      });
+    });
+
+    await expect(connector.scan()).resolves.toEqual([]);
+
+    expect(permissionsSpy).toHaveBeenCalled();
+    expect(manager.state).not.toHaveBeenCalled();
+    expect(manager.startDeviceScan).not.toHaveBeenCalled();
+    expect(statuses).toEqual([
+      {
+        connected: false,
+        phase: "failed",
+        reason: "permissions-denied",
+      },
+    ]);
+
+    permissionsSpy.mockRestore();
   });
 
   it("connects, discovers characteristics, and subscribes to EMG and IMU notifications", async () => {

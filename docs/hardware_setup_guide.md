@@ -245,3 +245,92 @@ Use the BLE debug screen counters and the connector logs together:
   - Meaning: the app connected to a BLE device, but it did not expose the expected sleeve service or both required characteristics.
   - What you will see: phase changes to `failed` with `missing-service` or `missing-characteristics`.
   - Likely cause: wrong firmware, wrong board, or a device advertising the sleeve name without the expected GATT layout.
+
+---
+
+## 📦 5. Payload Capture Handoff For The Electrical Team
+
+Yes, we still need fixture captures from hardware. The app and firmware are aligned now, but fixture captures are the final bridge between simulated testing and real-world packet validation.
+
+### What we need captured
+
+Please capture BLE notification payloads for these scenarios:
+
+1. **Idle stream**
+   - Sleeve powered, app or BLE tool connected, no muscle contraction, no deliberate knee movement.
+2. **Single quadriceps contraction**
+   - One clear contraction and release.
+3. **Squat sequence**
+   - A short continuous movement sequence with changing angle values.
+4. **Encoder fault / sensor disconnected**
+   - Anything that causes the AS5600 to stop producing a valid angle so the firmware sends the fault sentinel.
+5. **Checksum-bad sample**
+   - If they intentionally modify firmware or use a BLE injection tool to produce one bad-checksum sample, capture that too.
+
+### Preferred capture method
+
+Preferred tool: **nRF Connect** on iPhone or Android.
+
+Use it like this:
+
+1. Flash the provided firmware and power the sleeve.
+2. Open **nRF Connect**.
+3. Scan for `SMART-SLEEVE-01`.
+4. Connect and open the service `e0d10001-6b6e-4c52-9c3b-6a8e858c5d93`.
+5. Enable notifications on both:
+   - `e0d10002-6b6e-4c52-9c3b-6a8e858c5d93` for EMG
+   - `e0d10003-6b6e-4c52-9c3b-6a8e858c5d93` for angle/IMU
+6. Start logging notifications.
+7. Perform one requested scenario at a time.
+8. Export the notification log.
+
+### Acceptable formats
+
+Best to worst:
+
+- **Best**: raw notification byte dumps per characteristic in hex
+- **Also good**: exported notification log from nRF Connect
+- **Acceptable**: base64 payloads with clear labeling for EMG vs IMU characteristic
+- **Fallback only**: screenshots or screen recordings of notification values if export is unavailable
+
+For software fixture tests, raw bytes or exported logs are much better than screenshots.
+
+### Minimum metadata to include with every capture
+
+For each capture file or message, include:
+
+- scenario name
+- date/time
+- board used
+- firmware file name: `esp32_ble_sleeve.ino`
+- characteristic UUID the payload came from
+- whether the payload was captured during normal operation or a forced fault condition
+
+### Important notes for the team
+
+- The firmware sends **EMG notifications as 22-byte packets**.
+- The firmware sends **angle/IMU notifications as 12-byte packets**.
+- The angle value is the raw AS5600 12-bit angle or `0x7FFF` when the encoder read fails.
+- The timestamp is the ESP32 `millis()` value at send time.
+- The checksum is a simple XOR byte checksum.
+
+### What is most useful to software right now
+
+If the team cannot produce every scenario, send these first:
+
+1. idle stream
+2. single contraction
+3. encoder fault / no-magnet case
+
+Those three alone are enough to lock the first real hardware fixtures into the parser and connector tests.
+
+### If nRF Connect is not available
+
+If they cannot export BLE notifications directly, the next-best option is:
+
+1. connect with the app using the BLE debug screen
+2. record the Serial Monitor output at `115200`
+3. record a phone screen video of the BLE debug page while the scenario runs
+4. note exactly which scenario was being performed
+
+That fallback is useful for diagnosis, but it is **not** as good as raw BLE payload export for fixture-based automated tests.
