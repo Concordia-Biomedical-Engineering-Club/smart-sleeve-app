@@ -1,6 +1,8 @@
 import { EXERCISE_LIBRARY } from "@/constants/exercises";
 import { Session } from "@/services/Database";
 import { EMGData } from "@/services/SleeveConnector/ISleeveConnector";
+import { normalize } from "@/services/NormalizationService";
+import type { CalibrationCoefficients } from "@/store/userSlice";
 
 export interface SessionComparison {
   previousSession: Session;
@@ -130,12 +132,17 @@ export function computeIntensityScore(session: Session): number {
 
 export function computeDeficitPercentageFromEMGFrames(
   emgFrames: Pick<EMGData, "channels">[],
+  calibration?: CalibrationCoefficients | null,
 ): number {
   if (emgFrames.length === 0) return 0;
 
   const imbalance = emgFrames.reduce((total, frame) => {
-    const vmo = Math.abs(frame.channels[0] ?? 0);
-    const vl = Math.abs(frame.channels[1] ?? 0);
+    const channels =
+      calibration && calibration.calibratedAt !== null
+        ? normalize(frame.channels, calibration)
+        : frame.channels;
+    const vmo = Math.abs(channels[0] ?? 0);
+    const vl = Math.abs(channels[1] ?? 0);
     const denominator = vmo + vl;
 
     if (denominator === 0) return total;

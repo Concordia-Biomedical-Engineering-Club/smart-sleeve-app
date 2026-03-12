@@ -11,6 +11,7 @@ import {
   selectWorkout,
 } from "@/store/deviceSlice";
 import { saveSession, SaveSessionResult } from "@/services/SessionService";
+import { selectCalibration, selectIsCalibrated } from "@/store/userSlice";
 
 /**
  * Custom hook to manage the lifecycle of a workout recording session.
@@ -24,6 +25,8 @@ export function useWorkoutSession() {
   const kneeAngles = useSelector(selectRecordingKneeAngles);
   const sessionStartTime = useSelector(selectSessionStartTime);
   const workout = useSelector(selectWorkout);
+  const calibration = useSelector(selectCalibration);
+  const isCalibrated = useSelector(selectIsCalibrated);
 
   const startRecording = () => {
     dispatch(startSession());
@@ -61,6 +64,7 @@ export function useWorkoutSession() {
         endTime: Date.now(),
         emgBuffer: recordingBuffer,
         kneeAngleBuffer: kneeAngles,
+        calibration: isCalibrated ? calibration : null,
         completedReps: workout.currentRep,
         targetReps: workout.totalReps,
       });

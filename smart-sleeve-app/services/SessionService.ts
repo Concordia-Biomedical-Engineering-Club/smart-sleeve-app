@@ -24,6 +24,7 @@ import {
   computeDeficitPercentageFromEMGFrames,
   computeIntensityScore,
 } from "@/services/ProgressAnalysis";
+import type { CalibrationCoefficients } from "@/store/userSlice";
 
 export interface SaveSessionParams {
   userId: string;
@@ -34,6 +35,7 @@ export interface SaveSessionParams {
   endTime: number;
   emgBuffer: EMGData[];
   kneeAngleBuffer: IMUData[];
+  calibration?: CalibrationCoefficients | null;
   completedReps?: number;
   targetReps?: number;
 }
@@ -101,6 +103,7 @@ export async function saveSession(
     endTime,
     emgBuffer,
     kneeAngleBuffer,
+    calibration,
     completedReps,
     targetReps,
   } = params;
@@ -127,7 +130,10 @@ export async function saveSession(
   const maxFlexion =
     recordedAngles.length > 0 ? Math.max(...recordedAngles) : 0;
   const romDegrees = maxFlexion - minFlexion;
-  const deficitPercentage = computeDeficitPercentageFromEMGFrames(emgBuffer);
+  const deficitPercentage = computeDeficitPercentageFromEMGFrames(
+    emgBuffer,
+    calibration,
+  );
   const resolvedTargetReps = targetReps ?? exercise?.targetReps ?? 0;
   const resolvedCompletedReps =
     resolvedTargetReps > 0
