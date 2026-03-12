@@ -50,6 +50,9 @@ describe("Database service", () => {
     expect(mockDb.execAsync).toHaveBeenCalledWith(
       "ALTER TABLE sessions ADD COLUMN intensity_score REAL NOT NULL DEFAULT 0",
     );
+    expect(mockDb.execAsync).toHaveBeenCalledWith(
+      "ALTER TABLE sessions ADD COLUMN normalized_channel_means TEXT NOT NULL DEFAULT '[]'",
+    );
   });
 
   test("fetchSessionsByFilters builds a filtered user-scoped query", async () => {
@@ -98,14 +101,15 @@ describe("Database service", () => {
         exerciseQuality: 0.8,
         completionRate: 80,
         intensityScore: 6,
+        normalizedChannelMeans: [75, 70, 65, 60],
       },
     });
 
     const [sql, values] = mockDb.runAsync.mock.calls[0];
     const placeholderCount = (sql.match(/\?/g) ?? []).length;
 
-    expect(placeholderCount).toBe(19);
-    expect(values).toHaveLength(19);
+    expect(placeholderCount).toBe(20);
+    expect(values).toHaveLength(20);
   });
 
   test("bulkInsertEMGSamples batches many EMG rows into a single multi-value insert", async () => {
@@ -172,6 +176,7 @@ describe("Database service", () => {
       exercise_quality: 0.8,
       completion_rate: 80,
       intensity_score: 6,
+      normalized_channel_means: "[75,70,65,60]",
       synced: 0,
     });
 
@@ -195,6 +200,7 @@ describe("Database service", () => {
         analytics: expect.objectContaining({
           completionRate: 80,
           intensityScore: 6,
+          normalizedChannelMeans: [75, 70, 65, 60],
         }),
       }),
     );

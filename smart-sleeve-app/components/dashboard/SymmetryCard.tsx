@@ -4,41 +4,41 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors, Shadows, Typography } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
 import {
-  computeActivationInsights,
+  type BilateralComparisonResult,
   WARNING_THRESHOLD,
 } from "@/services/SymmetryService";
+import { EXERCISE_LIBRARY } from "@/constants/exercises";
 
 interface SymmetryCardProps {
-  normalizedPct: number[];
+  comparison: BilateralComparisonResult;
 }
 
-export default function SymmetryCard({ normalizedPct }: SymmetryCardProps) {
+export default function SymmetryCard({ comparison }: SymmetryCardProps) {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
-
-  if (!normalizedPct || normalizedPct.length < 4) return null;
-
-  const result = computeActivationInsights(normalizedPct);
+  const exerciseName =
+    EXERCISE_LIBRARY.find((exercise) => exercise.id === comparison.exerciseType)
+      ?.name ?? comparison.exerciseType;
 
   const scoreColor =
-    result.activationScore >= 80
+    comparison.symmetryScore >= 85
       ? theme.success
-      : result.activationScore >= 60
-        ? theme.warning
-        : theme.text;
+      : comparison.symmetryScore >= 60
+        ? theme.text
+        : theme.warning;
 
   return (
     <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <ThemedText style={[styles.eyebrow, { color: theme.textSecondary }]}>
-            Single-Leg Insights
+            Bilateral Comparison
           </ThemedText>
           <ThemedText style={[styles.title, { color: theme.text }]}>
-            Muscle Activation
+            Symmetry Score
           </ThemedText>
         </View>
-        {result.hasAnyWarning && (
+        {comparison.hasAnyWarning && (
           <View
             style={[
               styles.alertBadge,
@@ -56,8 +56,9 @@ export default function SymmetryCard({ normalizedPct }: SymmetryCardProps) {
       </View>
 
       <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-        Live % MVC snapshot for the instrumented leg. Use this to spot uneven
-        quad loading and hamstring over-activity.
+        Latest matched {exerciseName} sessions comparing the healthy{" "}
+        {comparison.healthySide.toLowerCase()} leg against the injured{" "}
+        {comparison.injuredSide.toLowerCase()} leg.
       </ThemedText>
 
       <View style={styles.scoreRow}>
@@ -70,10 +71,10 @@ export default function SymmetryCard({ normalizedPct }: SymmetryCardProps) {
           <ThemedText
             style={[styles.scoreLabel, { color: theme.textSecondary }]}
           >
-            Activation
+            Bilateral
           </ThemedText>
           <ThemedText style={[styles.scoreValue, { color: scoreColor }]}>
-            {result.activationScore}
+            {comparison.symmetryScore}
           </ThemedText>
           <ThemedText
             style={[styles.scoreUnit, { color: theme.textSecondary }]}
@@ -99,13 +100,13 @@ export default function SymmetryCard({ normalizedPct }: SymmetryCardProps) {
                 styles.insightValue,
                 {
                   color:
-                    result.vmoVlBalance > WARNING_THRESHOLD
+                    comparison.vmoVlBalance > WARNING_THRESHOLD
                       ? theme.warning
                       : theme.text,
                 },
               ]}
             >
-              {result.vmoVlBalance}% gap
+              {comparison.vmoVlBalance}% gap
             </ThemedText>
           </View>
           <View
@@ -124,43 +125,57 @@ export default function SymmetryCard({ normalizedPct }: SymmetryCardProps) {
                 styles.insightValue,
                 {
                   color:
-                    result.hamstringGuarding > 80 ? theme.warning : theme.text,
+                    comparison.hamstringGuarding > 0
+                      ? theme.warning
+                      : theme.text,
                 },
               ]}
             >
-              BF: {result.hamstringGuarding}%
+              {comparison.hamstringGuarding}% over healthy
             </ThemedText>
           </View>
         </View>
       </View>
 
       <View style={styles.channelGrid}>
-        {result.channels.map((ch) => (
+        {comparison.channels.map((channel) => (
           <View
-            key={ch.channelIndex}
+            key={channel.channelIndex}
             style={[
               styles.channelChip,
               {
                 backgroundColor: theme.secondaryCard,
-                borderColor: ch.hasWarning ? theme.warning : theme.border,
+                borderColor: channel.hasWarning ? theme.warning : theme.border,
               },
             ]}
           >
             <ThemedText
               style={[styles.channelLabel, { color: theme.textSecondary }]}
             >
-              {ch.label}
+              {channel.label}
             </ThemedText>
             <ThemedText style={[styles.channelPct, { color: theme.text }]}>
-              {ch.normalizedPct}%
+              Healthy {channel.healthyPct}%
+            </ThemedText>
+            <ThemedText
+              style={[
+                styles.channelPctSecondary,
+                { color: theme.textSecondary },
+              ]}
+            >
+              Injured {channel.injuredPct}%
             </ThemedText>
             <ThemedText
               style={[
                 styles.channelDeficit,
-                { color: ch.hasWarning ? theme.warning : theme.textSecondary },
+                {
+                  color: channel.hasWarning
+                    ? theme.warning
+                    : theme.textSecondary,
+                },
               ]}
             >
-              {ch.hasWarning ? `Target gap ${ch.targetGap}%` : "On target"}
+              Deficit {channel.deficit}%
             </ThemedText>
           </View>
         ))}
@@ -234,6 +249,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   channelLabel: { fontSize: 11, fontWeight: "600" },
-  channelPct: { fontSize: 20, fontWeight: "800" },
+  channelPct: { fontSize: 18, fontWeight: "800" },
+  channelPctSecondary: { fontSize: 14, fontWeight: "600" },
   channelDeficit: { fontSize: 11 },
 });

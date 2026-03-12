@@ -4,6 +4,11 @@ const DEFAULT_CALIBRATION = {
   calibratedAt: null,
 };
 
+const createDefaultCalibrationsBySide = () => ({
+  LEFT: { ...DEFAULT_CALIBRATION },
+  RIGHT: { ...DEFAULT_CALIBRATION },
+});
+
 const getUserState = (state: any) => state?.user ?? {};
 
 export const migrations: Record<number, (state: any) => any> = {
@@ -51,6 +56,33 @@ export const migrations: Record<number, (state: any) => any> = {
       user: {
         ...user,
         profileOwnerEmail: user.profileOwnerEmail ?? user.email ?? null,
+      },
+    };
+  },
+  6: (state: any) => {
+    const user = getUserState(state);
+    const legacyCalibration = user.calibration ?? DEFAULT_CALIBRATION;
+    const injuredSide = user.injuredSide ?? null;
+    const legacyMeasurementSide = user.measurementSide ?? injuredSide ?? null;
+    const existingCalibrations = user.calibrationsBySide;
+
+    const calibrationsBySide = existingCalibrations ?? {
+      ...createDefaultCalibrationsBySide(),
+      ...(injuredSide
+        ? {
+            [injuredSide]: legacyCalibration,
+          }
+        : {
+            LEFT: legacyCalibration,
+          }),
+    };
+
+    return {
+      ...state,
+      user: {
+        ...user,
+        calibrationsBySide,
+        measurementSide: legacyMeasurementSide,
       },
     };
   },

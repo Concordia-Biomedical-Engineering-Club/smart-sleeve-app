@@ -1,62 +1,126 @@
-// Computes single-leg muscle activation insights from normalized % MVC values.
-// The app currently streams one four-channel sleeve, so this service reports
-// same-leg activation quality and muscle-balance signals instead of bilateral symmetry.
+import type { Session } from "@/services/Database";
+import type { InjuredSide } from "@/store/userSlice";
 
-export const WARNING_THRESHOLD = 30; // % below MVC target to trigger a warning
+export const WARNING_THRESHOLD = 30;
 
-export interface ChannelActivationInsight {
+export interface BilateralChannelComparison {
   channelIndex: number;
   label: string;
-  normalizedPct: number;
-  targetGap: number;
+  healthyPct: number;
+  injuredPct: number;
+  deficit: number;
   hasWarning: boolean;
 }
 
-export interface ActivationInsightResult {
-  activationScore: number;
-  channels: ChannelActivationInsight[];
+export interface BilateralComparisonResult {
+  symmetryScore: number;
+  channels: BilateralChannelComparison[];
   vmoVlBalance: number;
   hamstringGuarding: number;
   hasAnyWarning: boolean;
+  exerciseType: string;
+  healthySide: InjuredSide;
+  injuredSide: InjuredSide;
+  healthySessionId: string;
+  injuredSessionId: string;
 }
 
 const CHANNEL_LABELS = ["VMO", "VL", "ST", "BF"];
 
-export function computeActivationInsights(
-  normalizedPct: number[],
-): ActivationInsightResult {
-  const channels: ChannelActivationInsight[] = normalizedPct
-    .slice(0, 4)
-    .map((pct, index) => {
-      const roundedPct = Math.round(pct);
-      const targetGap = Math.max(0, Math.round(100 - pct));
+function getNormalizedChannelMeans(session: Session): number[] | null {
+  const normalizedChannelMeans = session.analytics.normalizedChannelMeans;
+
+  if (!normalizedChannelMeans || normalizedChannelMeans.length < 4) {
+    return null;
+  }
+
+  return normalizedChannelMeans.slice(0, 4).map((value) => Math.round(value));
+}
+
+export function buildBilateralComparison(
+  healthySession: Session,
+  injuredSession: Session,
+): BilateralComparisonResult {
+  const healthyMeans = getNormalizedChannelMeans(healthySession);
+  const injuredMeans = getNormalizedChannelMeans(injuredSession);
+
+  if (!healthyMeans || !injuredMeans) {
+    throw new Error(
+      "Both sessions need normalized channel summaries for bilateral comparison.",
+    );
+  }
+
+  const channels: BilateralChannelComparison[] = CHANNEL_LABELS.map(
+    (label, channelIndex) => {
+      const healthyPct = healthyMeans[channelIndex] ?? 0;
+      const injuredPct = injuredMeans[channelIndex] ?? 0;
+      const deficit = Math.max(0, healthyPct - injuredPct);
 
       return {
-        channelIndex: index,
-        label: CHANNEL_LABELS[index],
-        normalizedPct: roundedPct,
-        targetGap,
-        hasWarning: targetGap > WARNING_THRESHOLD,
+        channelIndex,
+        label,
+        healthyPct,
+        injuredPct,
+        deficit,
+        hasWarning: deficit > WARNING_THRESHOLD,
       };
-    });
+    },
+  );
 
-  const activationScore = Math.round(
-    channels.reduce(
-      (sum, channel) => sum + Math.min(channel.normalizedPct, 100),
-      0,
-    ) / channels.length,
+  const averageDeficit =
+    channels.reduce((sum, channel) => sum + channel.deficit, 0) /
+    channels.length;
+  const symmetryScore = Math.max(0, Math.round(100 - averageDeficit));
+  const vmoVlBalance = Math.abs(
+    (injuredMeans[0] ?? 0) - (injuredMeans[1] ?? 0),
   );
-  const vmoVlBalance = Math.round(
-    Math.abs(channels[0].normalizedPct - channels[1].normalizedPct),
+  const hamstringGuarding = Math.max(
+    0,
+    (injuredMeans[3] ?? 0) - (healthyMeans[3] ?? 0),
   );
-  const hamstringGuarding = Math.round(channels[3].normalizedPct);
   const hasAnyWarning = channels.some((channel) => channel.hasWarning);
 
   return {
-    activationScore,
+    symmetryScore,
     channels,
     vmoVlBalance,
     hamstringGuarding,
     hasAnyWarning,
+    exerciseType: injuredSession.exerciseType,
+    healthySide: healthySession.side,
+    injuredSide: injuredSession.side,
+    healthySessionId: healthySession.id,
+    injuredSessionId: injuredSession.id,
   };
+}
+
+export function findLatestBilateralComparison(
+  sessions: Session[],
+  injuredSide: InjuredSide,
+): BilateralComparisonResult | null {
+  const healthySide = injuredSide === "LEFT" ? "RIGHT" : "LEFT";
+  const injuredSessions = sessions
+    .filter(
+      (session) =>
+        session.side === injuredSide &&
+        getNormalizedChannelMeans(session) !== null,
+    )
+    .sort((left, right) => right.timestamp - left.timestamp);
+
+  for (const injuredSession of injuredSessions) {
+    const healthySession = sessions
+      .filter(
+        (session) =>
+          session.side === healthySide &&
+          session.exerciseType === injuredSession.exerciseType &&
+          getNormalizedChannelMeans(session) !== null,
+      )
+      .sort((left, right) => right.timestamp - left.timestamp)[0];
+
+    if (healthySession) {
+      return buildBilateralComparison(healthySession, injuredSession);
+    }
+  }
+
+  return null;
 }

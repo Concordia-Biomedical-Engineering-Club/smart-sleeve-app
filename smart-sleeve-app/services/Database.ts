@@ -36,6 +36,7 @@ export interface SessionAnalytics {
   exerciseQuality: number;
   completionRate?: number;
   intensityScore?: number;
+  normalizedChannelMeans?: number[] | null;
 }
 
 export interface Session {
@@ -135,6 +136,7 @@ export async function initDatabase(): Promise<void> {
         exercise_quality    REAL NOT NULL DEFAULT 0,
         completion_rate     REAL NOT NULL DEFAULT 0,
         intensity_score     REAL NOT NULL DEFAULT 0,
+        normalized_channel_means TEXT NOT NULL DEFAULT '[]',
         synced              INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (user_id) REFERENCES users(id)
       );
@@ -211,8 +213,8 @@ export async function insertSession(
       completed_reps, target_reps,
       exercise_ids, avg_activation, max_activation, deficit_percentage,
       fatigue_score, rom_degrees, exercise_quality, completion_rate,
-      intensity_score, synced
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      intensity_score, normalized_channel_means, synced
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       session.id,
       session.userId,
@@ -232,6 +234,7 @@ export async function insertSession(
       a.exerciseQuality,
       a.completionRate ?? 0,
       a.intensityScore ?? 0,
+      JSON.stringify(a.normalizedChannelMeans ?? []),
       session.synced ? 1 : 0,
     ],
   );
@@ -416,6 +419,7 @@ function rowToSession(row: any): Session {
       exerciseQuality: row.exercise_quality,
       completionRate: row.completion_rate ?? 0,
       intensityScore: row.intensity_score ?? 0,
+      normalizedChannelMeans: JSON.parse(row.normalized_channel_means ?? "[]"),
     },
   };
 }
@@ -441,6 +445,10 @@ async function ensureSessionColumns(db: SQLite.SQLiteDatabase): Promise<void> {
     {
       name: "intensity_score",
       sql: `ALTER TABLE sessions ADD COLUMN intensity_score REAL NOT NULL DEFAULT 0`,
+    },
+    {
+      name: "normalized_channel_means",
+      sql: `ALTER TABLE sessions ADD COLUMN normalized_channel_means TEXT NOT NULL DEFAULT '[]'`,
     },
   ];
 

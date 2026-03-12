@@ -29,7 +29,7 @@ const storage =
 const rootPersistConfig = {
   key: "root",
   storage,
-  version: 5,
+  version: 6,
   migrate: createMigrate(migrations, { debug: false }),
   whitelist: ["user"],
 };

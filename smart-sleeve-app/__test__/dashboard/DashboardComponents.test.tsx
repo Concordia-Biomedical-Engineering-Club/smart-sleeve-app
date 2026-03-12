@@ -10,6 +10,7 @@ import {
   RAW_SIGNAL_TOGGLE_LABEL,
 } from "../../components/dashboard/signalDisplay";
 import StatCard from "@/components/StatCard";
+import type { BilateralComparisonResult } from "@/services/SymmetryService";
 
 jest.mock("expo-haptics", () => ({
   impactAsync: jest.fn(),
@@ -85,12 +86,58 @@ describe("Dashboard Components", () => {
   });
 
   it("renders the muscle activation card with single-leg wording", () => {
+    const comparison: BilateralComparisonResult = {
+      symmetryScore: 82,
+      exerciseType: "quad-sets",
+      healthySide: "RIGHT",
+      injuredSide: "LEFT",
+      healthySessionId: "healthy-1",
+      injuredSessionId: "injured-1",
+      vmoVlBalance: 11,
+      hamstringGuarding: 6,
+      hasAnyWarning: false,
+      channels: [
+        {
+          channelIndex: 0,
+          label: "VMO",
+          healthyPct: 88,
+          injuredPct: 74,
+          deficit: 14,
+          hasWarning: false,
+        },
+        {
+          channelIndex: 1,
+          label: "VL",
+          healthyPct: 84,
+          injuredPct: 73,
+          deficit: 11,
+          hasWarning: false,
+        },
+        {
+          channelIndex: 2,
+          label: "ST",
+          healthyPct: 69,
+          injuredPct: 55,
+          deficit: 14,
+          hasWarning: false,
+        },
+        {
+          channelIndex: 3,
+          label: "BF",
+          healthyPct: 42,
+          injuredPct: 48,
+          deficit: 0,
+          hasWarning: false,
+        },
+      ],
+    };
+
     const { getByText, queryByText } = render(
-      <SymmetryCard normalizedPct={[96, 84, 76, 65]} />,
+      <SymmetryCard comparison={comparison} />,
     );
 
-    expect(getByText("Muscle Activation")).toBeTruthy();
-    expect(getByText("Single-Leg Insights")).toBeTruthy();
-    expect(queryByText("Symmetry Score")).toBeNull();
+    expect(getByText("Symmetry Score")).toBeTruthy();
+    expect(getByText("Bilateral Comparison")).toBeTruthy();
+    expect(queryByText("Single-Leg Insights")).toBeNull();
   });
 });

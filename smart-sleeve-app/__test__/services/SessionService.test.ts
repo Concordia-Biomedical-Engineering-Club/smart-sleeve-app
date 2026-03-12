@@ -221,6 +221,7 @@ describe("SessionService", () => {
       expect.objectContaining({
         analytics: expect.objectContaining({
           deficitPercentage: 0,
+          normalizedChannelMeans: [75, 75, 15, 20],
         }),
       }),
       mockDb,
