@@ -35,6 +35,12 @@ const mockedGetDatabase = getDatabase as jest.MockedFunction<
 >;
 
 describe("SessionService", () => {
+  const calibration = {
+    baseline: [0, 0, 0, 0],
+    mvc: [0.8, 0.2, 1, 1],
+    calibratedAt: Date.now(),
+  };
+
   const mockDb = {
     getFirstAsync: jest.fn().mockResolvedValue({ id: "session_1000_fixed" }),
     withTransactionAsync: jest.fn(async (callback: () => Promise<void>) => {
@@ -179,6 +185,44 @@ describe("SessionService", () => {
         expect.objectContaining({ timestamp: 1030, kneeAngle: 20 }),
         expect.objectContaining({ timestamp: 1085, kneeAngle: 35 }),
       ],
+      mockDb,
+    );
+  });
+
+  test("saveSession computes deficitPercentage from normalized channels when calibration is provided", async () => {
+    const emgFrames: EMGData[] = [
+      {
+        header: 0xaa,
+        timestamp: 1000,
+        channels: [0.8, 0.2, 0.1, 0.3],
+        checksum: 0,
+      },
+      {
+        header: 0xaa,
+        timestamp: 1030,
+        channels: [0.4, 0.1, 0.2, 0.1],
+        checksum: 0,
+      },
+    ];
+
+    await saveSession({
+      userId: "patient@example.com",
+      exerciseId: "quad-sets",
+      exerciseName: "Quadriceps Sets",
+      side: "LEFT",
+      startTime: 1000,
+      endTime: 1100,
+      emgBuffer: emgFrames,
+      kneeAngleBuffer: [],
+      calibration,
+    });
+
+    expect(mockedInsertSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        analytics: expect.objectContaining({
+          deficitPercentage: 0,
+        }),
+      }),
       mockDb,
     );
   });

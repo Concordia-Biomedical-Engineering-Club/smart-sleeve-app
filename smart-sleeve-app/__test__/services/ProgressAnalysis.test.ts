@@ -9,6 +9,12 @@ import {
 } from "@/services/ProgressAnalysis";
 import { Session } from "@/services/Database";
 
+const calibration = {
+  baseline: [0, 0, 0, 0],
+  mvc: [0.8, 0.2, 1, 1],
+  calibratedAt: Date.now(),
+};
+
 function createSession(overrides: Partial<Session> = {}): Session {
   const overrideAnalytics = overrides.analytics ?? {};
   return {
@@ -119,6 +125,15 @@ describe("ProgressAnalysis", () => {
         { channels: [0.6, 0.3, 0, 0] },
       ]),
     ).toBe(46.7);
+  });
+
+  test("computeDeficitPercentageFromEMGFrames uses normalized values when calibration is provided", () => {
+    expect(
+      computeDeficitPercentageFromEMGFrames(
+        [{ channels: [0.8, 0.2, 0, 0] }, { channels: [0.4, 0.1, 0, 0] }],
+        calibration,
+      ),
+    ).toBe(0);
   });
 
   test("buildSessionComparison computes user-facing deltas against the previous session", () => {

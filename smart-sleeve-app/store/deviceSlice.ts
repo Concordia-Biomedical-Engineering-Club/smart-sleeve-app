@@ -5,6 +5,7 @@ import {
   IMUData,
 } from "@/services/SleeveConnector/ISleeveConnector";
 import { RootState } from "./store";
+import type { NormalizedEMGFeatures } from "@/services/SignalProcessing/FeatureExtractor";
 
 export type WorkoutPhase =
   | "IDLE"
@@ -34,10 +35,7 @@ export interface DeviceState {
   isScanning: boolean;
   latestEMG: EMGData | null;
   latestIMU: IMUData | null;
-  latestFeatures: {
-    rms: number[];
-    mav: number[];
-  } | null;
+  latestFeatures: NormalizedEMGFeatures | null;
   emgBuffer: EMGData[];
   kneeAngleBuffer: number[];
   workout: WorkoutSession;
