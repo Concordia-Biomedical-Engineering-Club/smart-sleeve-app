@@ -3,9 +3,11 @@ import {
   ConnectionStatus,
   EMGData,
   IMUData,
+  TransportEvent,
 } from "@/services/SleeveConnector/ISleeveConnector";
 import { RootState } from "./store";
 import type { NormalizedEMGFeatures } from "@/services/SignalProcessing/FeatureExtractor";
+import { EMG_STALE_TIMEOUT_MS, IMU_STALE_TIMEOUT_MS } from "@/constants/ble";
 
 export type WorkoutPhase =
   | "IDLE"
@@ -15,6 +17,29 @@ export type WorkoutPhase =
   | "COMPLETING";
 
 export type SessionStatus = "IDLE" | "RECORDING" | "SAVING";
+export type TransportMode = "mock" | "real";
+
+export interface TransportDiagnostics {
+  requestedTransportMode: TransportMode;
+  activeTransportMode: TransportMode;
+  usingFallbackTransport: boolean;
+  lastConnectionPhase: NonNullable<ConnectionStatus["phase"]>;
+  lastConnectionReason: string | null;
+  reconnectAttemptCount: number;
+  lastEMGPacketTimestamp: number | null;
+  lastIMUPacketTimestamp: number | null;
+  emgPacketCount: number;
+  imuPacketCount: number;
+  emgChecksumErrorCount: number;
+  imuChecksumErrorCount: number;
+  emgDroppedPacketCount: number;
+  imuDroppedPacketCount: number;
+  emgNotificationErrorCount: number;
+  imuNotificationErrorCount: number;
+  emgStaleTimeoutMs: number;
+  imuStaleTimeoutMs: number;
+  discoveredCharacteristics: string[];
+}
 
 export interface WorkoutSession {
   phase: WorkoutPhase;
@@ -49,6 +74,7 @@ export interface DeviceState {
   /** Time-series recording buffer — flushed to SQLite on endSession */
   recordingBuffer: EMGData[];
   recordingKneeAngles: IMUData[];
+  transportDiagnostics: TransportDiagnostics;
 }
 
 const initialWorkout: WorkoutSession = {
@@ -82,6 +108,27 @@ const initialState: DeviceState = {
   sessionStartTime: null,
   recordingBuffer: [],
   recordingKneeAngles: [],
+  transportDiagnostics: {
+    requestedTransportMode: "mock",
+    activeTransportMode: "mock",
+    usingFallbackTransport: false,
+    lastConnectionPhase: "disconnected",
+    lastConnectionReason: null,
+    reconnectAttemptCount: 0,
+    lastEMGPacketTimestamp: null,
+    lastIMUPacketTimestamp: null,
+    emgPacketCount: 0,
+    imuPacketCount: 0,
+    emgChecksumErrorCount: 0,
+    imuChecksumErrorCount: 0,
+    emgDroppedPacketCount: 0,
+    imuDroppedPacketCount: 0,
+    emgNotificationErrorCount: 0,
+    imuNotificationErrorCount: 0,
+    emgStaleTimeoutMs: EMG_STALE_TIMEOUT_MS,
+    imuStaleTimeoutMs: IMU_STALE_TIMEOUT_MS,
+    discoveredCharacteristics: [],
+  },
 };
 
 const syncScenario = (state: DeviceState) => {
@@ -99,6 +146,17 @@ const deviceSlice = createSlice({
   reducers: {
     connectionChanged(state, action: PayloadAction<ConnectionStatus>) {
       state.connection = action.payload;
+      state.transportDiagnostics.lastConnectionPhase =
+        action.payload.phase ??
+        (action.payload.connected ? "connected" : "disconnected");
+      state.transportDiagnostics.lastConnectionReason =
+        action.payload.reason ?? null;
+      state.transportDiagnostics.reconnectAttemptCount =
+        action.payload.reconnectAttempt ??
+        state.transportDiagnostics.reconnectAttemptCount;
+      state.transportDiagnostics.discoveredCharacteristics =
+        action.payload.discoveredCharacteristics ??
+        state.transportDiagnostics.discoveredCharacteristics;
       if (!action.payload.connected) {
         state.latestEMG = null;
         state.latestIMU = null;
@@ -108,6 +166,49 @@ const deviceSlice = createSlice({
         state.kneeAngleBuffer = [];
         state.calibrationScenarioOverride = null;
         state.isSignalWarmedUp = false;
+      }
+    },
+    transportDiagnosticsChanged(
+      state,
+      action: PayloadAction<
+        Pick<
+          TransportDiagnostics,
+          | "requestedTransportMode"
+          | "activeTransportMode"
+          | "usingFallbackTransport"
+        >
+      >,
+    ) {
+      state.transportDiagnostics = {
+        ...state.transportDiagnostics,
+        ...action.payload,
+      };
+    },
+    transportEventRecorded(state, action: PayloadAction<TransportEvent>) {
+      const { stream, kind } = action.payload;
+
+      if (kind === "checksum-mismatch") {
+        if (stream === "emg") {
+          state.transportDiagnostics.emgChecksumErrorCount += 1;
+        } else {
+          state.transportDiagnostics.imuChecksumErrorCount += 1;
+        }
+        return;
+      }
+
+      if (kind === "invalid-packet") {
+        if (stream === "emg") {
+          state.transportDiagnostics.emgDroppedPacketCount += 1;
+        } else {
+          state.transportDiagnostics.imuDroppedPacketCount += 1;
+        }
+        return;
+      }
+
+      if (stream === "emg") {
+        state.transportDiagnostics.emgNotificationErrorCount += 1;
+      } else {
+        state.transportDiagnostics.imuNotificationErrorCount += 1;
       }
     },
     scenarioChanged(state, action: PayloadAction<DeviceState["scenario"]>) {
@@ -124,6 +225,9 @@ const deviceSlice = createSlice({
     },
     emgFrameReceived(state, action: PayloadAction<EMGData>) {
       state.latestEMG = action.payload;
+      state.transportDiagnostics.lastEMGPacketTimestamp =
+        action.payload.timestamp;
+      state.transportDiagnostics.emgPacketCount += 1;
       state.emgBuffer.push(action.payload);
       if (state.emgBuffer.length > 500) {
         state.emgBuffer.shift();
@@ -147,6 +251,9 @@ const deviceSlice = createSlice({
     },
     imuFrameReceived(state, action: PayloadAction<IMUData>) {
       state.latestIMU = action.payload;
+      state.transportDiagnostics.lastIMUPacketTimestamp =
+        action.payload.timestamp;
+      state.transportDiagnostics.imuPacketCount += 1;
       state.kneeAngleBuffer.push(action.payload.roll);
       if (state.kneeAngleBuffer.length > 500) {
         state.kneeAngleBuffer.shift();
@@ -290,6 +397,8 @@ const deviceSlice = createSlice({
 
 export const {
   connectionChanged,
+  transportDiagnosticsChanged,
+  transportEventRecorded,
   scenarioChanged,
   setCalibrationScenarioOverride,
   setIsScanning,
@@ -317,6 +426,11 @@ const selectDevice = (state: RootState) => state.device;
 export const selectConnectionStatus = createSelector(
   [selectDevice],
   (device) => device.connection.connected,
+);
+
+export const selectTransportDiagnostics = createSelector(
+  [selectDevice],
+  (device) => device.transportDiagnostics,
 );
 export const selectIsScanning = createSelector(
   [selectDevice],

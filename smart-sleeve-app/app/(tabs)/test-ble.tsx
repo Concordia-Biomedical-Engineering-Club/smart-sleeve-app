@@ -5,16 +5,29 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Pressable,
 } from "react-native";
 import React, { useState, useEffect, useRef } from "react";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
+import { EMG_STALE_TIMEOUT_MS, IMU_STALE_TIMEOUT_MS } from "@/constants/ble";
 import { useSleeve } from "@/hooks/useSleeve";
+import { MockSleeveConnector } from "@/services/MockBleService/MockSleeveConnector";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
-import { scenarioChanged, setFilteringEnabled } from "@/store/deviceSlice";
+import {
+  scenarioChanged,
+  selectTransportDiagnostics,
+  setFilteringEnabled,
+} from "@/store/deviceSlice";
+
+const USE_MOCK_HARDWARE_ENV_KEY = [
+  "EXPO",
+  "PUBLIC",
+  "USE",
+  "MOCK",
+  "HARDWARE",
+].join("_");
 
 export default function TestBLEScreen() {
   const dispatch = useDispatch();
@@ -28,12 +41,33 @@ export default function TestBLEScreen() {
   const isFilteringEnabled = useSelector(
     (state: RootState) => state.device.isFilteringEnabled,
   );
+  const transportDiagnostics = useSelector(selectTransportDiagnostics);
 
   const lastChartUpdateRef = useRef(0);
 
-  // Chart Data State
   const [chartData, setChartData] = useState<number[]>(new Array(50).fill(0));
   const MAX_POINTS = 50;
+  const [devices, setDevices] = useState<string[]>([]);
+  const [isScanning, setIsScanningState] = useState(false);
+  const requestedMockMode = process.env[USE_MOCK_HARDWARE_ENV_KEY] !== "false";
+  const isUsingMockConnector = connector instanceof MockSleeveConnector;
+  const isFallbackRoute = !requestedMockMode && isUsingMockConnector;
+  const isMock = isUsingMockConnector;
+  const now = Date.now();
+  const lastEmgAgeMs = transportDiagnostics.lastEMGPacketTimestamp
+    ? now - transportDiagnostics.lastEMGPacketTimestamp
+    : null;
+  const lastImuAgeMs = transportDiagnostics.lastIMUPacketTimestamp
+    ? now - transportDiagnostics.lastIMUPacketTimestamp
+    : null;
+  const isEmgStale =
+    connectionStatus.connected &&
+    (lastEmgAgeMs == null ||
+      lastEmgAgeMs > transportDiagnostics.emgStaleTimeoutMs);
+  const isImuStale =
+    connectionStatus.connected &&
+    (lastImuAgeMs == null ||
+      lastImuAgeMs > transportDiagnostics.imuStaleTimeoutMs);
 
   // Update Chart Data (Channel 1 only for viz) - Throttled for readability
   useEffect(() => {
@@ -50,14 +84,20 @@ export default function TestBLEScreen() {
     }
   }, [latestEMG]);
 
-  useEffect(() => {
-    lastChartUpdateRef.current = 0;
-    setChartData(new Array(MAX_POINTS).fill(0));
-  }, [isFilteringEnabled]);
-
-  const handleConnect = async () => {
+  const handleScan = async () => {
+    setIsScanningState(true);
+    setDevices([]);
     try {
-      await connector.connect("mock-device-id");
+      const found = await connector.scan();
+      setDevices(found);
+    } finally {
+      setIsScanningState(false);
+    }
+  };
+
+  const handleConnect = async (deviceId: string) => {
+    try {
+      await connector.connect(deviceId);
     } catch (error) {
       console.error("Connection failed:", error);
     }
@@ -65,14 +105,11 @@ export default function TestBLEScreen() {
 
   const handleDisconnect = () => {
     connector.disconnect();
+    setDevices([]);
   };
 
   const handleScenarioChange = (newScenario: "REST" | "FLEX" | "SQUAT") => {
     dispatch(scenarioChanged(newScenario));
-  };
-
-  const handleToggleFiltering = () => {
-    dispatch(setFilteringEnabled(!isFilteringEnabled));
   };
 
   // Get screen width for chart
@@ -82,67 +119,188 @@ export default function TestBLEScreen() {
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <ThemedText type="title" style={styles.title}>
-          Mock BLE Service Test
+          {requestedMockMode
+            ? "Mock BLE Service Test"
+            : "Real Hardware BLE Test"}
         </ThemedText>
 
-        {/* Connection Controls */}
-        <View style={styles.section}>
-          <ThemedText type="subtitle">
-            Connection Status:{" "}
-            {connectionStatus.connected ? "Connected" : "Disconnected"}
-          </ThemedText>
-          <View style={styles.buttonRow}>
+        {/* Device Discovery (Real Mode Only) */}
+        {!isMock && (
+          <View style={styles.section}>
+            <ThemedText type="subtitle">Device Discovery</ThemedText>
             <TouchableOpacity
               style={[
                 styles.button,
-                connectionStatus.connected && styles.buttonDisabled,
+                isScanning && styles.buttonDisabled,
+                { marginTop: 12 },
               ]}
-              onPress={handleConnect}
-              disabled={connectionStatus.connected}
+              onPress={handleScan}
+              disabled={isScanning || connectionStatus.connected}
             >
-              <ThemedText style={styles.buttonText}>Connect</ThemedText>
+              <ThemedText style={styles.buttonText}>
+                {isScanning ? "Scanning..." : "Scan for Devices"}
+              </ThemedText>
             </TouchableOpacity>
+
+            {!connectionStatus.connected && devices.length > 0 && (
+              <View style={styles.deviceList}>
+                {devices.map((id) => (
+                  <TouchableOpacity
+                    key={id}
+                    style={styles.deviceItem}
+                    onPress={() => handleConnect(id)}
+                  >
+                    <ThemedText style={styles.deviceItemText}>
+                      Connect to: {id}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Connection Status & Mock Connect */}
+        <View style={styles.section}>
+          <ThemedText type="subtitle">
+            Status:{" "}
+            <ThemedText
+              style={{
+                color: connectionStatus.connected
+                  ? Colors.light.success
+                  : Colors.light.warning,
+              }}
+            >
+              {connectionStatus.connected ? "Connected" : "Disconnected"}
+            </ThemedText>
+          </ThemedText>
+
+          {isFallbackRoute && (
+            <ThemedText style={styles.routeHint}>
+              Connecting route: bridge
+            </ThemedText>
+          )}
+
+          {isMock && (
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  connectionStatus.connected && styles.buttonDisabled,
+                ]}
+                onPress={() => handleConnect("mock-device-id")}
+                disabled={connectionStatus.connected}
+              >
+                <ThemedText style={styles.buttonText}>
+                  {isFallbackRoute ? "Connect" : "Connect Mock"}
+                </ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.disconnectButton,
+                  !connectionStatus.connected && styles.buttonDisabled,
+                ]}
+                onPress={handleDisconnect}
+                disabled={!connectionStatus.connected}
+              >
+                <ThemedText style={styles.buttonText}>Disconnect</ThemedText>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {!isMock && connectionStatus.connected && (
             <TouchableOpacity
               style={[
                 styles.button,
                 styles.disconnectButton,
-                !connectionStatus.connected && styles.buttonDisabled,
+                { marginTop: 12 },
               ]}
               onPress={handleDisconnect}
-              disabled={!connectionStatus.connected}
             >
-              <ThemedText style={styles.buttonText}>Disconnect</ThemedText>
+              <ThemedText style={styles.buttonText}>
+                Force Disconnect
+              </ThemedText>
             </TouchableOpacity>
-          </View>
+          )}
         </View>
 
         {/* Filter Toggle */}
         <View style={styles.section}>
           <ThemedText type="subtitle">Signal Processing</ThemedText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Toggle signal filters"
-            testID="toggle-signal-filters"
-            hitSlop={12}
-            style={({ pressed }) => [
+          <TouchableOpacity
+            style={[
               styles.button,
-              styles.filterButton,
               {
                 marginTop: 12,
                 backgroundColor: isFilteringEnabled
                   ? Colors.light.success
                   : Colors.light.icon,
-                opacity: pressed ? 0.85 : 1,
               },
             ]}
-            onPress={handleToggleFiltering}
+            onPress={() => dispatch(setFilteringEnabled(!isFilteringEnabled))}
           >
             <ThemedText style={styles.buttonText}>
               {isFilteringEnabled ? "Filters ON" : "Filters OFF (Raw)"}
             </ThemedText>
-          </Pressable>
-          <ThemedText style={styles.instruction}>
-            Current mode: {isFilteringEnabled ? "Filtered EMG" : "Raw EMG"}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle">Transport Diagnostics</ThemedText>
+          <ThemedText>
+            Requested: {transportDiagnostics.requestedTransportMode}
+          </ThemedText>
+          <ThemedText>
+            Active: {transportDiagnostics.activeTransportMode}
+          </ThemedText>
+          <ThemedText>
+            Phase: {transportDiagnostics.lastConnectionPhase}
+          </ThemedText>
+          <ThemedText>
+            Reconnect attempts: {transportDiagnostics.reconnectAttemptCount}
+          </ThemedText>
+          <ThemedText>
+            EMG packets: {transportDiagnostics.emgPacketCount}
+          </ThemedText>
+          <ThemedText>
+            IMU packets: {transportDiagnostics.imuPacketCount}
+          </ThemedText>
+          <ThemedText>
+            Last EMG age: {lastEmgAgeMs == null ? "-" : `${lastEmgAgeMs} ms`}
+          </ThemedText>
+          <ThemedText>
+            Last IMU age: {lastImuAgeMs == null ? "-" : `${lastImuAgeMs} ms`}
+          </ThemedText>
+          <ThemedText>
+            EMG checksum errors: {transportDiagnostics.emgChecksumErrorCount}
+          </ThemedText>
+          <ThemedText>
+            IMU checksum errors: {transportDiagnostics.imuChecksumErrorCount}
+          </ThemedText>
+          <ThemedText>
+            EMG dropped packets: {transportDiagnostics.emgDroppedPacketCount}
+          </ThemedText>
+          <ThemedText>
+            IMU dropped packets: {transportDiagnostics.imuDroppedPacketCount}
+          </ThemedText>
+          <ThemedText>
+            EMG notify errors: {transportDiagnostics.emgNotificationErrorCount}
+          </ThemedText>
+          <ThemedText>
+            IMU notify errors: {transportDiagnostics.imuNotificationErrorCount}
+          </ThemedText>
+          <ThemedText>
+            EMG stale: {isEmgStale ? "yes" : "no"} ({EMG_STALE_TIMEOUT_MS} ms)
+          </ThemedText>
+          <ThemedText>
+            IMU stale: {isImuStale ? "yes" : "no"} ({IMU_STALE_TIMEOUT_MS} ms)
+          </ThemedText>
+          <ThemedText>
+            Characteristics:{" "}
+            {transportDiagnostics.discoveredCharacteristics.length > 0
+              ? transportDiagnostics.discoveredCharacteristics.join(", ")
+              : "-"}
           </ThemedText>
         </View>
 
@@ -150,7 +308,6 @@ export default function TestBLEScreen() {
         <View style={styles.section}>
           <ThemedText type="subtitle">Live Signal (CH1)</ThemedText>
           <LineChart
-            key={`ble-chart-${isFilteringEnabled ? "filtered" : "raw"}`}
             data={{
               labels: [], // No labels for cleaner look
               datasets: [
@@ -194,12 +351,6 @@ export default function TestBLEScreen() {
               ? "Signal is stabilized (DC/Line noise removed)"
               : "Signal contains randomized noise + drift"}
           </ThemedText>
-          {isFilteringEnabled ? (
-            <ThemedText style={styles.instruction}>
-              Filtered mode needs about 1 second of fresh samples after a
-              toggle.
-            </ThemedText>
-          ) : null}
         </View>
 
         {/* Scenario Controls */}
@@ -289,9 +440,7 @@ export default function TestBLEScreen() {
 
         {/* Latest IMU Data */}
         <View style={styles.section}>
-          <ThemedText type="subtitle">
-            Knee Flexion Angle (AS5048A Encoder)
-          </ThemedText>
+          <ThemedText type="subtitle">Knee Flexion Angle (Encoder)</ThemedText>
           {latestIMU ? (
             <View style={styles.dataBox}>
               <ThemedText style={styles.monoText}>
@@ -372,11 +521,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
   },
-  filterButton: {
-    flex: 0,
-    minHeight: 48,
-    justifyContent: "center",
-  },
   disconnectButton: {
     backgroundColor: "#E94B3C",
   },
@@ -407,6 +551,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
     opacity: 0.8,
   },
+  routeHint: {
+    marginTop: 6,
+    fontSize: 12,
+    opacity: 0.45,
+    letterSpacing: 0.3,
+  },
   highlight: {
     marginTop: 8,
     color: "#00B8A9",
@@ -415,5 +565,20 @@ const styles = StyleSheet.create({
   activeChannel: {
     color: "#E94B3C",
     fontWeight: "bold",
+  },
+  deviceList: {
+    marginTop: 16,
+    gap: 8,
+  },
+  deviceItem: {
+    padding: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  deviceItemText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

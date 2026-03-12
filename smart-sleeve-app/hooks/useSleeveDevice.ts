@@ -1,4 +1,5 @@
 import { ISleeveConnector } from "@/services/SleeveConnector/ISleeveConnector";
+import { MockSleeveConnector } from "@/services/MockBleService/MockSleeveConnector";
 import { useAppDispatch } from "./storeHooks";
 import { useEffect, useMemo, useRef } from "react";
 import {
@@ -8,6 +9,8 @@ import {
   featuresUpdated,
   imuFrameReceived,
   signalWarmupChanged,
+  transportDiagnosticsChanged,
+  transportEventRecorded,
 } from "@/store/deviceSlice";
 import { SignalProcessor } from "@/services/SignalProcessing/SignalProcessor";
 import { FeatureExtractor } from "@/services/SignalProcessing/FeatureExtractor";
@@ -17,6 +20,13 @@ import { selectCalibration, selectIsCalibrated } from "@/store/userSlice";
 import { selectCalibrationScenarioOverride } from "@/store/deviceSlice";
 
 const WINDOW_SIZE = 10;
+const USE_MOCK_HARDWARE_ENV_KEY = [
+  "EXPO",
+  "PUBLIC",
+  "USE",
+  "MOCK",
+  "HARDWARE",
+].join("_");
 
 export function useSleeveDevice(connector: ISleeveConnector) {
   const dispatch = useAppDispatch();
@@ -52,14 +62,32 @@ export function useSleeveDevice(connector: ISleeveConnector) {
   }, [calibrationScenarioOverride, scenario, connector]);
 
   useEffect(() => {
-    connector.onConnectionStatusChange((status) => {
-      dispatch(connectionChanged(status));
-      if (!status.connected) {
-        processor.reset();
-        rollingBuffer.current = [];
-        isSignalWarmedUpRef.current = false;
-      }
-    });
+    const requestedTransportMode =
+      process.env[USE_MOCK_HARDWARE_ENV_KEY] !== "false" ? "mock" : "real";
+    const activeTransportMode =
+      connector instanceof MockSleeveConnector ? "mock" : "real";
+
+    dispatch(
+      transportDiagnosticsChanged({
+        requestedTransportMode,
+        activeTransportMode,
+        usingFallbackTransport:
+          requestedTransportMode === "real" && activeTransportMode === "mock",
+      }),
+    );
+  }, [connector, dispatch]);
+
+  useEffect(() => {
+    const unsubscribeConnectionStatus = connector.onConnectionStatusChange(
+      (status) => {
+        dispatch(connectionChanged(status));
+        if (!status.connected) {
+          processor.reset();
+          rollingBuffer.current = [];
+          isSignalWarmedUpRef.current = false;
+        }
+      },
+    );
 
     const unsubscribeEMG = connector.subscribeToEMG((rawFrame) => {
       let frameToDispatch = rawFrame;
@@ -98,9 +126,15 @@ export function useSleeveDevice(connector: ISleeveConnector) {
       dispatch(imuFrameReceived(data));
     });
 
+    const unsubscribeTransportEvents = connector.onTransportEvent((event) => {
+      dispatch(transportEventRecorded(event));
+    });
+
     return () => {
+      unsubscribeConnectionStatus();
       unsubscribeEMG();
       unsubscribeIMU();
+      unsubscribeTransportEvents();
       connector.disconnect();
       dispatch(connectionChanged({ connected: false }));
       processor.reset();

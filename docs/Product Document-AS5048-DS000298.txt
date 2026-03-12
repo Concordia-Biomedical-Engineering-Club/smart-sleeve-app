@@ -1,0 +1,1718 @@
+Product
+Document
+Published by
+ams OSRAM Group
+ams Datasheet Page 1
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B
+Magnetic Rotary Encoder
+(14-Bit Angular Position Sensor)
+The AS5048 is an easy to use 360° angle position sensor with a
+14-bit high resolution output.
+The IC measures the absolute position of the magnet’s rotation
+angle and consists of Hall sensors, analog digital converter and
+digital signal processing. The absolute position information of
+the magnet is directly accessible over a PWM output and can
+be read out over a standard SPI or a high speed I²C interface.
+AS5048A has a SPI interface, AS5048B I²C interface. Both devices
+offer a PWM output.
+The zero position can be programmed via SPI or I²C command.
+This simplifies the assembly of the complete system because
+the zero position of the magnet does not need to be
+mechanically aligned. The sensor tolerates misalignment, air
+gap variations, temperature variations and as well external
+magnetic fields. This robustness and wide temperature range
+(-40°C up to 150°C) of the AS5048 makes the IC ideal for rotation
+angle sensing in harsh industrial and medical environments.
+Several AS5048 ICs can be connected in daisy chain for serial
+data read out. An internal voltage regulator allows the AS5048
+to operate at either 3.3V or 5V supplies.
+Ordering Information and Content Guide appear at end of
+datasheet.
+Key Benefits & Features
+The benefits and features of AS5048A/AS5048B, Magnetic
+Rotary Encoder (14-Bit Angular Position Sensor) are listed
+below:
+Figure 1:
+Added Value of Using AS5048
+Benefits Features
+• No external programmer needed • Standard SPI or I2C interface and PWM
+• High precision • 14-bit resolution (0.0219°/LSB)
+• Easy to use • Zero position programmable via SPI or I2C
+• Low material costs (no shielding) • Immune to external magnetic stray fields
+General Description
+Page 2 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − General Description
+• Contactless rotary position sensor over 360°
+• Temperature range: -40°C to 150°C
+• 3.3V / 5V compliant
+• Package: 14-pin TSSOP (5 x 6.4mm)
+Applications
+The applications of AS5048 include:
+• Robotic joint position detection
+• Industrial motor position control
+• Medical robots and fitness equipment
+Block Diagram
+The functional blocks of this device are shown below:
+Figure 2:
+AS5048A Block Diagram
+AFE
+14-bit A/D
+AGC
+14-bit A/D
+LDO
+AS5048A
+VDD3V
+VDD5V
+GND
+SCK
+MISO
+MOSI
+CSn
+PWM PWM
+Register
+Setting
+SPI
+ATAN
+(CORDIC)
+OTP
+ams Datasheet Page 3
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − General Description
+Figure 3:
+AS5048B Block Diagram
+AFE 14-bit A/D
+AGC
+14-bit A/D
+LDO
+AS5048B
+VDD3V
+VDD5V
+GND
+SCL
+SDA
+A1
+A2
+PWM PWM ATAN
+(CORDIC)
+I2C
+Register
+Setting
+OTP
+Page 4 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Pin Assignments
+The AS5048A/AS5048B pin assignments are described below.
+Figure 4:
+TSSOP14 Pin Configurations
+Figure 5:
+TSSOP14 Pin Descriptions for AS5048A
+Pin AS5048A Pin Type Description
+1 CSn Digital input with Schmitt
+trigger
+SPI chip select - active low
+2 CLK SPI clock input
+3 MISO Digital I/O with Schmitt
+trigger in the input path SPI master in/slave out
+4 MOSI Digital input with Schmitt
+trigger SPI master out/slave in
+5 TEST Analog I/O Test pin should be connected to GND.
+6 TEST
+Analog I/O Test pins should be left open during normal
+operation.
+7 TEST
+8 TEST
+9 TEST
+10 TEST
+11 VDD5V
+Supply pad
+Positive Supply Voltage, 3.0 to 5.5 V
+12 VDD3V
+3.3V Regulator output; internally regulated from VDD.
+Connect to VDD for 3V supply voltage. 10μF capacitor
+to GND required in 5V operation mode
+13 GND Negative Supply Voltage (GND)
+14 PWM Digital output – push-pull Pulse Width Modulation output
+Pin Assignments
+TEST
+2
+3
+4
+5
+6
+7 8
+9
+10
+11
+12
+13
+CSn 1 14
+CLK
+MISO
+MOSI
+TEST
+TEST TEST
+TEST
+TEST
+VDD5V
+VDD3V
+GND
+PWM
+AS5048A
+TEST
+2
+3
+4
+5
+6
+7 8
+9
+10
+11
+12
+13
+SDA 1 14
+SCL
+A2
+A1
+TEST
+TEST TEST
+TEST
+TEST
+VDD5V
+VDD3V
+GND
+PWM
+AS5048B
+ams Datasheet Page 5
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Pin Assignments
+Figure 6:
+TSSOP14 Pin Description for AS5048B
+Pin AS5048B Type Description
+1 SDA Digital I/O with open drain
+output Data pin I²C interface
+2 SCL
+Digital input with Schmitt
+trigger
+I²C clock input
+3 A2 I²C address selection pin 3
+4 A1 I²C address selection pin 4
+5 TEST Analog I/O Test pin should be connected to GND.
+6 TEST
+Analog I/O Test pins should be left open during normal
+operation.
+7 TEST
+8 TEST
+9 TEST
+10 TEST
+11 VDD5V
+Supply pad
+Positive Supply Voltage, 3.0 to 5.5 V
+12 VDD3V
+3.3V Regulator output; internally regulated from VDD.
+Connect to VDD for 3V supply voltage. 10μF capacitor
+to GND required in 5V operation mode
+13 GND Negative Supply Voltage (GND)
+14 PWM Digital output – push-pull Pulse Width Modulation output
+Page 6 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Absolute Maximum Ratings
+Stresses beyond those listed under Absolute Maximum Ratings
+may cause permanent damage to the device. These are stress
+ratings only. Functional operation of the device at these or any
+other conditions beyond those indicated under Operating
+Conditions is not implied. Exposure to absolute maximum
+rating conditions for extended periods may affect device
+reliability.
+Figure 7:
+Absolute Maximum Ratings
+Symbol Parameter Min Max Unit Note
+Electrical Parameters
+VDD5V DC supply voltage at VDD pin -0.3 7 V
+VDD3V DC voltage at VDD3V pin -0.3 5 V
+GND DC voltage at GND pin -0.3 0.3 V
+VIN Input pin voltage VDD+0.3 V
+I
+SCR Input current (latchup immunity) -100 100 mA Jedec 78
+Electrostatic Discharge
+ESD Electrostatic discharge ± 2 kV MIL 883 E method 3015
+Power Dissipation
+PT
+Total power dissipation
+(all supplies and outputs) 150 mW
+Temperature Ranges and Storage Conditions
+TSTRG Storage temperature -55 150 °C
+TBODY Package body temperature 260 °C
+The reflow peak soldering
+temperature (body
+temperature) specified is in
+accordance with IPC/JEDEC
+J-STD-020 “Moisture Solid
+State Surface Mount Devices”.
+The lead finish from Pb-free
+leaded packages is matte tin
+(100%Sn)
+RHNC Relative humidity
+non-condensing 5 85 %
+MSL Moisture sensitivity level 3 Represents a maximum floor
+life time of 168h
+Absolute Maximum Ratings
+ams Datasheet Page 7
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Electrical Characteristics
+All in this specification defined tolerances for external
+components need to be assured over the whole operation
+conditions range and also over lifetime.
+Operating Conditions
+Figure 8:
+Operating Conditions
+DC/AC Characteristics for Digital Inputs and
+Outputs
+Figure 9:
+DC/AC Characteristics
+Symbol Parameter Min Max Unit Note
+VDD5V Positive supply voltage 4.5 5.5 V 5V Operation via LDO
+VDD3V 3 3.6 V LDO output voltage
+VDDCORE Positive core supply voltage 3 3.6 V
+TAMB Ambient temperature -40 150 °C Only for 5V operation.
+T_amb_max for 3V is 125°C
+I
+SUP Supply current 15 mA
+Symbol Parameter Min Max Unit
+CMOS Digital Input with Schmitt Trigger: CSn, CLK, MOSI and SCL, A1, A2
+VIH High level input voltage 0.7 * VDDCORE V
+VIL Low level input voltage 0.3 * VDDCORE V
+l
+LEAK Input leakage current 1 μA
+CMOS Output: PWM, MISO, SDA
+VOH High level output voltage VDDCORE - 0.5 V
+VOL Low level output voltage GND+0.4 V
+CL Capacitive load 50 pF
+I
+OUT Output current 4 mA
+Electrical Characteristics
+Page 8 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Electrical Characteristics
+Electrical System Specifications
+VDD5V = 5V, TAMB = -40 to 150°C unless noted otherwise.
+Figure 10:
+System Specification
+Symbol Parameter Conditions Min Typ Max Unit
+Bz Magnetic input field 30 50 70 mT
+fsample Output sampling rate 10.2 11.25 12.4 kHz
+RES Output resolution 14 Bit
+Noise Sensor output noise 2.73LSB@14bit, rms value 0.06 deg
+tprop System propagation delay 90.7 100 110.2 μs
+fPWM PWM frequency 0.907 1 1.102 kHz
+INLOPT
+@25ºC
+Non-linearity, optimum
+placement of the magnet ± 0.8 deg
+INL
+OPT+TEMP
+Non-linearity optimum
+placement of the magnet
+over the full temperature
+range
+±1 deg
+INL
+DIS+TEMP
+Non-linearity @
+displacement of magnet
+and temperature -40ºC to
+150ºC
+Assuming N35H magnet
+(D=8mm, H=3mm) 500μm
+displacement in x and y
+z-distance @ 2000μm
+±1.2 deg
+tstartup Startup time 10 ms
+ams Datasheet Page 9
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Functional Description
+The AS5048 is a magnetic Hall sensor system manufactured in
+a CMOS process. A lateral Hall sensor array is used to measure
+the magnetic field components perpendicular to the surface of
+the chip. The AS5048 is uses self-calibration methods to
+eliminate signal offset and sensitivity drifts.
+The integrated Hall sensors are placed around the center of the
+device and deliver a voltage representation of the magnetic flux Bz.
+Through Sigma-Delta Analog-to-Digital Converter (ADC) and
+Digital Signal-Processing (DSP) algorithms, the AS5048
+provides accurate high-resolution absolute angular position
+information. This is executed by a Coordinate Rotation Digital
+Computer (CORDIC) which calculates the angle and the
+magnitude of the Hall array signals.
+The DSP is also used to provide digital information at the
+outputs that indicate movements of the magnet towards or
+away from the device’s surface, in the z-axis.
+A small diametrically magnetized (two-pole) standard magnet
+provides the angular position information. Depending on the
+system requirements different magnet diameters are possible.
+Additional flexibility is given by the wide range of the magnetic
+input range. The AS5048 can be combined with NeFeB, SmCo
+and alternative magnet materials e.g. hard ferrites. The AS5048
+provides a 14-bit binary code representing the angular position
+of the magnet. The type of output is pre-programmed as SPI
+version A or I²C version B. Simultaneously a PWM output signal
+is available in 12 bit format.
+A simple programming of the zero position is possible over the
+interface. No additional programmer is needed. The AS5048
+uses one time programmable (OTP) fuses for permanent
+programming of the user settings. The verification is possible
+over a simple digital readout of the OTP content.
+Functional Description
+Page 10 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Operation
+Supply Voltage Configuration
+The AS5048 operates at 5V ±10%, using an internal
+Low-Dropout (LDO) voltage regulator. In addition a 3.3V
+operation is possible. The VDD3V output is intended for
+internal use only. It must not be loaded with an external load.
+Figure 11:
+Connections for 5V and 3.3V Supply Voltages
+Note(s):
+1. The pin VDD3V must always be buffered by a 10 μF capacitor in 5V operation. It must not be left floating, as this may cause unstable
+internal supply voltages which may lead to larger output jitter of the measured angle.
+In 3V operation the VDD3V must be shorted to VDD5V. The ambient temperature TAMB is limited to 125°C in this mode.
+SPI Interface
+The 16 bit SPI Interface enables read / write access to the
+register blocks and is compatible to a standard micro controller
+interface. The SPI is active as soon as CSn is pulled low. The
+AS5048A then reads the digital value on the MOSI (master out
+slave in) input with every falling edge of CLK and writes on its
+MISO (master in slave out) output with the rising edge. After 16
+clock cycles CSn has to be set back to a high status in order to
+reset some parts of the interface core.
+SPI Interface Signals (4-Wire Mode, Wire_mode = 1)
+The AS5048A only supports slave operation mode. Therefore
+CLK for the communication as well as the CSn signal has to be
+provided by the test equipment. The following picture shows a
+basic interconnection diagram with one master and an
+AS5048A device and a principle schematic of the interface core.
+Operation
+10µF
+100nF
+4.5 - 5.5V
+VDD3V
+GND
+VDD5V
+5V Operation
+Internal
+VDD3.3V
+LDO
+10µF
+3.0 - 3.6V
+VDD3V
+GND
+VDD5V
+3.3V Operation
+Internal
+VDD3.3V
+LDO
+100nF
+ams Datasheet Page 11
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Operation
+Figure 12:
+SPI Connection AS5048A with μC
+Because the interface has to decode the sent command before
+it can react and provide data the response of the chip to a
+specific command applied at a time T can be accessed in the
+next transmission cycle ending at T + TCOM. The data are sent
+and read with MSB first. Every time the chip is accessed it is
+sending and receiving data.
+Figure 13:
+SPI Command/Response Data Flow
+SPI_CLK
+SPI_SSN
+MOSI
+MISO
+CLK
+CSn
+RXSR Interface Core
+MISO
+MOSI
+Master Device
+(Tester)
+AS5048A
+TXSR
+RXSPI
+TXSPI
+Command 1 Command 2 Command 3 Command N MOSI
+MSB LSB MSB LSB MSB LSB MSB LSB
+NOP Response 1 Response 2 Response N-1 MISO
+MSB LSB MSB LSB MSB LSB MSB LSB
+TCOM
+Transmission 1 Transmission 2 Transmission 3 Transmission N
+Page 12 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Operation
+SPI Timing
+Figure 14:
+SPI Timing Diagram
+Figure 15:
+SPI Timing Characteristics
+Parameter Description Min Max Unit
+tL Time between CSn falling edge and CLK rising edge 350 ns
+TCLK Serial clock period 100 ns
+tCLKL Low period of serial clock 50 ns
+tCLKH High period of serial clock 50 ns
+tH Time between last falling edge of CLK and rising edge of CSn 50 ns
+TCSnH High time of CSn between two transmissions 350 ns
+tMOSI Data input valid to clock edge 20 ns
+tMISO CLK edge to data output valid 20 ns
+CSn
+(Input)
+CLK
+(Input)
+MOSI
+(Input)
+MISO
+(Output)
+tL tclk
+tMOSI
+tMISO tOZ
+tOZ
+tH
+tCSn
+tclkL tclkH
+data[15]
+data[15] data[14]
+data[14]
+data[0]
+data[0]
+ams Datasheet Page 13
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Operation
+SPI Connection to the Host μC
+Single Slave Mode
+Figure 16:
+Single Slave Mode
+Single Slave Mode: This figure shows the SPI connection to the host μC using Single Slave Mode.
+3 Wire Mode (read only)
+Figure 17:
+Multiple Slave, n+3 Wire (Separate ChipSelect)
+Multiple Slave, n+3 Wire (Separate ChipSelect): This figure shows the SPI connection to the host μC using 3
+Wire mode.
+µC AS5048A
+MOSI
+MISO
+SCK
+SS/
+MOSI
+MISO
+SCK
+SS/
+µC AS5048A
+MOSI
+MISO
+SCK
+SS/
+MOSI
+MISO
+SCK
+SS/
+1
+4 wire mode
+MISO Angle 1 Angle 2 Angle 3
+MOSI 0xFFFF
+Read angle 1
+0xFFFF
+Read angle 2
+0xFFFF
+Read angle 3
+0xFFFF
+Read angle 4
+SS/
+MISO
+SS/
+3 wire mode (Read only)
+Angle 1 Angle 2 Angle 3
+µC
+MOSI
+MISO
+SCK
+SS1/
+SS2/
+SS3/
+MISO Angle 1
+MOSI SW Reset 0xFFFF
+Read angle 1
+0xFFFF
+Read angle 2
+SS1/
+AS5048A
+1
+MOSI
+MISO
+SCK
+SS/
+AS5048A
+2
+MOSI
+MISO
+SCK
+SS/
+AS5048A
+3
+MOSI
+MISO
+SCK
+SS/
+SS2/
+SS3/
+0xFFFF
+Read angle 3
+Angle 2 Angle 3
+Page 14 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Operation
+Daisy Chain, 4 Wire
+Figure 18:
+Daisy Chain, 4 Wire
+Daisy Chain, 4 Wire: This figure shows the SPI connection to the host μC using Daisy Chain, 4 wire mode.
+SPI Communication Command Package
+Every command sent to the AS5048A is represented with the
+following layout.
+Figure 19:
+SPI Command Package
+Command Package
+Bit MSB 14 13 12 11 10 9 8 7 6 5 4 3 2 1 LSB
+PAR RWn Address<13:0>
+Bit Definition & Description
+PAR Parity bit (EVEN)
+RWn Indicates read(1) or write(0) command
+Address 14 bit address code
+µC
+MOSI
+MISO
+SCK
+SS/
+AS5048A
+1
+MOSI
+MISO
+SCK
+SS/
+AS5048A
+2
+MOSI
+MISO
+SCK
+SS/
+AS5048A
+3
+MOSI
+MISO
+SCK
+SS/
+MISO
+MOSI SW Reset SW Reset SW Reset
+SS/
+MISO
+MOSI 0xFFFF
+Read Angle 3
+0xFFFF
+Read angle 2
+0xFFFF
+Read Angle 1
+SS/
+Angle 3 Angle 2 Angle 1
+0xFFFF
+Read angle 3
+0xFFFF
+Read angle 2
+0xFFFF
+Read angle 1
+ams Datasheet Page 15
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Operation
+Read Package (Value Read from AS5048A)
+The read frame always contains two alarm bits, the parity and
+error flags and the addressed data of the previous read
+command.
+Figure 20:
+SPI Read Package
+Write Data Package (Value Written to AS5048A)
+The write frame is compatible to the read frame and contains
+two additional bits, parity flag and R flag.
+If the previous command was a write command a second
+package has to be transmitted.
+Figure 21:
+SPI Write Data Package
+Read Package
+Bit MSB 14 13 12 11 10 9 8 7 6 5 4 3 2 1 LSB
+PAR EF Data<13:0>
+Bit Definition & Description
+PAR Parity bit (EVEN)
+EF Error flag indicating a transmission error in a previous host transmission
+Data 14 bit addressed data
+Data Package
+Bit MSB 14 13 12 11 10 9 8 7 6 5 4 3 2 1 LSB
+PAR R Data <13:0>
+Bit Definition & Description
+PAR Parity bit (EVEN)
+R Has to be 0
+Data 14 bit data to write to former selected address
+Page 16 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Register Description
+Figure 22:
+SPI Register Map
+Address
+hex Name Access
+Type Bit Symbol Default Description
+Control and Error Registers
+x0000 NOP R
+13
+NOP 0 No operation dummy
+information :
+0
+x0001 Clear Error
+Flag R
+13
+Not used n.a.
+Error register. All errors
+are cleared by access
+:
+3
+2 Parity Error
+1 Command Invalid 0
+0 Framing Error
+x0003 Programming
+Control R/W
+13
+Not used
+0
+Programming control
+register.
+Programming must be
+enabled before burning
+the fuse(s). After
+programming is a
+verification mandatory.
+See programming
+procedure.
+:
+7
+6 Verify
+5
+Not used
+4
+3 Burn
+2
+Reserved
+1
+0 Programming
+Enable
+Register Description
+ams Datasheet Page 17
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Register Description
+Programmable Customer Settings
+x0016
+OTP Register
+Zero Position
+Hi
+R/W
++
+Program
+13
+Not used 0
+Zero Position value high
+byte
+:
+8
+7 Zero Position <13> 0
+:: :
+0 Zero Position <6> 0
+x0017
+OTP Register
+Zero Position
+Low 6 LSBs
+R/W
++
+Program
+13
+Not used 0
+Zero Position remaining
+6 lower LSB's
+:
+6
+5 Zero Position <5> 0
+:: :
+0 Zero Position <0> 0
+Readout Registers
+x3FFD
+Diagnostics +
+Automatic
+Gain Control
+(AGC)
+R
+13
+Not used n.a.
+Diagnostics flags
+12
+11 Comp High 0
+10 Comp Low 0
+9 COF 0
+8 OCF 1
+7 AGC value<7> 1 Automatic Gain Control
+value.
+0 decimal represents
+high magnetic field, 255
+decimal represents low
+magnetic field
+:: :
+0 AGC value<0> 0
+x3FFE Magnitude R
+13 Magnitude<13> 0
+Magnitude output value
+of the CORDIC :: :
+0 Magnitude<0> 0
+x3FFF Angle R
+13 Angle <13> 0
+Angle output value
+including zero position
+correction
+:: :
+0 Angle<0> 0
+Address
+hex Name Access
+Type Bit Symbol Default Description
+Page 18 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − SPI Interface Commands
+READ Command
+For a single READ command two transmission sequences are
+necessary. The first package written to the AS5048 contains the
+READ command (MSB-1 high) and the address the chip has to
+access, the second package transmitted to the AS5048 device
+can be any command the chip has to process next. The content
+of the desired register is available in the MISO register of the
+master device at the end of the second transmission cycle.
+Figure 23:
+READ Command
+WRITE Command
+A single WRITE command takes two transmission cycles. With a
+NOP command after the WRITE command you can verify the
+sent data with three transmission cycles because the data will
+be send back during the following command.
+Figure 24:
+WRITE Command
+SPI Interface Commands
+READ Next command MOSI
+MSB LSB MSB LSB
+Response -1 Response on
+READ command
+MISO
+MSB LSB MSB LSB
+TCOM
+Transmission N Transmission N+1
+WRITE
+command DATA MOSI
+MSB LSB MSB LSB
+Response-1 Old register
+content
+MISO
+MSB LSB MSB LSB
+TCOM
+Transmission N Transmission N+1
+NOP
+MSB LSB
+New register
+content
+MSB LSB
+Transmission N+2
+ams Datasheet Page 19
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − SPI Interface Commands
+CLEAR ERROR FLAG Command
+The CLEAR ERROR FLAG command is implemented as READ
+command. This command clears the ERROR FLAG which is
+contained in every READ frame. Before the ERROR FLAG is
+cleared the error register content comes back with the
+information which error type was occurred. On the next new
+READ register the ERROR FLAG is cleared.
+Figure 25:
+CLEAR ERROR FLAG Command
+The package necessary to perform a CLEAR ERROR FLAG is built
+up as follows.
+Figure 26:
+Clear Error Flag Command
+Possible conditions which force the ERROR FLAG to be set:
+• Wrong parity
+• Wrong number of clocks (no full transmission cycle or too
+many clocks)
+• Invalid command
+• Frame error
+Note(s): If the error flag is set to high because of a
+communication problem the flag remains set until it will be
+cleared by the CLERAR ERROR FLAG command.
+CLEAR ERROR FLAG Command
+Bit MSB 14 13 12 11 10 9 8 7 6 5 4 3 2 1 LSB
+PAR 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1
+CLEAR ERROR
+FLAG Next command MOSI
+MSB LSB MSB LSB
+Response-1
+EF
+Error register
+Content + EF
+MISO
+MSB LSB MSB LSB
+TCOM
+Transmission N Transmission N+1
+Next command
+New register
+ EF cleared
+MSB LSB
+Transmission N+2
+Page 20 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − SPI Interface Commands
+NOP Command
+The NOP command represents a dummy write to the AS5048.
+Figure 27:
+NOP Command
+The NOP command frame looks like follows.
+Figure 28:
+NOP Command
+The chip’s response on this command is 0x0000
+NOP Command
+Bit MSB 14 13 12 11 10 9 8 7 6 5 4 3 2 1 LSB
+0 00000000000000 0
+NOP NOP MOSI
+MSB LSB MSB LSB
+Response-1 0x0000 MISO
+MSB LSB MSB LSB
+TCOM
+Transmission N Transmission N+1
+Next command
+MSB LSB
+0x0000
+MSB LSB
+Transmission N+2
+ams Datasheet Page 21
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − I²C Interface
+The AS5048B supports 2-wire high-speed I²C protocol in device
+mode. The host MCU (master) has to initiate the data transfers.
+The 7-bit device address of the slave depends on the state of
+the OTP I²C register 21 (0x15) bit 0… 4 + 2 I²C address selection
+pin 3 and 4.
+Supported modes:
+• Random/Sequential Read
+• Byte/Page Write
+• Standard : 0 to 100kHz clock frequency (slave mode) 
+• Fast Mode : 0 to 400kHz clock frequency (slave mode)
+• High Speed: 0 to 3.4MHz clock frequency (slave mode)
+The SDA signal is bidirectional and is used to read and write the
+serial data. The SCL signal is the clock generated by the host
+MCU, to synchronize the SDA data in read and write mode. The
+maximum I²C clock frequency is 3.4MHz, data are triggered on
+the rising edge of SCL.
+I²C Electrical Specification
+Figure 29:
+I²C Electrical Specification
+Symbol Parameter Condition
+FS-mode+ HS-mode
+CB=100pF
+HS-mode
+CB=400pF Unit
+Min Max Min Max Min Max
+VIL
+LOW-Level Input
+Voltage -0.5 0.3VDDC
+ORE
+-0.5 0.3VDDC
+ORE
+-0.5 0.3VDDC
+ORE
+V
+VIH
+HIGH-Level Input
+Voltage
+0.7VDD
+CORE
+VDDCORE
++ 0.5
+0.7VDD
+CORE
+VDDCORE
++ 0.5
+0.7VDD
+CORE
+VDDCORE
++ 0.5
+V
+Vhys Hysteresis of Schmitt
+Trigger Inputs
+VDDCORE< 2V 0.1VDD
+CORE -- 0.1VDD
+CORE -- 0.1VDD
+CORE
+-- V
+VOL
+LOW-Level Output
+Voltage (open-drain
+or open-collector) at
+3mA Sink Current
+VDDCORE< 2V -- 0.2VDDC
+ORE -- 0.2VDDC
+ORE -- 0.2VDDC
+ORE
+V
+I
+OL
+LOW-Level Output
+Current
+VOL = 0.4V 20 -- -- -- -- mA
+I
+CS
+Pull-up current of
+SCLH current source -- -- 3 12 3 12 mA
+tSP
+Pulse Width of Spikes
+that must be
+suppressed by the
+Input Filter
+-- 50 (1) -- 10 -- 10 ns
+I²C Interface
+Page 22 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − I²C Interface
+Note(s):
+1. Input filters on the SDA and SCL inputs suppress noise spikes of less than 50 ns.
+2. I/O pins of Fast-mode and Fast-mode Plus devices must not obstruct the SDA and SCL lines if VDD is switched OFF.
+I²C Timing
+Figure 30:
+I²C Timing
+I
+i
+Input Current at each
+I/O Pin
+Input
+Voltage
+between
+-10 +10 (2) -- 10 -- 10 μA
+CB
+Total Capacitive Load
+for each Bus Line -- 550 -- 100 -- 400 pF
+CI/O
+I/O Capacitance
+(SDA,SCL) -- 10 -- 10 -- 10 pF
+Symbol Parameter Condition
+FS-mode HS-mode
+CB=100pF
+HS-mode
+CB=400pF (5) Unit
+Min Max Min Max Min Max
+fSCLK
+SCL clock
+Frequency -- 400 -- 3400 -- 1700 kHz
+tBUF
+Bus Free Time; time
+between STOP and
+START Condition
+500 -- 500 -- 500 -- ns
+tHD;STA
+Hold Time;
+(Repeated) START
+Condition (1)
+260 -- 160 -- 160 -- ns
+tLOW
+LOW Period of SCL
+Clock 500 -- 160 -- 320 -- ns
+tHIGH
+HIGH Period of SCL
+Clock 260 -- 60 -- 120 -- ns
+tSU;STA
+Setup Time for a
+Repeated START
+condition
+260 -- 160 -- 160 -- ns
+tHD;DAT Data Hold Time (2) 0 450 0 70 0 150 ns
+tSU;DAT Data Setup Time (3) 50 -- 10 -- 10 -- ns
+tR
+Rise Time of SDA
+and SCL Signals 20+0.1Cb 120 -- -- -- -- ns
+Symbol Parameter Condition
+FS-mode+ HS-mode
+CB=100pF
+HS-mode
+CB=400pF Unit
+Min Max Min Max Min Max
+ams Datasheet Page 23
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − I²C Interface
+Note(s):
+1. After this time the first clock is generated.
+2. A device must internally provide a minimum hold time (120ns / max 250ns for Fast-mode Plus, 80ns / max 150ns for High-speed
+mode) for the SDA signal (referred to the VIHmin of the SCL) to bridge the undefined region of the falling edge of SCL.
+3. A fast-mode device can be used in standard-mode system, but the requirement tSU;DAT = 250ns must then e met. This is automatically
+the case if the device does not stretch the LOW period of the SCL signal. If such a device does stretch the LOW period of the SCL
+signal, it must output the next data bit to the SDA line tRmax + TSU;DAT = 1000 + 250 = 1250ns before the SCL line is released.
+4. In Fast-mode Plus, fall time is specified the same for both output stage and bus timing. If series resistors are used this has to be
+considered for bus timing.
+5. For capacitive bus loads between 100pF and 400pF, the timing parameters must be linearly interpolated
+tF
+Fall time of SDA and
+SCL signals 20+0.1Cb 120 (4) -- -- -- -- ns
+trCL
+Rise time of SCLH
+signal
+Ext. pull-up
+source of
+3mA
+-- -- 10 40 20 80 ns
+trCL1
+Rise time of SCLH
+signal after
+repeated START
+condition and after
+an acknowledge bit
+Ext. pull-up
+source of
+3mA
+-- -- 10 80 20 160 ns
+tfCL Output rise time of
+SCLH signal
+Ext. pull-up
+source of
+3mA
+-- -- 10 40 20 80 ns
+trDA
+Output rise time of
+SDAH signal -- -- 10 80 20 160 ns
+tfDA Output rise time of
+SDAH signal -- -- 10 80 20 160 ns
+tSU;STO
+Setup Time for
+STOP Condition 260 -- 160 -- 160 -- ns
+VnL
+Noise margin at
+LOW level 0.1VDDp -- 0.1VDDp -- 0.1VDDp -- V
+VnH
+Noise margin at
+HIGH level 0.2VDDp -- 0.2VDDp -- 0.2VDDp -- V
+Symbol Parameter Condition
+FS-mode HS-mode
+CB=100pF
+HS-mode
+CB=400pF (5) Unit
+Min Max Min Max Min Max
+Page 24 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − I²C Interface
+Register Table
+The following registers / functions are accessible over the serial
+I²C interface.
+Figure 31:
+Register Map I²C
+Address
+hex Name Access
+Type Bit Symbol Default Description
+Control OTP
+x03 Programming
+Control R/W
+7 Not used
+0
+Programming control
+register. Programming
+must be enabled before
+burning the fuse(s). After
+programming is an
+verification mandatory.
+See programming
+procedure.
+6 Verify
+5
+Not used
+4
+3 Burn
+2
+Reserved
+1
+0 Programming
+Enable
+Programmable Customer Settings
+x15 I²C slave
+address R/W
+7
+Not used n.a.
+I²C slave address slave
+address consist of 5 bits
+(MSBs) and the hardware
+setting of Pins A1 and A2
+I²C address <4> is the
+inversion defined as '1'
+:
+5
+4 I²C address<4> internally
+inverted
+:: :
+0 I²C address<0> 0
+x16
+OTP Register
+Zero Position
+Hi
+R/W
++
+Program
+7 Zero Position <13> 0
+Zero Position value high
+byte :: :
+0 Zero Position <6> 0
+x17
+OTP Register
+Zero Position
+Low 6 LSBs
+R/W
++
+Program
+7
+Not used n.a.
+Zero Position remaining
+6 lower LSB's
+6
+5 Zero Position <5> 0
+:: :
+0 Zero Position <0> 0
+ams Datasheet Page 25
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − I²C Interface
+Readout Registers
+xFA
+Automatic
+Gain
+Control
+R
+7 AGC value<7> 1 Automatic Gain Control
+value.
+0 decimal represents
+high magnetic field 255
+decimal represents low
+magnetic field
+:: :
+0 AGC value<0> 0
+xFB Diagnostics R
+7
+Not used n.a.
+Diagnostic flags
+:
+4
+3 Comp High 0
+2 Comp Low 0
+1 COF 0
+0 OCF 1
+xFC
+Magnitude
+R
+7 Magnitude<13> 0
+Magnitude output value
+of the CORDIC
+:: :
+0 Magnitude<6> 0
+xFD R
+7
+Not used n.a.
+6
+5 Magnitude<5> 0
+:: :
+0 Magnitude<0> 0
+xFE
+Angle
+R
+7 Angle<13> 0
+Angle output value
+including zero position
+correction
+:: :
+0 Angle<6> 0
+xFF R
+7
+Not used n.a.
+6
+5 Angle<5> 0
+:: :
+0 Angle<0> 0
+Address
+hex Name Access
+Type Bit Symbol Default Description
+Page 26 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − I²C Interface
+I²C Slave address
+Figure 32:
+Slave Address Construction
+Note(s):
+1. It's important to use a STOP condition only after a complete read or write sequence.
+The slave address consists of the hardware setting on pins A1,
+A2. The MSB of the slave address (yellow) is internally inverted.
+This means that by default the resulting data is ‘1’. A read of the
+I²C slave address register 21 will return a ‘0’ at the MSB.
+1 0 0 0 0 A
+2
+A
+1
+OTP cotent
+(Default)
+Slave Address
+R/W
+X X X X X X X X
+ACK
+Register Address
+Start
+ACK
+ACK
+Stop
+LSB
+random read
+Start
+1 0 0 0 0 A
+2
+A
+1
+Slave Address
+R/W
+LSB
+X X X X X X X X
+Data Byte (n)
+ACK
+R/W
+X X X X X X X X
+ACK
+Register Address
+ACK
+Stop
+X X X X X X X X
+Data Byte (n)
+ACK
+HW
+Pins
+HW
+Pins
+1 0 0 0 0 A
+2
+A
+1
+OTP cotent
+(Default)
+Slave Address
+Start
+LSB
+random write
+HW
+Pins
+ams Datasheet Page 27
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − PWM Interface
+The AS5048 provides a pulse width modulated output (PWM),
+whose duty cycle is proportional to the measured angle. The
+PWM frequency is internally trimmed to an accuracy of ±10%
+over full temperature range. This tolerance can be cancelled by
+measuring the complete duty cycle.
+The PWM signal consists of different sections:
+• Init:
+12 clocks → PWM = ‘high’
+• Error_n:
+4 clocks → PWM = ‘not(system_error)’
+• Data:
+4095 clocks → PWM = ‘angle_zero’ / ‘low’
+(in case of error)
+• Exit:
+8 clocks → PWM = ‘low’
+In case of an error the data section is set to zero.
+Figure 33:
+PWM Format
+Figure 34:
+PWM Period and Resolution
+Parameter Symbol Value Unit
+PWM Frequency F_PWM 1 KHz
+PWM Pulse period T_PWM 4119 bit
+PWM Interface
+Init
+Zero degree Data
+16 clocks 4095 clocks
+Exit
+8 clocks
+Error_n
+Page 28 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Application Information
+Programming of the AS5048
+Programming of the Zero Position: The absolute angle
+position can be permanent programmed over the interface.
+This could be useful for random placement of the magnet on
+the rotation axis. A readout at the mechanical zero position can
+be performed and written back into the IC. With permanent
+programming the position is non-reversible stored in the IC.
+This programming can be performed only once.
+To simplify the calculation of the zero position it is only needed
+to write the value in the IC which was read out before from the
+angle register.
+Programming Sequence with Verification: To program the
+zero position is needed to perform following sequence:
+1. Write 0 into OTP zero position register to clear
+2. Read angle information
+3. Write previous read angle position into OTP zero
+position register
+Now the zero position is set.
+If you want to burn it to the OTP register send:
+4. Set the Programming Enable bit in the OTP control
+register
+5. Set the Burn bit to start the automatic programming
+procedure
+6. Read angle information (equals to 0)
+7. Set the Verify bit to load the OTP data again into the
+internal registers
+8. Read angle information (equals to 0)
+The programming can either be performed in 5V operation
+using the internal LDO, or in 3V operation but using a minimum
+supply voltage of 3.3V. In case of 3V operation, also a 10μF
+capacitor is required on the VDD3 pin.
+Programming the I²C Slave address: For informations of
+programming the I²C Slave address please refer to our
+application note covering this topic.
+Application Information
+ams Datasheet Page 29
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Application Information
+Diagnostic Functions of the AS5048
+The AS5048 provides diagnostics functions of the IC and also
+diagnostic functions of the magnetic input field
+Following diagnostic flags are available:
+See Figure 22 register address x3FFD (AS5048A) or Figure 31
+register address 251 dec (AS5048B)
+• OCF (Offset Compensation Finished), logic high indicates
+the finished Offset Compensation Algorithm. After power
+up the flag remains always to logic high.
+• COF (CORDIC Overflow), logic high indicates an out of
+range error in the CORDIC part. When this bit is set, the
+angle and magnitude data is invalid. The absolute output
+maintains the last valid angular value.
+• COMP low, indicates a high magnetic field. It is
+recommended to monitor in addition the magnitude
+value.
+• COMP high, indicated a weak magnetic field. It is
+recommended to monitor the magnitude value.
+Page 30 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Application Information
+Choosing the Proper Magnet
+The AS5048 works with a variety of different magnets in size
+and shape. A typical magnet could be 6-8 mm in diameter and
+≥2.5mm in height The magnetic field strength perpendicular to
+the die surface has to be in the range of ±30mT … ±70mT (peak).
+The magnet’s field strength should be verified using a
+gauss-meter. The magnetic flux BZ at a given distance, along a
+concentric circle with a radius of 1.1mm (R1), should be in the
+range of ±30mT… ±70mT.
+Figure 35:
+Typical Magnet and Magnetic Flux Distribution
+N S
+Magnet axis
+Vertical field
+component
+ (30…70mT)
+0 360
+Bv
+Vertical field
+component
+R1 concentric circle;
+radius 1.1mm
+R1
+Magnet axis
+typ. 6-8mm diameter
+N S
+ams Datasheet Page 31
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Application Information
+Physical Placement of the Magnet
+The best linearity can be achieved by placing the center of the
+magnet exactly over the defined center of the chip as shown in
+the drawing below:
+Figure 36:
+Defined Chip Center and Magnet Displacement Radius
+Magnet Placement
+The magnet’s center axis should be aligned within a
+displacement radius Rd of 0.25 mm (larger magnets allow more
+displacement e.g. 0.5 mm) from the defined center of the IC.
+The magnet may be placed below or above the device. The
+distance should be chosen such that the magnetic field on the
+die surface is within the specified limits The typical distance “z”
+between the magnet and the package surface is 0.5mm to
+2.5mm, provided the use of the recommended magnet material
+and dimensions (6mm x 3mm). Larger distances are possible, as
+long as the required magnetic field strength stays within the
+defined limits.
+However, a magnetic field outside the specified range may still
+produce usable results, but the out-of-range condition will be
+indicated by indication flags.
+Figure 37:
+Vertical Placement of the Magnet
+1
+Defined
+center
+2.5 mm
+2.5 mm
+3.2 mm 3.2 mm
+Area of recommended maximum
+magnet misalignment
+Rd
+Package surface Die surface
+S N
+Page 32 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Application Information
+Mechanical Data
+The internal Hall elements are placed in the center of the
+package on a circle with a radius of 1.1 mm.
+Figure 38:
+Hall Element Positions
+Note(s):
+1. All dimensions in mm.
+2. Die thickness 203μm nom.
+3. Adhesive thickness 30 ± 15μm.
+4. Leadframe downset 152 ± 25 μm.
+5. Leadframe thickness 125 ± 8 μm.
+ams Datasheet Page 33
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Package Drawings & Markings
+Package type: TSSOP14
+Figure 39:
+Package Markings for AS5048A & AS5048B
+Figure 40:
+Package Code YYWWMZZ
+YY WW M ZZ
+Last two digits of the
+manufacturing year Manufacturing week Plant identifier Letters for free traceability
+Package Drawings & Markings
+Page 34 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Package Drawings & Markings
+Figure 41:
+14-Lead Thin Shrink Small Outline Package TSSOP-14
+Note(s):
+1. Dimensioning & toleranceing confirm to ASME Y14.5M-1994.
+2. All dimensions are in millimeters. Angles are in degrees.
+Symbol Min Nom Max
+A - - 1.20
+A1 0.05 - 0.15
+A2 0.80 1.00 1.05
+b 0.19 - 0.30
+c 0.09 - 0.20
+D 4.90 5.00 5.10
+E - 6.40 BSC -
+E1 4.30 4.40 4.50
+e - 0.65 BSC -
+L 0.45 0.60 0.75
+L1 - 1.00 REF -
+Symbol Min Nom Max
+R 0.09 - -
+R1 0.09 - -
+S 0.20 - -
+θ1 0º - 8º
+θ2 - 12 REF -
+θ3 - 12 REF -
+aaa - 0.10 -
+bbb - 0.10 -
+ccc - 0.05 -
+ddd - 0.20 -
+N 14
+Green
+RoHS
+ams Datasheet Page 35
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Ordering & Contact Information
+The devices are available as standard products.
+Figure 42:
+Ordering Information
+Buy our products or get free samples online at:
+www.ams.com/ICdirect
+Technical Support is available at:
+www.ams.com/Technical-Support
+Provide feedback about this document at:
+www.ams.com/Document-Feedback
+For further information and requests, e-mail us at:
+ams_sales@ams.com
+For sales offices, distributors and representatives, please visit:
+www.ams.com/contact
+Headquarters
+ams AG
+Tobelbader Strasse 30
+8141 Premstaetten
+Austria, Europe
+Tel: +43 (0) 3136 500 0
+Website: www.ams.com
+Ordering Code Package Description Delivery Form
+AS5048A-HTSP TSSOP 14 14 –Bit Programmable Magnetic Rotary Encoder
+with SPI-Interface Tape & Reel
+AS5048B-HTSP TSSOP 14 14 –Bit Programmable Magnetic Rotary Encoder
+with I²C-Interface Tape & Reel
+Ordering & Contact Information
+Page 36 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − RoHS Compliant & ams Green Statement
+RoHS: The term RoHS compliant means that ams AG products
+fully comply with current RoHS directives. Our semiconductor
+products do not contain any chemicals for all 6 substance
+categories, including the requirement that lead not exceed
+0.1% by weight in homogeneous materials. Where designed to
+be soldered at high temperatures, RoHS compliant products are
+suitable for use in specified lead-free processes.
+ams Green (RoHS compliant and no Sb/Br): ams Green
+defines that in addition to RoHS compliance, our products are
+free of Bromine (Br) and Antimony (Sb) based flame retardants
+(Br or Sb do not exceed 0.1% by weight in homogeneous
+material).
+Important Information: The information provided in this
+statement represents ams AG knowledge and belief as of the
+date that it is provided. ams AG bases its knowledge and belief
+on information provided by third parties, and makes no
+representation or warranty as to the accuracy of such
+information. Efforts are underway to better integrate
+information from third parties. ams AG has taken and continues
+to take reasonable steps to provide representative and accurate
+information but may not have conducted destructive testing or
+chemical analysis on incoming materials and chemicals. ams AG
+and ams AG suppliers consider certain information to be
+proprietary, and thus CAS numbers and other limited
+information may not be available for release.
+RoHS Compliant & ams Green
+Statement
+ams Datasheet Page 37
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Copyrights & Disclaimer
+Copyright ams AG, Tobelbader Strasse 30, 8141 Premstaetten,
+Austria-Europe. Trademarks Registered. All rights reserved. The
+material herein may not be reproduced, adapted, merged,
+translated, stored, or used without the prior written consent of
+the copyright owner.
+Devices sold by ams AG are covered by the warranty and patent
+indemnification provisions appearing in its General Terms of
+Trade. ams AG makes no warranty, express, statutory, implied,
+or by description regarding the information set forth herein.
+ams AG reserves the right to change specifications and prices
+at any time and without notice. Therefore, prior to designing
+this product into a system, it is necessary to check with ams AG
+for current information. This product is intended for use in
+commercial applications. Applications requiring extended
+temperature range, unusual environmental requirements, or
+high reliability applications, such as military, medical
+life-support or life-sustaining equipment are specifically not
+recommended without additional processing by ams AG for
+each application. This product is provided by ams AG “AS IS”
+and any express or implied warranties, including, but not
+limited to the implied warranties of merchantability and fitness
+for a particular purpose are disclaimed.
+ams AG shall not be liable to recipient or any third party for any
+damages, including but not limited to personal injury, property
+damage, loss of profits, loss of use, interruption of business or
+indirect, special, incidental or consequential damages, of any
+kind, in connection with or arising out of the furnishing,
+performance or use of the technical data herein. No obligation
+or liability to recipient or any third party shall arise or flow out
+of ams AG rendering of technical or other services.
+Copyrights & Disclaimer
+Page 38 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Document Status
+Document Status Product Status Definition
+Product Preview Pre-Development
+Information in this datasheet is based on product ideas in
+the planning phase of development. All specifications are
+design goals without any warranty and are subject to
+change without notice
+Preliminary Datasheet Pre-Production
+Information in this datasheet is based on products in the
+design, validation or qualification phase of development.
+The performance and parameters shown in this document
+are preliminary without any warranty and are subject to
+change without notice
+Datasheet Production
+Information in this datasheet is based on products in
+ramp-up to full production or full production which
+conform to specifications in accordance with the terms of
+ams AG standard warranty as given in the General Terms of
+Trade
+Datasheet (discontinued) Discontinued
+Information in this datasheet is based on products which
+conform to specifications in accordance with the terms of
+ams AG standard warranty as given in the General Terms of
+Trade, but these products have been superseded and
+should not be used for new designs
+Document Status
+ams Datasheet Page 39
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Revision Information
+Note(s):
+1. Page and figure numbers for the previous version may differ from page and figure numbers in the current revision.
+2. Correction of typographical errors is not explicitly mentioned.
+Changes from 1-09 (2016-Nov-15) to current revision 1-11 (2018-Jan-29) Page
+1-09 (2016-Nov-15) to 1-10 (2018-Jan-25)
+Updated Figure 5 4
+1-10 (2018-Jan-25) to 1-11 (2018-Jan-29)
+Updated Figure 6 5
+Revision Information
+Page 40 ams Datasheet
+Document Feedback [v1-11] 2018-Jan-29
+AS5048A/AS5048B − Content Guide
+1 General Description
+1 Key Benefits & Features
+2 Applications
+2 Block Diagram
+4 Pin Assignments
+6 Absolute Maximum Ratings
+7 Electrical Characteristics
+7 Operating Conditions
+7 DC/AC Characteristics for Digital Inputs and Outputs
+8 Electrical System Specifications
+9 Functional Description
+10 Operation
+10 Supply Voltage Configuration
+10 SPI Interface
+10 SPI Interface Signals (4-Wire Mode, Wire_mode = 1)
+12 SPI Timing
+13 SPI Connection to the Host μC
+13 Single Slave Mode
+13 3 Wire Mode (read only)
+14 Daisy Chain, 4 Wire
+14 SPI Communication Command Package
+15 Read Package (Value Read from AS5048A)
+15 Write Data Package (Value Written to AS5048A)
+16 Register Description
+18 SPI Interface Commands
+18 READ Command
+18 WRITE Command
+19 CLEAR ERROR FLAG Command
+20 NOP Command
+21 I²C Interface
+21 I²C Electrical Specification
+22 I²C Timing
+24 Register Table
+26 I²C Slave address
+27 PWM Interface
+Content Guide
+ams Datasheet Page 41
+[v1-11] 2018-Jan-29 Document Feedback
+AS5048A/AS5048B − Content Guide
+28 Application Information
+28 Programming of the AS5048
+29 Diagnostic Functions of the AS5048
+30 Choosing the Proper Magnet
+31 Physical Placement of the Magnet
+31 Magnet Placement
+32 Mechanical Data
+33 Package Drawings & Markings
+35 Ordering & Contact Information
+36 RoHS Compliant & ams Green Statement
+37 Copyrights & Disclaimer
+38 Document Status
+39 Revision Information

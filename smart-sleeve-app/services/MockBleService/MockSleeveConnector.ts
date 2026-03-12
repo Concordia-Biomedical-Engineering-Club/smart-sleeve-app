@@ -14,8 +14,9 @@ import {
   IMUData,
   ConnectionStatus,
   SleeveScenario,
-} from '../SleeveConnector/ISleeveConnector';
-import { SleeveDataGenerator } from './SleeveDataGenerator';
+  TransportEvent,
+} from "../SleeveConnector/ISleeveConnector";
+import { SleeveDataGenerator } from "./SleeveDataGenerator";
 
 export class MockSleeveConnector implements ISleeveConnector {
   private emgSubscribers: ((frame: EMGData) => void)[] = [];
@@ -28,7 +29,7 @@ export class MockSleeveConnector implements ISleeveConnector {
 
   private readonly dataGenerator: SleeveDataGenerator;
 
-  constructor(initialScenario: SleeveScenario = 'REST') {
+  constructor(initialScenario: SleeveScenario = "REST") {
     this.dataGenerator = new SleeveDataGenerator(initialScenario);
   }
 
@@ -39,7 +40,7 @@ export class MockSleeveConnector implements ISleeveConnector {
    */
   async scan(): Promise<string[]> {
     await new Promise((resolve) => setTimeout(resolve, 500));
-    return ['MockSleeve-01', 'MockSleeve-02'];
+    return ["MockSleeve-01", "MockSleeve-02"];
   }
 
   /**
@@ -109,8 +110,19 @@ export class MockSleeveConnector implements ISleeveConnector {
    * Register a callback for connection status changes so that
    * the UI can react to connect / disconnect events.
    */
-  onConnectionStatusChange(callback: (status: ConnectionStatus) => void): void {
+  onConnectionStatusChange(
+    callback: (status: ConnectionStatus) => void,
+  ): () => void {
     this.connectionSubscribers.push(callback);
+    return () => {
+      this.connectionSubscribers = this.connectionSubscribers.filter(
+        (cb) => cb !== callback,
+      );
+    };
+  }
+
+  onTransportEvent(_callback: (event: TransportEvent) => void): () => void {
+    return () => undefined;
   }
 
   /**
@@ -138,4 +150,3 @@ export class MockSleeveConnector implements ISleeveConnector {
     this.connectionSubscribers.forEach((callback) => callback(status));
   }
 }
-

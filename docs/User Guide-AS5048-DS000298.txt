@@ -1,0 +1,440 @@
+Published by ams-OSRAM AG
+Tobelbader Strasse 30, 8141 Premstaetten, Austria
+Phone +43 3136 500-0
+ams-osram.com
+© All rights reserved
+USB interface and
+programming box
+User Guide
+Evaluation programmer for SPI and I²C interface
+USB interface and programming box
+Table of contents
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 2 / 27
+/
+Table of contents
+1 Introduction .............................................................. 3
+1.1 Kit content............................................................................... 4
+1.2 Ordering information ............................................................... 4
+1.3 Compatible products............................................................... 5
+2 Getting started ......................................................... 6
+2.1 Firmware update..................................................................... 9
+3 Connecting compatible products......................... 10
+3.1 AS5013 ................................................................................. 10
+3.2 AS5047D/AS5147/AS5047P/AS5147P ................................ 11
+3.3 AS5050A/AS5055A .............................................................. 12
+3.4 AS5048A/AS5048B .............................................................. 13
+3.5 AS5100 ................................................................................. 14
+3.6 AS5116 ................................................................................. 15
+3.7 AS5510 ................................................................................. 16
+3.8 AS5600 ................................................................................. 17
+3.9 AS5600L (for WLCSP-15 and SOIC-8 package).................. 18
+3.10 AS5601 ................................................................................. 19
+3.11 AS5200A/L............................................................................ 20
+3.12 AS5247 ................................................................................. 22
+3.13 AS5047U/AS5147U .............................................................. 23
+3.14 AS5247U .............................................................................. 24
+3.15 AS8579 ................................................................................. 25
+3.16 AS6221 ................................................................................. 25
+4 Revision information ............................................. 26
+5 Legal information................................................... 27
+USB interface and programming box
+Introduction
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 3 / 27
+/
+1 Introduction
+This user guide explains how to use the USB I&P Box.
+The USB I&P Box is a Programming - Tool for Capacitive, Temperature and Magnetic Position
+Sensors with I²C or SPI Interface.
+After connecting a Sensor to the I&P Box you can open the GUI on your computer and start
+programming.
+To program a sensor, it should be mounted on a PCB / Socket to ensure a proper connection
+to all necessary pins.
+ams OSRAM provides Adapter boards where easy access from the Sensor to the USB I&P
+Box is possible (not included with the Tool-Kit).
+Figure 1: USB I&P box
+USB interface and programming box
+Introduction
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 4 / 27
+/
+1.1 Kit content
+Table 1: Kit content
+Part Description Picture
+USB I&P Box USB Interface & Programming Box
+USB cable To connect the USB I&P box to a computer
+10-way cable To connect the USB I&P Box to a compatible sensor on
+an existing board
+Quick start
+guide First steps introduction
+USB flash
+drive
+Contains the USB I&P Box Software and manuals.
+To get latest SW / FW and Manuals please refer to
+ams-osram.com
+1.2 Ordering information
+Ordering code Description
+USB I&P Box USB interface & programming tool for sensors with I²C or SPI interface
+USB interface and programming box
+Introduction
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 5 / 27
+/
+1.3 Compatible products
+Table 2: Compatible products
+Product Description Adapterboard available
+AS5013 Low power integrated hall IC for human interface applications Yes
+AS5047D 14-bit on-axis magnetic rotary position sensor Yes
+AS5047P 14-bit on-axis magnetic rotary position sensor Yes
+AS5048A 14-bit angular position sensor with SPI interface Yes
+AS5048B 14-bit angular position sensor with I²C interface Yes
+AS5050A Low power 10-bit magnetic position sensor Yes
+AS5055A Low power 12-bit magnetic position sensor Yes
+AS5100 12-bit magnetic position sensor for embedded applications Yes
+AS5116 On-axis magnetic position sensor with Sin/Cos outputs Yes
+AS5147 14-bit on-axis magnetic rotary position sensor Yes
+AS5147P 14-bit on-axis magnetic rotary position sensor Yes
+AS5200 12-bit-dual-die programmable contactless potentiometer Yes
+AS5247 14-bit dual-die magnetic rotary position sensor Yes
+AS5510 Linear hall sensor with I²C output Yes
+AS5600 12-bit programmable contactless potentiometer Yes
+AS5600L 12-bit smallest on axis magnetic position sensor Yes
+AS5601 12-bit programmable contactless encoder Yes
+AS5047U 14-bit on-axis magnetic rotary position sensor Yes
+AS5147U 14-bit on-axis magnetic rotary position sensor Yes
+AS5247U 14-bit on-axis magnetic rotary position sensor Yes
+AS8579 Capacitive sensor with accu. 14-bit I&Q value Yes
+AS6221 Digital temperature sensor with I²C interface Yes
+USB interface and programming box
+Getting started
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 6 / 27
+/
+2 Getting started
+The pin-out of the USB I&P box is shown below.
+Table 3: USB I&P box pin-out and wire description
+Pin # Color Definition SPI mode
+1 Brown 5V supply Not used
+2 Red 3.3V supply Positive power supply
+3 Orange SPI-CS(0) SPI-CS(0)
+4 Yellow I²C-SCL Not used
+5 Green SPI-CLK SPI-CLK
+6 Blue I²C-SDA Not used
+7 Purple SPI-MOSI SPI-MOSI
+8 Grey SPI-CS(1) Optional (dual die version)
+9 White SPI-MISO SPI-MISO
+10 Black GND GND
+(1) The interface voltage of the USB I&P Box is 3.3V. Use the 3.3V mode when connecting to a position sensor board.
+The first steps to get started with the USB I&P Box are described below in Figure 2.
+USB interface and programming box
+Getting started
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 7 / 27
+/
+Figure 2: First steps with the USB I&P box
+Getting started with your programmer
+Ready to start
+Install the USB I&P Software on your computer
+Connect the right wires of the USB I&P Connector cable to your magnetic position sensor
+Connect your USB I&P Box to your computer via USB cable
+Open the USB I&P Software
+Choose the right Device
+For using the right wires please refer to Table 3
+USB interface and programming box
+Getting started
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 8 / 27
+/
+Also included in your USB I&P Tool is a USB stick with the software and firmware.
+The software is needed to program a supported sensor on your computer.
+After you copied the software from the USB stick to your computer, please click on it and follow
+the instructions of the Install Wizard through the installation procedure.
+The software is compatible with Windows XP and newer versions.
+Figure 3: Screenshot of the GUI starting page while no programmer is connected
+A Select the Device (only possible when a I&P Box is detected)
+B Check if the Programmer will be detected (or there is no bootloader on the I&P Box)
+C For firmware updates click on Help and Firmware Update, for further Information about this topic refer to 2.1
+B
+A
+C
+USB interface and programming box
+Getting started
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 9 / 27
+/
+Figure 4: Screenshot of the GUI starting page while programmer connected
+2.1 Firmware update
+• Connect your I&P Box to your Computer and open the Software.
+• Click on Help and Firmware Update.
+• Search your computer for the new firmware file and click at it.
+• The firmware installs automatically.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 10 / 27
+/
+3 Connecting compatible products
+3.1 AS5013
+Figure 5: AS5013
+A Open/Close J1 for choosing I²C slave address 0x40 or 0x41.
+B Connect the USB I&P Box with the AS5013-QF_EK_AB using the 10-way cable.
+C Connect the USB I&P Box using the USB cable to Computer. 
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 11 / 27
+/
+3.2 AS5047D/AS5147/AS5047P/AS5147P
+Figure 6: AS5047D/AS5147/AS5047P/AS5147P
+A Short J1 on the adapterboard to set-up the 3V3 mode.
+B Connect the USB I&P Box with the AS5x47_EK_AB using the 10-way cable.
+C Place the RMH05 over the adapterboard.
+D Connect the USB I&P Box to the PC, using the USB cable. The USB device is detected by Windows and by the
+AS5x47 Demo Software.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 12 / 27
+/
+3.3 AS5050A/AS5055A
+Figure 7: AS5050A/AS5055A
+A Short JP1 either on 3-wire SPI mode or 4-wire SPI mode.
+B Connect the USB I&P Box with the AS5050 / AS5055-AB using the 10-way cable.
+C Place the RMH05 over the adapterboard.
+D Connect the USB I&P Box to the PC, using the USB cable. The USB device is detected by Windows and by the
+AS5050 / AS5055-AB Demo Software.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 13 / 27
+/
+3.4 AS5048A/AS5048B
+Figure 8: AS5048A/AS5048B
+A Check first if you are using AS5048A or AS5048B.
+AS5048A uses SPI and AS5048B I²C interface.
+B Connect the USB I&P Box with the AS5048A/B-AB using the 10-way cable.
+C Place the RMH05 over the adapterboard.
+D Connect the USB I&P Box to the PC, using the USB cable. The USB device is detected by Windows and by the
+AS5048A/B Demo Software.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 14 / 27
+/
+3.5 AS5100
+Figure 9: AS5100
+A Close J1 for 3V3 supply.
+B Connect the USB I&P Box with the AS5100-SO_EK_AB using the 10-way cable.
+C Use an RMH Kit + Magnet to get a stable angle readout.
+D Connect the USB I&P Box to the PC, using the USB cable.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 15 / 27
+/
+3.6 AS5116
+Figure 10: AS5116
+(1) A Socket Board can be connected directly to the I&P Box to program an Adapter Board. Use an empty Socket Board and
+pass through power supply lines and UART.
+I&P Box
+GND
+UA RT
+V DD 5
+Programming Setup
+Socket Board
+Programming Setup
+Adapter Board
+I&P Box
+Note: Th e so cket board has a buffer-circu itry
+included, which is not on the Adapter Board .
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 16 / 27
+/
+3.7 AS5510
+Figure 11: AS5510
+A JP1 closed - I²C address = 57h; JP1 open - I²C address = 56h
+B Connect the USB I&P Box with the AS5510-AB using the 10-way cable.
+C Place a 2-pole magnet over the AS5510.
+D Connect the USB I&P Box to the computer using the USB cable.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 17 / 27
+/
+3.8 AS5600
+Figure 12: AS5600
+A Short J1 on the adapterboard to set-up 3V3 mode.
+B Connect the USB I&P Box with the AS5600_SO_EK_AB using the 10-way cable.
+C Place the RMH05 over the adapterboard.
+D Connect the USB I&P Box to the PC, using the USB cable. The USB device is detected by Windows and by the
+AS560x Demo Software.
+The setup is ready for demonstration.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 18 / 27
+/
+3.9 AS5600L (for WLCSP-15 and SOIC-8 package)
+Figure 13: AS5600L (for WLCSP-15 and SOIC-8 package)
+A Short J1 on the adapterboard to set-up 3V3 mode.
+B Connect the USB I&P Box with the AS5600L_SO_EK_AB using the 10-way cable.
+C Place the RMH05 over the adapterboard.
+D Connect the USB I&P Box to the PC, using the USB cable.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 19 / 27
+/
+3.10 AS5601
+Figure 14: AS5601
+A Short J1 on the adapterboard to set-up 3V3 mode.
+B Connect the USB I&P Box with the AS5601_SO_EK_AB using the 10-way cable.
+C Place the RMH05 over the adapterboard.
+D Connect the USB I&P Box to the PC, using the USB cable. The USB device is detected by Windows and by the
+AS560x Demo Software.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 20 / 27
+/
+3.11 AS5200A/L
+Figure 15: AS5200A/L
+A Short J1 and J2 on the adapterboard to set-up 3V3 mode.
+Otherwise 5V supply has to be used.
+B Connect the USB I&P Box with the AS5200A/L-MF_EK_AB using the 10-way cable.
+C Place the RMH05 over the adapterboard.
+D Connect the USB I&P Box to the PC, using the USB cable.
+A
+VDD
+B
+D
+USB SCL
+SDA
+A GND
+C
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 21 / 27
+/
+Figure 16: AS5200A/L
+A Set J1&J2 and the jumper on the adapter to 3V3 to use 3.3V supply. To use 5V supply leave J1&J2 open and
+set 5V on the adapter PCB.
+B Connect the adapter with the AS5200A/L-MF_EK_AB
+C Connect the adapter with the USB I&P Box
+A
+A
+A
+B
+C
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 22 / 27
+/
+3.12 AS5247
+Figure 17: AS5247
+A Connect the USB I&P Box using the USB cable to the PC.
+B Connect the USB I&P Box with the AS5247-SO_EK_AB using the 10-way cable.
+C Place the RMH05 over the adapterboard.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 23 / 27
+/
+3.13 AS5047U/AS5147U
+Figure 18: AS5047U/AS5147U
+A Connect the USB I&P Box using the USB cable to the PC.
+B Connect the USB I&P Box with the AS5047U / AS5174U adapterboard using the 10-way cable.
+C Place the RMH05 over the adapterboard.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 24 / 27
+/
+3.14 AS5247U
+Plug the AS5247U-TQ_EK_AB directly with the populated 10-way connector to the USB I&P
+Box.
+It is possible to extend the connections with cables. Maximum wire length is 30 cm.
+Figure 19: AS5247U
+A USB Connection to host PC with to be used with I&P Box software.
+B Connection from USB I&P Box to AS5247U adapterboard with the provided 10-way cable.
+C Mounting holes for the RMH05 magnet holder.
+USB interface and programming box
+Connecting compatible products
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 25 / 27
+/
+3.15 AS8579
+Figure 20: AS8579
+A Connect the USB I&P Box with the AS8579-TS_EK_DB using the P1 – Connector.
+B Connect the USB I&P Box using the USB cable to Computer.
+3.16 AS6221
+Figure 21: AS6221
+A Set Jumper to select the I²C slave address 0x44 or 0x45.
+B Connect the AS6221_Flex_PCB to the USB I&P Box (Top Side up).
+C Use the USB cable to connect the USB I&P Box to the PC.
+USB interface and programming box
+Revision information
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 26 / 27
+/
+4 Revision information
+Definitions
+Draft / Preliminary:
+The draft / preliminary status of a document indicates that the content is still under internal review and subject to change without notice. ams-OSRAM
+AG does not give any warranties as to the accuracy or completeness of information included in a draft / preliminary version of a document and shall
+have no liability for the consequences of use of such information.
+Changes from previous released version to current revision v2-00 Page
+This User Guide UG001055 replaces the Application Note AN001012 (v1-08)
+Added AS6221 product information 5, 25
+● Page and figure numbers for the previous version may differ from page and figure numbers in the current revision.
+● Correction of typographical errors is not explicitly mentioned.
+USB interface and programming box
+Legal information
+Eval Kit Manual • PUBLIC • Document Feedback
+UG001055 • v2-00 • 2024-Jun-28 27 / 27
+/
+5 Legal information
+Copyright & disclaimer
+Copyright ams-OSRAM AG, Tobelbader Strasse 30, 8141 Premstaetten, Austria-Europe. Trademarks Registered. All rights reserved. The material
+herein may not be reproduced, adapted, merged, translated, stored, or used without the prior written consent of the copyright owner.
+Demo Kits, Evaluation Kits and Reference Designs are provided to recipient on an “as is” basis for demonstration and evaluation purposes only and
+are not considered to be finished end-products intended and fit for general consumer use, commercial applications and applications with special
+requirements such as but not limited to medical equipment or automotive applications. Demo Kits, Evaluation Kits and Reference Designs have not
+been tested for compliance with electromagnetic compatibility (EMC) standards and directives, unless otherwise specified. Demo Kits, Evaluation
+Kits and Reference Designs shall be used by qualified personnel only.
+ams-OSRAM AG reserves the right to change functionality and price of Demo Kits, Evaluation Kits and Reference Designs at any time and without
+notice.
+Any express or implied warranties, including, but not limited to the implied warranties of merchantability and fitness for a particular purpose are
+disclaimed. Any claims and demands and any direct, indirect, incidental, special, exemplary or consequential damages arising from the inadequacy
+of the provided Demo Kits, Evaluation Kits and Reference Designs or incurred losses of any kind (e.g. loss of use, data or profits or business
+interruption however caused) as a consequence of their use are excluded.
+ams-OSRAM AG shall not be liable to recipient or any third party for any damages, including but not limited to personal injury, property damage, loss
+of profits, loss of use, interruption of business or indirect, special, incidental or consequential damages, of any kind, in connection with or arising out
+of the furnishing, performance or use of the technical data herein. No obligation or liability to recipient or any third party shall arise or flow out of amsOSRAM AG rendering of technical or other services.
+ams OSRAM semiconductor RoHS compliance statement
+RoHS compliant: The term RoHS compliant means that ams-OSRAM AG semiconductor products fully comply with current RoHS directives. Our
+semiconductor products do not contain any chemicals for all 6 substance categories plus additional 4 substance categories (per amendment EU
+2015/863), including the requirement that lead not exceed 0.1% by weight in homogeneous materials.
+Important information: The information provided in this statement represents ams-OSRAM AG knowledge and belief as of the date that it is
+provided. ams-OSRAM AG bases its knowledge and belief on information provided by third parties, and makes no representation or warranty as to
+the accuracy of such information. Efforts are underway to better integrate information from third parties. ams-OSRAM AG has taken and continues to
+take reasonable steps to provide representative and accurate information but may not have conducted destructive testing or chemical analysis on
+incoming materials and chemicals. ams-OSRAM AG and ams-OSRAM AG suppliers consider certain information to be proprietary, and thus CAS
+numbers and other limited information may not be available for release.
+Headquarters
+ams-OSRAM AG
+Tobelbader Strasse 30
+8141 Premstaetten
+Austria, Europe
+Tel: +43 (0) 3136 500 0
+Please visit our website at ams-osram.com
+For information about our products go to Products
+For technical support use our Technical Support Form
+For feedback about this document use Document Feedback
+For sales offices and branches go to Sales Offices / Branches
+For distributors and sales representatives go to Channel Partners
