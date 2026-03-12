@@ -43,33 +43,26 @@ import SymmetryCard from "@/components/dashboard/SymmetryCard";
 
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 
-const getChannels = (injuredSide: "LEFT" | "RIGHT" | null, theme: any) => {
-  const isLeftInjured = (injuredSide ?? "LEFT") === "LEFT";
-  const injured = (name: string) => `${name} (Injured)`;
-  const healthy = (name: string) => `${name} (Healthy)`;
+const getChannels = (theme: any) => {
   return [
     {
       id: 0,
-      label: isLeftInjured ? injured("VMO") : healthy("VMO"),
+      label: "VMO",
       color: theme.primary,
     },
     {
       id: 1,
-      label: isLeftInjured ? injured("VL") : healthy("VL"),
+      label: "VL",
       color: "#FF6B6B",
     },
     {
       id: 2,
-      label: isLeftInjured
-        ? injured("Semitendinosus")
-        : healthy("Semitendinosus"),
+      label: "Semitendinosus",
       color: "#4ECDC4",
     },
     {
       id: 3,
-      label: isLeftInjured
-        ? injured("Biceps Femoris")
-        : healthy("Biceps Femoris"),
+      label: "Biceps Femoris",
       color: "#FFE66D",
     },
   ];
@@ -103,7 +96,7 @@ export default function DashboardScreen() {
   const [timeframe, setTimeframe] = useState("Daily");
 
   const userName = user?.email ? user.email.split("@")[0] : "Athlete";
-  const channels = getChannels(injuredSide, theme);
+  const channels = getChannels(theme);
 
   const handleCalibrationComplete = (coeffs: CalibrationCoefficients) => {
     dispatch(setCalibration(coeffs));

@@ -4,6 +4,7 @@ import { SegmentedControl } from "@/components/dashboard/SegmentedControl";
 import { CircularDataCard } from "@/components/dashboard/CircularDataCard";
 import { CALIBRATION_CHANNEL_LABELS } from "@/components/dashboard/CalibrationOverlay";
 import { getGraphValue, getRawGraphMax } from "@/components/dashboard/RMSGraph";
+import SymmetryCard from "@/components/dashboard/SymmetryCard";
 import {
   RAW_SIGNAL_BADGE_LABEL,
   RAW_SIGNAL_TOGGLE_LABEL,
@@ -81,5 +82,15 @@ describe("Dashboard Components", () => {
   it("uses dynamic raw graph scaling instead of a fixed mock-only ceiling", () => {
     expect(getRawGraphMax([0.02, 0.05, 0.08])).toBeCloseTo(0.1, 5);
     expect(getRawGraphMax([0.5, 1.5, 2])).toBeCloseTo(2.4, 5);
+  });
+
+  it("renders the muscle activation card with single-leg wording", () => {
+    const { getByText, queryByText } = render(
+      <SymmetryCard normalizedPct={[96, 84, 76, 65]} />,
+    );
+
+    expect(getByText("Muscle Activation")).toBeTruthy();
+    expect(getByText("Single-Leg Insights")).toBeTruthy();
+    expect(queryByText("Symmetry Score")).toBeNull();
   });
 });

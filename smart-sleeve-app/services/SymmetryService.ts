@@ -1,53 +1,62 @@
-// SymmetryService.ts
-// Computes bilateral muscle symmetry metrics from normalized % MVC values.
-// Since the sleeve has 4 channels on one leg, we compare:
-//   - VMO (ch0) vs VL (ch1): quad balance
-//   - Semitendinosus (ch2) vs Biceps Femoris (ch3): hamstring balance
-//   - Overall symmetry score: how close all channels are to 100% MVC target
+// Computes single-leg muscle activation insights from normalized % MVC values.
+// The app currently streams one four-channel sleeve, so this service reports
+// same-leg activation quality and muscle-balance signals instead of bilateral symmetry.
 
-export const WARNING_THRESHOLD = 30; // % deficit to trigger red warning
+export const WARNING_THRESHOLD = 30; // % below MVC target to trigger a warning
 
-export interface ChannelSymmetry {
+export interface ChannelActivationInsight {
   channelIndex: number;
   label: string;
   normalizedPct: number;
-  deficit: number;        // |100 - normalizedPct|
-  hasWarning: boolean;    // deficit > WARNING_THRESHOLD
+  targetGap: number;
+  hasWarning: boolean;
 }
 
-export interface SymmetryResult {
-  symmetryScore: number;          // 0-100%
-  channels: ChannelSymmetry[];
-  vmoVlBalance: number;           // |VMO% - VL%|
-  hamstringGuarding: number;      // BF% (high = over-active)
+export interface ActivationInsightResult {
+  activationScore: number;
+  channels: ChannelActivationInsight[];
+  vmoVlBalance: number;
+  hamstringGuarding: number;
   hasAnyWarning: boolean;
 }
 
-const CHANNEL_LABELS = ['VMO', 'VL', 'Semitendinosus', 'Biceps Femoris'];
+const CHANNEL_LABELS = ["VMO", "VL", "ST", "BF"];
 
-export function computeSymmetry(normalizedPct: number[]): SymmetryResult {
-  const channels: ChannelSymmetry[] = normalizedPct.slice(0, 4).map((pct, i) => {
-    const deficit = Math.abs(100 - pct);
-    return {
-      channelIndex: i,
-      label: CHANNEL_LABELS[i],
-      normalizedPct: Math.round(pct),
-      deficit: Math.round(deficit),
-      hasWarning: deficit > WARNING_THRESHOLD,
-    };
-  });
+export function computeActivationInsights(
+  normalizedPct: number[],
+): ActivationInsightResult {
+  const channels: ChannelActivationInsight[] = normalizedPct
+    .slice(0, 4)
+    .map((pct, index) => {
+      const roundedPct = Math.round(pct);
+      const targetGap = Math.max(0, Math.round(100 - pct));
 
-  // Average deficit across all 4 channels → symmetry score
-  const avgDeficit = channels.reduce((sum, ch) => sum + ch.deficit, 0) / channels.length;
-  const symmetryScore = Math.max(0, Math.round(100 - avgDeficit));
+      return {
+        channelIndex: index,
+        label: CHANNEL_LABELS[index],
+        normalizedPct: roundedPct,
+        targetGap,
+        hasWarning: targetGap > WARNING_THRESHOLD,
+      };
+    });
 
-  // VMO vs VL quad balance
-  const vmoVlBalance = Math.round(Math.abs(channels[0].normalizedPct - channels[1].normalizedPct));
-
-  // Biceps Femoris activity (high = hamstring guarding)
+  const activationScore = Math.round(
+    channels.reduce(
+      (sum, channel) => sum + Math.min(channel.normalizedPct, 100),
+      0,
+    ) / channels.length,
+  );
+  const vmoVlBalance = Math.round(
+    Math.abs(channels[0].normalizedPct - channels[1].normalizedPct),
+  );
   const hamstringGuarding = Math.round(channels[3].normalizedPct);
+  const hasAnyWarning = channels.some((channel) => channel.hasWarning);
 
-  const hasAnyWarning = channels.some(ch => ch.hasWarning);
-
-  return { symmetryScore, channels, vmoVlBalance, hamstringGuarding, hasAnyWarning };
+  return {
+    activationScore,
+    channels,
+    vmoVlBalance,
+    hamstringGuarding,
+    hasAnyWarning,
+  };
 }
