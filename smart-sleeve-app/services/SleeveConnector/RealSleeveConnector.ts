@@ -54,11 +54,35 @@ type Base64Characteristic = {
   value?: string | null;
 } | null;
 
+type BleServiceLike = {
+  uuid: string;
+};
+
+type BleCharacteristicLike = {
+  uuid: string;
+};
+
+type DiscoveryValidationFailureReason =
+  | "adapter-unavailable"
+  | "missing-service"
+  | "missing-characteristics";
+
+class DiscoveryValidationError extends Error {
+  constructor(
+    readonly reason: DiscoveryValidationFailureReason,
+    readonly discoveredCharacteristics?: string[],
+  ) {
+    super(reason);
+  }
+}
+
 type BleDeviceLike = Pick<
   Device,
   | "id"
   | "name"
   | "discoverAllServicesAndCharacteristics"
+  | "services"
+  | "characteristicsForService"
   | "monitorCharacteristicForService"
   | "cancelConnection"
   | "onDisconnected"
@@ -66,8 +90,10 @@ type BleDeviceLike = Pick<
 
 type BleManagerLike = Pick<
   BleManager,
-  "startDeviceScan" | "stopDeviceScan" | "connectToDevice"
+  "startDeviceScan" | "stopDeviceScan" | "connectToDevice" | "state"
 >;
+
+const REQUIRED_CHARACTERISTIC_UUIDS = [EMG_CHAR_UUID, IMU_CHAR_UUID];
 
 export class RealSleeveConnector implements ISleeveConnector {
   private manager: BleManagerLike;
@@ -140,6 +166,11 @@ export class RealSleeveConnector implements ISleeveConnector {
       return [];
     }
 
+    const adapterReady = await this.ensureAdapterReady();
+    if (!adapterReady) {
+      return [];
+    }
+
     this.stopScan();
     this.scanResults = [];
     console.log("[RealSleeveConnector] Starting scan for:", SERVICE_UUID);
@@ -188,6 +219,11 @@ export class RealSleeveConnector implements ISleeveConnector {
    * Connect to an ESP32 device.
    */
   async connect(deviceId: string): Promise<void> {
+    const adapterReady = await this.ensureAdapterReady();
+    if (!adapterReady) {
+      throw new DiscoveryValidationError("adapter-unavailable");
+    }
+
     this.stopScan();
     this.clearReconnectTimer();
     this.lastDeviceId = deviceId;
@@ -203,6 +239,8 @@ export class RealSleeveConnector implements ISleeveConnector {
       console.log(`[RealSleeveConnector] Connecting to ${deviceId}...`);
       const device = await this.manager.connectToDevice(deviceId);
       await device.discoverAllServicesAndCharacteristics();
+      const discoveredCharacteristics =
+        await this.validateDiscoveredCharacteristics(device);
 
       this.teardownSubscriptions();
       this.connectedDevice = device;
@@ -233,7 +271,8 @@ export class RealSleeveConnector implements ISleeveConnector {
       this.setupNotifications(device);
       this.emitConnectionStatus(true, {
         phase: "connected",
-        discoveredCharacteristics: [EMG_CHAR_UUID, IMU_CHAR_UUID],
+        reconnectAttempt: this.reconnectAttempts,
+        discoveredCharacteristics,
       });
     } catch (err) {
       console.error("[RealSleeveConnector] Connection failed:", err);
@@ -241,7 +280,14 @@ export class RealSleeveConnector implements ISleeveConnector {
       this.emitConnectionStatus(false, {
         phase: "failed",
         reconnectAttempt,
-        reason: "connect-failed",
+        reason:
+          err instanceof DiscoveryValidationError
+            ? err.reason
+            : "connect-failed",
+        discoveredCharacteristics:
+          err instanceof DiscoveryValidationError
+            ? err.discoveredCharacteristics
+            : undefined,
       });
       throw err;
     }
@@ -414,6 +460,51 @@ export class RealSleeveConnector implements ISleeveConnector {
     };
 
     this.transportEventSubscribers.forEach((callback) => callback(event));
+  }
+
+  private async ensureAdapterReady(): Promise<boolean> {
+    const state = await this.manager.state();
+    if (state === "PoweredOn") {
+      return true;
+    }
+
+    console.warn(`[RealSleeveConnector] BLE adapter not ready: ${state}`);
+    this.emitConnectionStatus(false, {
+      phase: "failed",
+      reason: "adapter-unavailable",
+    });
+    return false;
+  }
+
+  private async validateDiscoveredCharacteristics(
+    device: BleDeviceLike,
+  ): Promise<string[]> {
+    const services = await device.services();
+    const hasExpectedService = services.some(
+      (service: BleServiceLike) => service.uuid === SERVICE_UUID,
+    );
+
+    if (!hasExpectedService) {
+      throw new DiscoveryValidationError("missing-service");
+    }
+
+    const characteristics =
+      await device.characteristicsForService(SERVICE_UUID);
+    const discoveredCharacteristics = characteristics.map(
+      (characteristic: BleCharacteristicLike) => characteristic.uuid,
+    );
+    const missingCharacteristics = REQUIRED_CHARACTERISTIC_UUIDS.filter(
+      (uuid) => !discoveredCharacteristics.includes(uuid),
+    );
+
+    if (missingCharacteristics.length > 0) {
+      throw new DiscoveryValidationError(
+        "missing-characteristics",
+        discoveredCharacteristics,
+      );
+    }
+
+    return discoveredCharacteristics;
   }
 
   private clearReconnectTimer(): void {

@@ -140,12 +140,69 @@ Now that the hardware is broadcasting, let's connect it to your phone.
 6. Verify that packet counters begin increasing and the knee angle changes as you move the joint.
 7. Switch to the **Dashboard** to confirm the live graphs respond to real muscle activity.
 
+### Real-hardware workflow
+
+Use this sequence when a teammate needs to reproduce hardware bring-up without extra context:
+
+1. Flash the ESP32 firmware and confirm the Serial Monitor shows live `[DATA]` lines.
+2. Set `EXPO_PUBLIC_USE_MOCK_HARDWARE=false` in the app `.env` file.
+3. Start Metro from `smart-sleeve-app/smart-sleeve-app` with:
+   ```bash
+   npx expo start --dev-client
+   ```
+   If the phone cannot reach Metro reliably, use:
+   ```bash
+   npx expo start --dev-client --tunnel
+   ```
+4. Install a native build on a physical phone:
+   ```bash
+   npx expo run:ios --device "<IPHONE_NAME>"
+   # OR
+   npx expo run:android --device "<ANDROID_MODEL>"
+   ```
+5. Open the BLE debug screen in the app.
+6. Tap **Scan for Devices**, connect to the sleeve, and watch the transport diagnostics section first.
+7. Only after transport counters are healthy should you trust dashboard-level signal visuals.
+
+### Expected BLE contract
+
+The app and firmware are currently aligned on this BLE contract:
+
+- Device name prefix: `SMART-SLEEVE`
+- Service UUID: `e0d10001-6b6e-4c52-9c3b-6a8e858c5d93`
+- EMG characteristic UUID: `e0d10002-6b6e-4c52-9c3b-6a8e858c5d93`
+- IMU/angle characteristic UUID: `e0d10003-6b6e-4c52-9c3b-6a8e858c5d93`
+- EMG packet length: `22` bytes
+- IMU packet length: `12` bytes
+- Byte order: little-endian
+- Checksum: XOR byte checksum
+- Sample rate assumption in app: `50 Hz`
+- Angle fault sentinel: `0x7FFF`
+
+If the firmware changes any of those fields, the parser tests and the debug screen expectations need to be updated in the app as well.
+
 ### What the firmware is sending
 
 - **EMG**: one live ADC channel on CH1 from the MyoWare ENV pin, channels 2-8 set to zero
 - **Angle**: raw **AS5600 12-bit RAW ANGLE** value in the IMU angle field
 - **Pitch/Yaw**: always zero in this firmware
 - **Fault handling**: if the AS5600 read fails or no magnet is detected, the firmware sends `0x7FFF` as the angle sentinel
+
+### Healthy connection checklist
+
+On a healthy real connection in the BLE debug screen, you should see:
+
+- `Requested: real`
+- `Active: real`
+- `Phase: connected`
+- `Reconnect attempts: 0` after a steady connection is established
+- `EMG packets` increasing continuously
+- `IMU packets` increasing continuously
+- `Last EMG age` and `Last IMU age` staying low and well under the stale timeout
+- `EMG stale: no` and `IMU stale: no`
+- `Characteristics` listing both BLE characteristic UUIDs above
+
+For this firmware specifically, EMG traffic is expected on CH1 only. Channels 2-8 staying near zero is normal.
 
 ### Serial Monitor sanity check
 
@@ -164,3 +221,27 @@ Possible angle statuses are:
 - `I2C_ERROR`: ESP32 could not read the AS5600 over I2C
 
 If the app connects but the knee angle stays at zero while the Serial Monitor shows `NO_MAGNET` or `I2C_ERROR`, the problem is on the hardware side, not in the BLE packet format.
+
+### Interpreting app-side failures
+
+Use the BLE debug screen counters and the connector logs together:
+
+- **Checksum mismatch**:
+  - Meaning: packet length and header were valid enough to parse, but the XOR checksum failed.
+  - What you will see: checksum counters increase, data may still appear, connector logs `EMG checksum mismatch` or `IMU checksum mismatch`.
+  - Likely cause: corrupted bytes on the wire or firmware checksum bug.
+
+- **Parser mismatch / invalid packet**:
+  - Meaning: the packet could not be parsed at all.
+  - What you will see: dropped-packet counters increase, connector logs `Dropping invalid EMG packet` or `Dropping invalid IMU packet`.
+  - Likely cause: wrong packet length, wrong header, or firmware payload shape drift.
+
+- **Transport failure**:
+  - Meaning: BLE notifications or connection state failed before packet parsing could succeed.
+  - What you will see: notify-error counters increase, phase changes to `reconnecting` or `failed`, connector logs notification errors or disconnect messages.
+  - Likely cause: BLE instability, power issues, device reset, or native Bluetooth stack problems.
+
+- **Discovery contract failure**:
+  - Meaning: the app connected to a BLE device, but it did not expose the expected sleeve service or both required characteristics.
+  - What you will see: phase changes to `failed` with `missing-service` or `missing-characteristics`.
+  - Likely cause: wrong firmware, wrong board, or a device advertising the sleeve name without the expected GATT layout.

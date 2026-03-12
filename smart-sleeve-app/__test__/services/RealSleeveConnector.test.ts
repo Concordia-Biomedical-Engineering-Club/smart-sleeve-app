@@ -8,6 +8,7 @@ jest.mock(
 
 import { RealSleeveConnector } from "@/services/SleeveConnector/RealSleeveConnector";
 import {
+  BLE_SCAN_TIMEOUT_MS,
   DEVICE_NAME_PREFIX,
   EMG_CHAR_UUID,
   IMU_CHAR_UUID,
@@ -39,6 +40,8 @@ describe("RealSleeveConnector", () => {
     id: string;
     name: string;
     discoverAllServicesAndCharacteristics: jest.Mock;
+    services: jest.Mock;
+    characteristicsForService: jest.Mock;
     monitorCharacteristicForService: jest.Mock;
     cancelConnection: jest.Mock;
     onDisconnected: jest.Mock;
@@ -47,6 +50,7 @@ describe("RealSleeveConnector", () => {
     startDeviceScan: jest.Mock;
     stopDeviceScan: jest.Mock;
     connectToDevice: jest.Mock;
+    state: jest.Mock;
   };
 
   beforeEach(() => {
@@ -69,6 +73,10 @@ describe("RealSleeveConnector", () => {
       discoverAllServicesAndCharacteristics: jest
         .fn()
         .mockResolvedValue(undefined),
+      services: jest.fn().mockResolvedValue([{ uuid: SERVICE_UUID }]),
+      characteristicsForService: jest
+        .fn()
+        .mockResolvedValue([{ uuid: EMG_CHAR_UUID }, { uuid: IMU_CHAR_UUID }]),
       monitorCharacteristicForService: jest
         .fn()
         .mockReturnValueOnce(emgMonitor)
@@ -85,6 +93,7 @@ describe("RealSleeveConnector", () => {
       startDeviceScan: jest.fn(),
       stopDeviceScan: jest.fn(),
       connectToDevice: jest.fn().mockResolvedValue(mockDevice),
+      state: jest.fn().mockResolvedValue("PoweredOn"),
     };
   });
 
@@ -99,7 +108,9 @@ describe("RealSleeveConnector", () => {
     const connector = new RealSleeveConnector(manager as any);
 
     const scanPromise = connector.scan();
-    await Promise.resolve();
+    while (manager.startDeviceScan.mock.calls.length === 0) {
+      await Promise.resolve();
+    }
     const scanCallback = manager.startDeviceScan.mock.calls[0][2];
     scanCallback(null, { id: "device-1", name: `${DEVICE_NAME_PREFIX}-001` });
     scanCallback(null, { id: "device-2", name: "OTHER-DEVICE" });
@@ -111,7 +122,90 @@ describe("RealSleeveConnector", () => {
       null,
       expect.any(Function),
     );
+    expect(manager.state).toHaveBeenCalled();
     expect(manager.stopDeviceScan).toHaveBeenCalled();
+  });
+
+  it("resolves an empty scan when no matching devices are found before timeout", async () => {
+    const connector = new RealSleeveConnector(manager as any);
+
+    const scanPromise = connector.scan();
+    while (manager.startDeviceScan.mock.calls.length === 0) {
+      await Promise.resolve();
+    }
+
+    jest.advanceTimersByTime(BLE_SCAN_TIMEOUT_MS);
+
+    await expect(scanPromise).resolves.toEqual([]);
+    expect(manager.stopDeviceScan).toHaveBeenCalled();
+  });
+
+  it("emits a failed scan state when the BLE manager reports a scan error", async () => {
+    const connector = new RealSleeveConnector(manager as any);
+    const statuses: Array<{
+      connected: boolean;
+      phase?: string;
+      reason?: string;
+    }> = [];
+
+    connector.onConnectionStatusChange((status) => {
+      statuses.push({
+        connected: status.connected,
+        phase: status.phase,
+        reason: status.reason,
+      });
+    });
+
+    const scanPromise = connector.scan();
+    while (manager.startDeviceScan.mock.calls.length === 0) {
+      await Promise.resolve();
+    }
+
+    const scanCallback = manager.startDeviceScan.mock.calls[0][2];
+    scanCallback(new Error("scan failed"), null);
+
+    await expect(scanPromise).resolves.toEqual([]);
+    expect(statuses).toEqual([
+      {
+        connected: false,
+        phase: "scanning",
+        reason: undefined,
+      },
+      {
+        connected: false,
+        phase: "failed",
+        reason: "scan-error",
+      },
+    ]);
+  });
+
+  it("does not start scanning when the BLE adapter is unavailable", async () => {
+    const connector = new RealSleeveConnector(manager as any);
+    const statuses: Array<{
+      connected: boolean;
+      phase?: string;
+      reason?: string;
+    }> = [];
+    manager.state.mockResolvedValue("PoweredOff");
+
+    connector.onConnectionStatusChange((status) => {
+      statuses.push({
+        connected: status.connected,
+        phase: status.phase,
+        reason: status.reason,
+      });
+    });
+
+    await expect(connector.scan()).resolves.toEqual([]);
+
+    expect(manager.startDeviceScan).not.toHaveBeenCalled();
+    expect(statuses).toEqual([
+      {
+        connected: false,
+        phase: "failed",
+        reason: "adapter-unavailable",
+      },
+    ]);
   });
 
   it("connects, discovers characteristics, and subscribes to EMG and IMU notifications", async () => {
@@ -133,6 +227,10 @@ describe("RealSleeveConnector", () => {
 
     expect(manager.connectToDevice).toHaveBeenCalledWith("device-1");
     expect(mockDevice.discoverAllServicesAndCharacteristics).toHaveBeenCalled();
+    expect(mockDevice.services).toHaveBeenCalled();
+    expect(mockDevice.characteristicsForService).toHaveBeenCalledWith(
+      SERVICE_UUID,
+    );
     expect(mockDevice.monitorCharacteristicForService).toHaveBeenNthCalledWith(
       1,
       SERVICE_UUID,
@@ -155,6 +253,82 @@ describe("RealSleeveConnector", () => {
         connected: true,
         phase: "connected",
         discoveredCharacteristics: [EMG_CHAR_UUID, IMU_CHAR_UUID],
+      },
+    ]);
+  });
+
+  it("fails connection when the expected sleeve service is missing after discovery", async () => {
+    const connector = new RealSleeveConnector(manager as any);
+    const statuses: Array<{
+      connected: boolean;
+      phase?: string;
+      reason?: string;
+    }> = [];
+    mockDevice.services.mockResolvedValue([]);
+
+    connector.onConnectionStatusChange((status) => {
+      statuses.push({
+        connected: status.connected,
+        phase: status.phase,
+        reason: status.reason,
+      });
+    });
+
+    await expect(connector.connect("device-1")).rejects.toThrow(
+      "missing-service",
+    );
+
+    expect(mockDevice.monitorCharacteristicForService).not.toHaveBeenCalled();
+    expect(statuses).toEqual([
+      {
+        connected: false,
+        phase: "connecting",
+      },
+      {
+        connected: false,
+        phase: "failed",
+        reason: "missing-service",
+      },
+    ]);
+  });
+
+  it("fails connection when discovered characteristics do not match the sleeve contract", async () => {
+    const connector = new RealSleeveConnector(manager as any);
+    const statuses: Array<{
+      connected: boolean;
+      phase?: string;
+      reason?: string;
+      discoveredCharacteristics?: string[];
+    }> = [];
+    mockDevice.characteristicsForService.mockResolvedValue([
+      { uuid: EMG_CHAR_UUID },
+    ]);
+
+    connector.onConnectionStatusChange((status) => {
+      statuses.push({
+        connected: status.connected,
+        phase: status.phase,
+        reason: status.reason,
+        discoveredCharacteristics: status.discoveredCharacteristics,
+      });
+    });
+
+    await expect(connector.connect("device-1")).rejects.toThrow(
+      "missing-characteristics",
+    );
+
+    expect(mockDevice.monitorCharacteristicForService).not.toHaveBeenCalled();
+    expect(statuses).toEqual([
+      {
+        connected: false,
+        phase: "connecting",
+        discoveredCharacteristics: undefined,
+      },
+      {
+        connected: false,
+        phase: "failed",
+        reason: "missing-characteristics",
+        discoveredCharacteristics: [EMG_CHAR_UUID],
       },
     ]);
   });
@@ -223,6 +397,8 @@ describe("RealSleeveConnector", () => {
     await connector.connect("device-1");
     disconnectCallback?.(new Error("link lost"), { id: "device-1" });
     jest.advanceTimersByTime(1500);
+    await Promise.resolve();
+    await Promise.resolve();
 
     expect(manager.connectToDevice).toHaveBeenCalledTimes(2);
     expect(manager.connectToDevice).toHaveBeenLastCalledWith("device-1");

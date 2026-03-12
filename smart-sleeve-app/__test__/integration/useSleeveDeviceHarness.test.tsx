@@ -15,8 +15,10 @@ import deviceReducer from "@/store/deviceSlice";
 import { useSleeveDevice } from "@/hooks/useSleeveDevice";
 import { RealSleeveConnector } from "@/services/SleeveConnector/RealSleeveConnector";
 import {
+  BLE_RECONNECT_DELAY_MS,
   DEVICE_NAME_PREFIX,
   EMG_CHAR_UUID,
+  EMG_STALE_TIMEOUT_MS,
   IMU_CHAR_UUID,
 } from "@/constants/ble";
 import { ProgrammableBleManager } from "@/__test__/helpers/ProgrammableBleHarness";
@@ -32,6 +34,12 @@ const USE_MOCK_HARDWARE_ENV_KEY = [
 function HookHarness({ connector }: { connector: RealSleeveConnector }) {
   useSleeveDevice(connector);
   return null;
+}
+
+async function flushAsyncWork(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
 }
 
 describe("useSleeveDevice integration harness", () => {
@@ -142,10 +150,11 @@ describe("useSleeveDevice integration harness", () => {
       device.emitUnexpectedDisconnect();
 
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        jest.advanceTimersByTime(1500);
-        await Promise.resolve();
-        await Promise.resolve();
+        jest.advanceTimersByTime(BLE_RECONNECT_DELAY_MS);
+        await flushAsyncWork();
       }
+
+      await flushAsyncWork();
     });
 
     await waitFor(() => {
@@ -166,5 +175,95 @@ describe("useSleeveDevice integration harness", () => {
     expect(store.getState().device.connection.reason).toBe(
       "reconnect-exhausted",
     );
+  });
+
+  it("surfaces discovery-contract failures when required characteristics are missing", async () => {
+    const manager = new ProgrammableBleManager();
+    manager.registerDevice("device-1", `${DEVICE_NAME_PREFIX}-01`, {
+      characteristicUuids: [EMG_CHAR_UUID],
+    });
+
+    const connector = new RealSleeveConnector(manager as never);
+    const store = configureStore({
+      reducer: {
+        user: userReducer,
+        device: deviceReducer,
+      },
+    });
+
+    render(
+      <Provider store={store}>
+        <HookHarness connector={connector} />
+      </Provider>,
+    );
+
+    await expect(connector.connect("device-1")).rejects.toThrow(
+      "missing-characteristics",
+    );
+
+    await waitFor(() => {
+      expect(store.getState().device.connection.phase).toBe("failed");
+    });
+
+    expect(store.getState().device.connection.reason).toBe(
+      "missing-characteristics",
+    );
+    expect(
+      store.getState().device.transportDiagnostics.discoveredCharacteristics,
+    ).toEqual([EMG_CHAR_UUID]);
+    expect(store.getState().device.transportDiagnostics.emgStaleTimeoutMs).toBe(
+      EMG_STALE_TIMEOUT_MS,
+    );
+  });
+
+  it("recovers from an unexpected disconnect when the next reconnect attempt succeeds", async () => {
+    const manager = new ProgrammableBleManager();
+    const device = manager.registerDevice(
+      "device-1",
+      `${DEVICE_NAME_PREFIX}-01`,
+    );
+    const connector = new RealSleeveConnector(manager as never);
+    const store = configureStore({
+      reducer: {
+        user: userReducer,
+        device: deviceReducer,
+      },
+    });
+
+    render(
+      <Provider store={store}>
+        <HookHarness connector={connector} />
+      </Provider>,
+    );
+
+    await act(async () => {
+      await connector.connect("device-1");
+      device.emitUnexpectedDisconnect();
+      jest.advanceTimersByTime(BLE_RECONNECT_DELAY_MS);
+      await flushAsyncWork();
+    });
+
+    await waitFor(() => {
+      expect(store.getState().device.connection.phase).toBe("connected");
+    });
+
+    await act(async () => {
+      device.emitEMGPacket({
+        timestamp: 400,
+        channels: [900, 800, 700, 600, 500, 400, 300, 200],
+      });
+      device.emitIMUPacket({ timestamp: 400, rawRoll: 1200 });
+    });
+
+    await waitFor(() => {
+      expect(store.getState().device.latestEMG?.timestamp).toBe(400);
+      expect(store.getState().device.latestIMU?.timestamp).toBe(400);
+    });
+
+    const state = store.getState().device;
+    expect(state.connection.connected).toBe(true);
+    expect(state.transportDiagnostics.reconnectAttemptCount).toBe(0);
+    expect(state.latestEMG?.timestamp).toBe(400);
+    expect(state.latestIMU?.timestamp).toBe(400);
   });
 });

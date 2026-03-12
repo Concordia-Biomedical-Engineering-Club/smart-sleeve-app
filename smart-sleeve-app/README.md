@@ -139,6 +139,26 @@ To test the signal processing manually:
 3. Toggle the **Filters ON/OFF** button.
 4. Observe the live `LineChart` and numeric values to see the noise reduction in real-time.
 
+### Real Hardware Bring-up
+
+For physical sleeve testing, use this short checklist:
+
+1. Flash [firmware/esp32_ble_sleeve.ino](firmware/esp32_ble_sleeve.ino) to the SparkFun ESP32 Thing Plus.
+2. Set `EXPO_PUBLIC_USE_MOCK_HARDWARE=false` in `.env`.
+3. Start Metro with `npx expo start --dev-client`.
+4. Install and open a native dev build with `npx expo run:ios --device "<IPHONE_NAME>"` or `npx expo run:android --device "<ANDROID_MODEL>"`.
+5. Open the BLE debug screen and confirm:
+
+- `Requested: real`
+- `Active: real`
+- `Phase: connected`
+- EMG and IMU packet counters are increasing
+- both BLE characteristics are listed
+
+6. If the connection fails, use the BLE debug counters plus the hardware guide to distinguish checksum mismatch, parser mismatch, transport failure, and discovery failure.
+
+The full wiring, firmware, and troubleshooting workflow is documented in [../docs/hardware_setup_guide.md](../docs/hardware_setup_guide.md).
+
 ---
 
 ## 📁 Project Structure

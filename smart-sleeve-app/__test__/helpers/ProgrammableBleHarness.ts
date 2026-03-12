@@ -27,9 +27,28 @@ type RemovableSubscription = {
   remove: jest.Mock;
 };
 
+type ProgrammableBleDeviceOptions = {
+  serviceUuids?: string[];
+  characteristicUuids?: string[];
+};
+
 export class ProgrammableBleDevice {
   public readonly id: string;
   public readonly name: string;
+  public readonly services = jest
+    .fn()
+    .mockImplementation(async () =>
+      this.serviceUuids.map((uuid) => ({ uuid })),
+    );
+  public readonly characteristicsForService = jest
+    .fn()
+    .mockImplementation(async (serviceUuid: string) => {
+      if (!this.serviceUuids.includes(serviceUuid)) {
+        return [];
+      }
+
+      return this.characteristicUuids.map((uuid) => ({ uuid }));
+    });
   public readonly discoverAllServicesAndCharacteristics = jest
     .fn()
     .mockResolvedValue(undefined);
@@ -68,10 +87,21 @@ export class ProgrammableBleDevice {
 
   private monitors = new Map<string, CharacteristicCallback>();
   private disconnectCallback: DisconnectCallback | null = null;
+  private readonly serviceUuids: string[];
+  private readonly characteristicUuids: string[];
 
-  constructor(id: string, name: string) {
+  constructor(
+    id: string,
+    name: string,
+    options: ProgrammableBleDeviceOptions = {},
+  ) {
     this.id = id;
     this.name = name;
+    this.serviceUuids = options.serviceUuids ?? [SERVICE_UUID];
+    this.characteristicUuids = options.characteristicUuids ?? [
+      EMG_CHAR_UUID,
+      IMU_CHAR_UUID,
+    ];
   }
 
   emitEMGPacket(options: {
@@ -147,6 +177,7 @@ export class ProgrammableBleDevice {
 }
 
 export class ProgrammableBleManager {
+  public readonly state = jest.fn().mockResolvedValue("PoweredOn");
   public readonly startDeviceScan = jest.fn(
     (
       _serviceUuids: string[] | null,
@@ -175,8 +206,12 @@ export class ProgrammableBleManager {
   private scanCallback: ScanCallback | null = null;
   private connectFailures: Error[] = [];
 
-  registerDevice(id: string, name: string): ProgrammableBleDevice {
-    const device = new ProgrammableBleDevice(id, name);
+  registerDevice(
+    id: string,
+    name: string,
+    options?: ProgrammableBleDeviceOptions,
+  ): ProgrammableBleDevice {
+    const device = new ProgrammableBleDevice(id, name, options);
     this.devices.set(id, device);
     return device;
   }
@@ -188,6 +223,10 @@ export class ProgrammableBleManager {
     }
 
     this.scanCallback?.(null, { id: device.id, name: device.name });
+  }
+
+  emitScanError(message: string): void {
+    this.scanCallback?.(new Error(message), null);
   }
 
   completeScanWithoutResults(): void {
