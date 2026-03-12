@@ -49,7 +49,7 @@ export default function TestBLEScreen() {
   const MAX_POINTS = 50;
   const [devices, setDevices] = useState<string[]>([]);
   const [isScanning, setIsScanningState] = useState(false);
-  const requestedMockMode = process.env[USE_MOCK_HARDWARE_ENV_KEY] !== "false";
+  const requestedMockMode = process.env[USE_MOCK_HARDWARE_ENV_KEY] === "true";
   const isUsingMockConnector = connector instanceof MockSleeveConnector;
   const isFallbackRoute = !requestedMockMode && isUsingMockConnector;
   const isMock = isUsingMockConnector;

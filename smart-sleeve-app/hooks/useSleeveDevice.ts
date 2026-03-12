@@ -28,6 +28,16 @@ const USE_MOCK_HARDWARE_ENV_KEY = [
   "HARDWARE",
 ].join("_");
 
+/**
+ * Minimum interval between Redux state updates for visualization buffers
+ * (emgBuffer, kneeAngleBuffer, latestCalibrationSample, latestIMU).
+ * Signal processing and feature extraction always run at full 50 Hz;
+ * only the Redux writes that trigger React re-renders are throttled.
+ * 100 ms → 10 Hz, which is more than fast enough for the dashboard UI.
+ */
+const VISUALIZATION_DISPATCH_INTERVAL_MS =
+  process.env.NODE_ENV === "test" ? 0 : 100;
+
 export function useSleeveDevice(connector: ISleeveConnector) {
   const dispatch = useAppDispatch();
   const isFilteringEnabled = useSelector(
@@ -55,6 +65,10 @@ export function useSleeveDevice(connector: ISleeveConnector) {
 
   const processor = useMemo(() => new SignalProcessor(), []);
   const rollingBuffer = useRef<number[][]>([]);
+  // Throttle refs — track the last time we wrote to Redux visualization state
+  const lastEmgDispatchRef = useRef(0);
+  const lastImuDispatchRef = useRef(0);
+  const lastFeatureDispatchRef = useRef(0);
 
   useEffect(() => {
     // Calibration owns the mock scenario temporarily; outside calibration we fall back to workout-driven behavior.
@@ -63,7 +77,7 @@ export function useSleeveDevice(connector: ISleeveConnector) {
 
   useEffect(() => {
     const requestedTransportMode =
-      process.env[USE_MOCK_HARDWARE_ENV_KEY] !== "false" ? "mock" : "real";
+      process.env[USE_MOCK_HARDWARE_ENV_KEY] === "true" ? "mock" : "real";
     const activeTransportMode =
       connector instanceof MockSleeveConnector ? "mock" : "real";
 
@@ -104,10 +118,7 @@ export function useSleeveDevice(connector: ISleeveConnector) {
         dispatch(signalWarmupChanged(isSignalWarmedUp));
       }
 
-      dispatch(emgFrameReceived(frameToDispatch));
-      // Calibration samples are captured before feature aggregation so calibration does not reuse smoothed dashboard RMS snapshots.
-      dispatch(calibrationSampleReceived(frameToDispatch.channels.slice()));
-
+      // ── Signal processing runs at full 50 Hz ──
       rollingBuffer.current.push(frameToDispatch.channels);
       if (rollingBuffer.current.length > WINDOW_SIZE) {
         rollingBuffer.current.shift();
@@ -118,12 +129,41 @@ export function useSleeveDevice(connector: ISleeveConnector) {
           rollingBuffer.current,
           isCalibratedRef.current ? calibrationRef.current : null,
         );
-        dispatch(featuresUpdated(features));
+
+        // Keep feature extraction at full cadence, but throttle Redux writes.
+        const now = Date.now();
+        if (
+          now - lastFeatureDispatchRef.current >=
+          VISUALIZATION_DISPATCH_INTERVAL_MS
+        ) {
+          lastFeatureDispatchRef.current = now;
+          dispatch(featuresUpdated(features));
+        }
+      }
+
+      // ── Redux visualization + recording writes throttled to 10 Hz ──
+      // This prevents the dashboard from re-rendering at 50 Hz, which was
+      // causing a JS thread overload / crash after ~10 seconds of BLE data.
+      const now = Date.now();
+      if (
+        now - lastEmgDispatchRef.current >=
+        VISUALIZATION_DISPATCH_INTERVAL_MS
+      ) {
+        lastEmgDispatchRef.current = now;
+        dispatch(emgFrameReceived(frameToDispatch));
+        dispatch(calibrationSampleReceived(frameToDispatch.channels.slice()));
       }
     });
 
     const unsubscribeIMU = connector.subscribeToIMU((data) => {
-      dispatch(imuFrameReceived(data));
+      const now = Date.now();
+      if (
+        now - lastImuDispatchRef.current >=
+        VISUALIZATION_DISPATCH_INTERVAL_MS
+      ) {
+        lastImuDispatchRef.current = now;
+        dispatch(imuFrameReceived(data));
+      }
     });
 
     const unsubscribeTransportEvents = connector.onTransportEvent((event) => {

@@ -10,11 +10,12 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Provider, useSelector } from "react-redux";
 import { store, persistor } from "../store/store";
 import { PersistGate } from "redux-persist/integration/react";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { login, logout } from "../store/userSlice";
 import { useEffect } from "react";
 import { initDatabase } from "@/services/Database";
 import type { RootState } from "@/store/store";
+import { auth } from "@/firebaseConfig";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -65,7 +66,6 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
-    const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         store.dispatch(

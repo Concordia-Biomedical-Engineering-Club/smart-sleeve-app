@@ -46,3 +46,6 @@ app-example
 /ios
 /android
 smart_sleeve.db
+
+# local build artifacts
+build-*.apk

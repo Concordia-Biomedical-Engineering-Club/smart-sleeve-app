@@ -29,7 +29,7 @@ export default function TabLayout() {
 
   // Auto-connect in Mock mode if not connected
   useEffect(() => {
-    if (process.env[USE_MOCK_HARDWARE_ENV_KEY] !== "false") {
+    if (process.env[USE_MOCK_HARDWARE_ENV_KEY] === "true") {
       connector.connect("GLOBAL_MOCK_DEVICE");
     }
   }, [connector]);
