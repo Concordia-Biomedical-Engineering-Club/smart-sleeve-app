@@ -35,6 +35,10 @@ import { RMSGraph } from "@/components/dashboard/RMSGraph";
 import { EXERCISE_LIBRARY } from "@/constants/exercises";
 import { WorkoutOverlay } from "@/components/dashboard/WorkoutOverlay";
 import CalibrationOverlay from "@/components/dashboard/CalibrationOverlay";
+import {
+  getSignalBadgeLabel,
+  getSignalToggleLabel,
+} from "@/components/dashboard/signalDisplay";
 
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 
@@ -78,8 +82,8 @@ export default function DashboardScreen() {
   const workout = useSelector(selectWorkout);
   const isCalibrated = useSelector(selectIsCalibrated);
   const showNormalized = useSelector(selectShowNormalized);
-  const latestFeatures = useSelector(
-    (state: RootState) => state.device.latestFeatures,
+  const latestCalibrationSample = useSelector(
+    (state: RootState) => state.device.latestCalibrationSample,
   );
   const injuredSide = useSelector(selectInjuredSide);
 
@@ -121,7 +125,7 @@ export default function DashboardScreen() {
     return [...primaries, ...secondaries];
   }, [isWorkoutActive, workout.exerciseId, channels]);
 
-  const liveRMS = latestFeatures?.rms ?? [];
+  const liveCalibrationSample = latestCalibrationSample ?? [];
 
   return (
     <SafeAreaView
@@ -200,7 +204,7 @@ export default function DashboardScreen() {
                   { color: showNormalized ? "#fff" : theme.textSecondary },
                 ]}
               >
-                {showNormalized ? "% MVC" : "μV"}
+                {getSignalToggleLabel(showNormalized)}
               </ThemedText>
             </TouchableOpacity>
           )}
@@ -249,7 +253,7 @@ export default function DashboardScreen() {
             {isCalibrated && (
               <View style={[styles.pill, { backgroundColor: theme.border }]}>
                 <ThemedText style={styles.unitLabel}>
-                  {showNormalized ? "NORMALIZED" : "RAW MV"}
+                  {getSignalBadgeLabel(showNormalized)}
                 </ThemedText>
               </View>
             )}
@@ -290,7 +294,7 @@ export default function DashboardScreen() {
 
       <CalibrationOverlay
         visible={showCalibration}
-        liveRMS={liveRMS}
+        liveSample={liveCalibrationSample}
         onComplete={handleCalibrationComplete}
         onDismiss={() => setShowCalibration(false)}
       />

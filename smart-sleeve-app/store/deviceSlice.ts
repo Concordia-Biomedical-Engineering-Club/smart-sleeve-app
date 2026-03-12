@@ -32,14 +32,17 @@ export interface WorkoutSession {
 export interface DeviceState {
   connection: ConnectionStatus;
   scenario: "REST" | "FLEX" | "SQUAT";
+  calibrationScenarioOverride: "REST" | "FLEX" | null;
   isScanning: boolean;
   latestEMG: EMGData | null;
   latestIMU: IMUData | null;
   latestFeatures: NormalizedEMGFeatures | null;
+  latestCalibrationSample: number[] | null;
   emgBuffer: EMGData[];
   kneeAngleBuffer: number[];
   workout: WorkoutSession;
   isFilteringEnabled: boolean;
+  isSignalWarmedUp: boolean;
   // ── Issue #7 — Session recording ──────────────────────────────────────────
   sessionStatus: SessionStatus;
   sessionStartTime: number | null;
@@ -64,14 +67,17 @@ const initialWorkout: WorkoutSession = {
 const initialState: DeviceState = {
   connection: { connected: false },
   scenario: "REST",
+  calibrationScenarioOverride: null,
   isScanning: false,
   latestEMG: null,
   latestIMU: null,
   latestFeatures: null,
+  latestCalibrationSample: null,
   emgBuffer: [],
   kneeAngleBuffer: [],
   workout: initialWorkout,
   isFilteringEnabled: true,
+  isSignalWarmedUp: false,
   sessionStatus: "IDLE",
   sessionStartTime: null,
   recordingBuffer: [],
@@ -97,12 +103,21 @@ const deviceSlice = createSlice({
         state.latestEMG = null;
         state.latestIMU = null;
         state.latestFeatures = null;
+        state.latestCalibrationSample = null;
         state.emgBuffer = [];
         state.kneeAngleBuffer = [];
+        state.calibrationScenarioOverride = null;
+        state.isSignalWarmedUp = false;
       }
     },
     scenarioChanged(state, action: PayloadAction<DeviceState["scenario"]>) {
       state.scenario = action.payload;
+    },
+    setCalibrationScenarioOverride(
+      state,
+      action: PayloadAction<DeviceState["calibrationScenarioOverride"]>,
+    ) {
+      state.calibrationScenarioOverride = action.payload;
     },
     setIsScanning(state, action: PayloadAction<boolean>) {
       state.isScanning = action.payload;
@@ -123,6 +138,12 @@ const deviceSlice = createSlice({
       action: PayloadAction<DeviceState["latestFeatures"]>,
     ) {
       state.latestFeatures = action.payload;
+    },
+    calibrationSampleReceived(state, action: PayloadAction<number[]>) {
+      state.latestCalibrationSample = action.payload;
+    },
+    signalWarmupChanged(state, action: PayloadAction<boolean>) {
+      state.isSignalWarmedUp = action.payload;
     },
     imuFrameReceived(state, action: PayloadAction<IMUData>) {
       state.latestIMU = action.payload;
@@ -270,9 +291,12 @@ const deviceSlice = createSlice({
 export const {
   connectionChanged,
   scenarioChanged,
+  setCalibrationScenarioOverride,
   setIsScanning,
   emgFrameReceived,
   featuresUpdated,
+  calibrationSampleReceived,
+  signalWarmupChanged,
   imuFrameReceived,
   clearBuffers,
   startSession,
@@ -305,6 +329,10 @@ export const selectEmgBuffer = createSelector(
 export const selectLatestFeatures = createSelector(
   [selectDevice],
   (device) => device.latestFeatures,
+);
+export const selectLatestCalibrationSample = createSelector(
+  [selectDevice],
+  (device) => device.latestCalibrationSample,
 );
 export const selectKneeAngleBuffer = createSelector(
   [selectDevice],
@@ -345,6 +373,14 @@ export const selectRecordingKneeAngles = createSelector(
 export const selectSessionStartTime = createSelector(
   [selectDevice],
   (device) => device.sessionStartTime,
+);
+export const selectCalibrationScenarioOverride = createSelector(
+  [selectDevice],
+  (device) => device.calibrationScenarioOverride,
+);
+export const selectIsSignalWarmedUp = createSelector(
+  [selectDevice],
+  (device) => device.isSignalWarmedUp,
 );
 
 export default deviceSlice.reducer;

@@ -17,8 +17,13 @@ interface RMSGraphProps {
 }
 
 const BUFFER_SIZE = 50; // Number of points to display (horizontal resolution)
-const RAW_Y_MAX = 1.0;
+const MIN_RAW_Y_MAX = 0.1;
 const NORMALIZED_Y_MAX = 150;
+
+export function getRawGraphMax(values: number[]): number {
+  const peak = values.reduce((max, value) => Math.max(max, Math.abs(value)), 0);
+  return Math.max(MIN_RAW_Y_MAX, peak * 1.2);
+}
 
 export function getGraphValue(
   latestFeatures: {
@@ -87,7 +92,9 @@ export const RMSGraph: React.FC<RMSGraphProps> = ({
       const x = index * stepX;
       // Invert Y because SVG origin (0,0) is top-left
       // Scale value: (val / Y_MAX) * height
-      const yMax = showNormalized ? NORMALIZED_Y_MAX : RAW_Y_MAX;
+      const yMax = showNormalized
+        ? NORMALIZED_Y_MAX
+        : getRawGraphMax(dataRef.current);
       const normalizedY = Math.min(val / yMax, 1.0);
       const y = height - normalizedY * height;
       return `${x.toFixed(1)},${y.toFixed(1)}`;

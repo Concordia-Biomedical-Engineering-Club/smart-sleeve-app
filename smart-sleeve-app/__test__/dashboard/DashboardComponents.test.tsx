@@ -3,7 +3,11 @@ import { render } from "@testing-library/react-native";
 import { SegmentedControl } from "@/components/dashboard/SegmentedControl";
 import { CircularDataCard } from "@/components/dashboard/CircularDataCard";
 import { CALIBRATION_CHANNEL_LABELS } from "@/components/dashboard/CalibrationOverlay";
-import { getGraphValue } from "@/components/dashboard/RMSGraph";
+import { getGraphValue, getRawGraphMax } from "@/components/dashboard/RMSGraph";
+import {
+  RAW_SIGNAL_BADGE_LABEL,
+  RAW_SIGNAL_TOGGLE_LABEL,
+} from "../../components/dashboard/signalDisplay";
 import StatCard from "@/components/StatCard";
 
 jest.mock("expo-haptics", () => ({
@@ -44,7 +48,7 @@ describe("Dashboard Components", () => {
         currentValue="50"
         goalValue="Goal: 100"
         percentage={50}
-      />
+      />,
     );
     expect(getByText("Test Chart")).toBeTruthy();
     expect(getByText("50")).toBeTruthy();
@@ -67,5 +71,15 @@ describe("Dashboard Components", () => {
 
   it("keeps calibration channel labels consistent with the rest of the app", () => {
     expect(CALIBRATION_CHANNEL_LABELS).toEqual(["VMO", "VL", "ST", "BF"]);
+  });
+
+  it("uses stable raw-mode labels across the dashboard", () => {
+    expect(RAW_SIGNAL_TOGGLE_LABEL).toBe("Raw RMS");
+    expect(RAW_SIGNAL_BADGE_LABEL).toBe("RAW RMS");
+  });
+
+  it("uses dynamic raw graph scaling instead of a fixed mock-only ceiling", () => {
+    expect(getRawGraphMax([0.02, 0.05, 0.08])).toBeCloseTo(0.1, 5);
+    expect(getRawGraphMax([0.5, 1.5, 2])).toBeCloseTo(2.4, 5);
   });
 });

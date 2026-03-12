@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { View, StyleSheet, TouchableOpacity, Animated } from "react-native";
 import * as Haptics from "expo-haptics";
+import { useSelector } from "react-redux";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 import type { CalibrationCoefficients } from "@/store/userSlice";
+import { useAppDispatch } from "@/hooks/storeHooks";
 import {
   startBaseline,
   startMVC,
-  addFrame,
+  addSample,
   finalizeBaseline,
   finalizeMVC,
   buildCoefficients,
@@ -16,6 +18,11 @@ import {
 } from "@/services/NormalizationService";
 import { AppModal } from "@/components/ui/AppModal";
 import { ThemedText } from "@/components/themed-text";
+import {
+  selectIsSignalWarmedUp,
+  setCalibrationScenarioOverride,
+} from "@/store/deviceSlice";
+import { RAW_SIGNAL_READING_LABEL } from "@/components/dashboard/signalDisplay";
 
 const MVC_DURATION_SEC = 5;
 export const CALIBRATION_CHANNEL_LABELS = ["VMO", "VL", "ST", "BF"];
@@ -23,19 +30,21 @@ type CalibrationPhase = "intro" | "rest" | "flex" | "confirm" | "error";
 
 interface CalibrationOverlayProps {
   visible: boolean;
-  liveRMS: number[];
+  liveSample: number[];
   onComplete: (coeffs: CalibrationCoefficients) => void;
   onDismiss: () => void;
 }
 
 export default function CalibrationOverlay({
   visible,
-  liveRMS,
+  liveSample,
   onComplete,
   onDismiss,
 }: CalibrationOverlayProps) {
+  const dispatch = useAppDispatch();
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
+  const isSignalWarmedUp = useSelector(selectIsSignalWarmedUp);
   const [phase, setPhase] = useState<CalibrationPhase>("intro");
   const [countdown, setCountdown] = useState(0);
   const [baseline, setBaseline] = useState<number[] | null>(null);
@@ -44,30 +53,51 @@ export default function CalibrationOverlay({
   const progressAnim = useRef(new Animated.Value(0)).current;
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    if ((phase === "rest" || phase === "flex") && liveRMS.length > 0)
-      addFrame(liveRMS);
-  }, [liveRMS, phase]);
+  const clearCountdown = useCallback(() => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+  }, []);
+
+  const cleanupCalibrationRuntime = useCallback(() => {
+    clearCountdown();
+    dispatch(setCalibrationScenarioOverride(null));
+    reset();
+  }, [clearCountdown, dispatch]);
 
   useEffect(() => {
+    if ((phase === "rest" || phase === "flex") && liveSample.length > 0) {
+      addSample(liveSample);
+    }
+  }, [liveSample, phase]);
+
+  useEffect(() => {
+    if (!visible) {
+      cleanupCalibrationRuntime();
+      return;
+    }
+
     if (visible) {
       reset();
+      dispatch(setCalibrationScenarioOverride(null));
       setPhase("intro");
       setBaseline(null);
       setMVC(null);
       setErrorMsg("");
       progressAnim.setValue(0);
     }
-  }, [progressAnim, visible]);
+  }, [cleanupCalibrationRuntime, dispatch, progressAnim, visible]);
 
   useEffect(() => {
     return () => {
-      if (countdownRef.current) clearInterval(countdownRef.current);
+      cleanupCalibrationRuntime();
     };
-  }, [progressAnim]);
+  }, [cleanupCalibrationRuntime]);
 
   const runCountdown = useCallback(
     (duration: number, onDone: () => void) => {
+      clearCountdown();
       progressAnim.setValue(0);
       Animated.timing(progressAnim, {
         toValue: 1,
@@ -80,15 +110,16 @@ export default function CalibrationOverlay({
         remaining -= 1;
         setCountdown(remaining);
         if (remaining <= 0) {
-          clearInterval(countdownRef.current!);
+          clearCountdown();
           onDone();
         }
       }, 1000);
     },
-    [progressAnim],
+    [clearCountdown, progressAnim],
   );
 
   const startMVCPhase = useCallback(() => {
+    dispatch(setCalibrationScenarioOverride("FLEX"));
     startMVC();
     setPhase("flex");
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -99,14 +130,18 @@ export default function CalibrationOverlay({
         setPhase("confirm");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch {
+        dispatch(setCalibrationScenarioOverride(null));
         setErrorMsg("MVC capture failed. Please flex harder and try again.");
         setPhase("error");
       }
     });
-  }, [runCountdown]);
+  }, [dispatch, runCountdown]);
 
   const startRestPhase = useCallback(() => {
+    if (!isSignalWarmedUp) return;
+
     reset();
+    dispatch(setCalibrationScenarioOverride("REST"));
     startBaseline();
     setPhase("rest");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -116,25 +151,32 @@ export default function CalibrationOverlay({
         setBaseline(b);
         startMVCPhase();
       } catch {
+        dispatch(setCalibrationScenarioOverride(null));
         setErrorMsg("Baseline capture failed. Please try again.");
         setPhase("error");
       }
     });
-  }, [runCountdown, startMVCPhase]);
+  }, [dispatch, isSignalWarmedUp, runCountdown, startMVCPhase]);
 
   const handleConfirm = useCallback(() => {
     if (!baseline || !mvc) return;
+    cleanupCalibrationRuntime();
     onComplete(buildCoefficients(baseline, mvc));
-  }, [baseline, mvc, onComplete]);
+  }, [baseline, cleanupCalibrationRuntime, mvc, onComplete]);
 
   const handleRetry = useCallback(() => {
-    reset();
+    cleanupCalibrationRuntime();
     setPhase("intro");
     setBaseline(null);
     setMVC(null);
     setErrorMsg("");
     progressAnim.setValue(0);
-  }, [progressAnim]);
+  }, [cleanupCalibrationRuntime, progressAnim]);
+
+  const handleDismiss = useCallback(() => {
+    cleanupCalibrationRuntime();
+    onDismiss();
+  }, [cleanupCalibrationRuntime, onDismiss]);
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -276,7 +318,7 @@ export default function CalibrationOverlay({
                   type="label"
                   style={[styles.resultLabel, { color: theme.textSecondary }]}
                 >
-                  Baseline (Rest) — μV RMS
+                  Baseline (Rest) — {RAW_SIGNAL_READING_LABEL}
                 </ThemedText>
                 {renderChannelRow(baseline)}
               </View>
@@ -287,7 +329,7 @@ export default function CalibrationOverlay({
                   type="label"
                   style={[styles.resultLabel, { color: theme.textSecondary }]}
                 >
-                  MVC Peak (500ms window) — μV RMS
+                  MVC Peak (500ms window) — {RAW_SIGNAL_READING_LABEL}
                 </ThemedText>
                 {renderChannelRow(mvc)}
               </View>
@@ -325,7 +367,9 @@ export default function CalibrationOverlay({
   const getSubtitle = () => {
     switch (phase) {
       case "intro":
-        return "A 2-step process to personalise your signal readings.";
+        return isSignalWarmedUp
+          ? "A 2-step process to personalise your signal readings."
+          : "Preparing the filtered signal before calibration can begin.";
       case "rest":
         return "Keep your leg completely still and relaxed.";
       case "flex":
@@ -344,12 +388,13 @@ export default function CalibrationOverlay({
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
             onPress={startRestPhase}
+            disabled={!isSignalWarmedUp}
           >
             <ThemedText type="bodyBold" style={styles.primaryBtnText}>
-              Start Calibration
+              {isSignalWarmedUp ? "Start Calibration" : "Preparing signal..."}
             </ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.cancelLink} onPress={onDismiss}>
+          <TouchableOpacity style={styles.cancelLink} onPress={handleDismiss}>
             <ThemedText style={{ color: theme.textSecondary }}>
               Cancel
             </ThemedText>
@@ -390,7 +435,7 @@ export default function CalibrationOverlay({
               Try Again
             </ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.cancelLink} onPress={onDismiss}>
+          <TouchableOpacity style={styles.cancelLink} onPress={handleDismiss}>
             <ThemedText style={{ color: theme.textSecondary }}>
               Cancel
             </ThemedText>
@@ -404,14 +449,12 @@ export default function CalibrationOverlay({
   return (
     <AppModal
       visible={visible}
-      onClose={onDismiss}
+      onClose={handleDismiss}
       title={getTitle()}
       subtitle={getSubtitle()}
       footer={renderFooter()}
     >
-      <View style={styles.modalContentContainer}>
-        {renderContent()}
-      </View>
+      <View style={styles.modalContentContainer}>{renderContent()}</View>
     </AppModal>
   );
 }
