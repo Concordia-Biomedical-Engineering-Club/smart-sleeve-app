@@ -5,6 +5,7 @@ import reducer, {
   setCalibration,
   setInjuredSide,
   setInjuryDetails,
+  setMeasurementSide,
   setTherapyGoal,
   toggleNormalizedMode,
   type CalibrationCoefficients,
@@ -62,7 +63,27 @@ describe("userSlice onboarding ownership", () => {
     expect(nextState.injuryDetails).toBeNull();
     expect(nextState.therapyGoal).toBeNull();
     expect(nextState.showNormalized).toBe(false);
-    expect(nextState.calibration.calibratedAt).toBeNull();
+    expect(nextState.calibrationsBySide.RIGHT.calibratedAt).toBeNull();
     expect(nextState.profileOwnerEmail).toBe("new-athlete@example.com");
+  });
+
+  it("stores calibration separately for each measured side", () => {
+    let state = reducer(
+      undefined,
+      login({ email: "athlete@example.com", isAuthenticated: true }),
+    );
+    state = reducer(state, setInjuredSide("LEFT"));
+    state = reducer(state, setCalibration(calibratedState));
+    state = reducer(state, setMeasurementSide("RIGHT"));
+    state = reducer(
+      state,
+      setCalibration({
+        ...calibratedState,
+        calibratedAt: 999999,
+      }),
+    );
+
+    expect(state.calibrationsBySide.LEFT.calibratedAt).toBe(123456);
+    expect(state.calibrationsBySide.RIGHT.calibratedAt).toBe(999999);
   });
 });

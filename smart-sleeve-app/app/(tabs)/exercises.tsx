@@ -7,7 +7,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { router } from "expo-router";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/themed-text";
@@ -15,6 +15,11 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors, Shadows } from "@/constants/theme";
 import { EXERCISE_LIBRARY, Exercise } from "@/constants/exercises";
 import { startWorkout } from "@/store/deviceSlice";
+import {
+  selectInjuredSide,
+  selectMeasurementSide,
+  setMeasurementSide,
+} from "@/store/userSlice";
 
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { AppModal } from "@/components/ui/AppModal";
@@ -30,14 +35,19 @@ export default function ExercisesScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
   const dispatch = useDispatch();
+  const measurementSide = useSelector(selectMeasurementSide);
+  const injuredSide = useSelector(selectInjuredSide);
 
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(
     null,
   );
-  const [selectedSide, setSelectedSide] = useState<"LEFT" | "RIGHT">("LEFT");
+  const [selectedSide, setSelectedSide] = useState<"LEFT" | "RIGHT">(
+    measurementSide,
+  );
 
   const handleStartSession = () => {
     if (!selectedExercise) return;
+    dispatch(setMeasurementSide(selectedSide));
     dispatch(
       startWorkout({
         exerciseId: selectedExercise.id,
@@ -72,7 +82,7 @@ export default function ExercisesScreen() {
           Guided Rehab
         </ThemedText>
         <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-          Choose an exercise to begin your supervised clinical session
+          Choose an exercise to begin a guided measurement session
         </ThemedText>
 
         <View style={styles.listContainer}>
@@ -87,7 +97,7 @@ export default function ExercisesScreen() {
                   Shadows.card,
                 ]}
                 onPress={() => {
-                  setSelectedSide("LEFT");
+                  setSelectedSide(measurementSide);
                   setSelectedExercise(exercise);
                 }}
                 activeOpacity={0.9}
@@ -160,7 +170,7 @@ export default function ExercisesScreen() {
                       { backgroundColor: theme.primary, ...Shadows.button },
                     ]}
                     onPress={() => {
-                      setSelectedSide("LEFT");
+                      setSelectedSide(measurementSide);
                       setSelectedExercise(exercise);
                     }}
                   >
@@ -180,7 +190,7 @@ export default function ExercisesScreen() {
         visible={selectedExercise !== null}
         onClose={() => setSelectedExercise(null)}
         title={selectedExercise?.name}
-        subtitle="Select the limb you are rehabbing today"
+        subtitle="Select the limb you are measuring in this session"
         footer={
           <>
             <TouchableOpacity
@@ -191,7 +201,7 @@ export default function ExercisesScreen() {
               onPress={handleStartSession}
             >
               <ThemedText style={styles.confirmButtonText}>
-                Begin Session
+                Begin Measurement Session
               </ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
@@ -228,7 +238,13 @@ export default function ExercisesScreen() {
                   },
                 ]}
               >
-                {side === "LEFT" ? "Left Knee" : "Right Knee"}
+                {injuredSide === side
+                  ? side === "LEFT"
+                    ? "Injured Left"
+                    : "Injured Right"
+                  : side === "LEFT"
+                    ? "Healthy Left"
+                    : "Healthy Right"}
               </ThemedText>
             </TouchableOpacity>
           ))}

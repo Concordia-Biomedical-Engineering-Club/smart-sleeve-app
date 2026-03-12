@@ -24,6 +24,7 @@ import {
   computeDeficitPercentageFromEMGFrames,
   computeIntensityScore,
 } from "@/services/ProgressAnalysis";
+import { normalize } from "@/services/NormalizationService";
 import type { CalibrationCoefficients } from "@/store/userSlice";
 
 export interface SaveSessionParams {
@@ -116,6 +117,10 @@ export async function saveSession(
     emgBuffer,
     kneeAngleBuffer,
   );
+  const normalizedChannelMeans = computeNormalizedChannelMeans(
+    emgBuffer,
+    calibration,
+  );
 
   // ── Compute analytics from buffer ──────────────────────────────────────────
   const rmsValues = emgBuffer.map((frame) => frame.channels.slice(0, 4));
@@ -171,6 +176,7 @@ export async function saveSession(
       exerciseQuality: exerciseQuality > 0 ? exerciseQuality : 0.85, // fallback to a good score
       completionRate: 0,
       intensityScore: 0,
+      normalizedChannelMeans,
     },
   };
 
@@ -240,6 +246,28 @@ function average(arr: number[]): number {
   return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
-function computeMean(arr: number[]): number {
-  return average(arr);
+function computeNormalizedChannelMeans(
+  emgBuffer: EMGData[],
+  calibration?: CalibrationCoefficients | null,
+): number[] | null {
+  if (
+    !calibration ||
+    calibration.calibratedAt === null ||
+    emgBuffer.length === 0
+  ) {
+    return null;
+  }
+
+  const channelTotals = [0, 0, 0, 0];
+
+  for (const frame of emgBuffer) {
+    const normalizedChannels = normalize(frame.channels, calibration);
+    for (let channelIndex = 0; channelIndex < 4; channelIndex += 1) {
+      channelTotals[channelIndex] += normalizedChannels[channelIndex] ?? 0;
+    }
+  }
+
+  return channelTotals.map(
+    (total) => Math.round((total / emgBuffer.length) * 10) / 10,
+  );
 }

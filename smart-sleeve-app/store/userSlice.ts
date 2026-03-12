@@ -9,6 +9,11 @@ export interface CalibrationCoefficients {
 
 export type InjuredSide = "LEFT" | "RIGHT";
 
+export interface CalibrationsBySide {
+  LEFT: CalibrationCoefficients;
+  RIGHT: CalibrationCoefficients;
+}
+
 interface AuthPayload {
   email: string | null;
   isAuthenticated: boolean;
@@ -18,7 +23,8 @@ export interface UserState {
   isLoggedIn: boolean;
   email: string | null;
   isAuthenticated: boolean;
-  calibration: CalibrationCoefficients;
+  calibrationsBySide: CalibrationsBySide;
+  measurementSide: InjuredSide | null;
   showNormalized: boolean;
   injuredSide: InjuredSide | null;
   hasCompletedOnboarding: boolean;
@@ -35,8 +41,17 @@ const createInitialCalibration = (): CalibrationCoefficients => ({
   calibratedAt: null,
 });
 
+const createInitialCalibrationsBySide = (): CalibrationsBySide => ({
+  LEFT: createInitialCalibration(),
+  RIGHT: createInitialCalibration(),
+});
+
+const getEffectiveMeasurementSide = (state: UserState): InjuredSide =>
+  state.measurementSide ?? state.injuredSide ?? "LEFT";
+
 const resetScopedUserState = (state: UserState) => {
-  state.calibration = createInitialCalibration();
+  state.calibrationsBySide = createInitialCalibrationsBySide();
+  state.measurementSide = null;
   state.showNormalized = false;
   state.injuredSide = null;
   state.hasCompletedOnboarding = false;
@@ -79,7 +94,8 @@ const initialState: UserState = {
   isLoggedIn: false,
   email: null,
   isAuthenticated: false,
-  calibration: createInitialCalibration(),
+  calibrationsBySide: createInitialCalibrationsBySide(),
+  measurementSide: null,
   showNormalized: false,
   injuredSide: null,
   hasCompletedOnboarding: false,
@@ -104,19 +120,35 @@ const userSlice = createSlice({
       state.isAuthenticated = false;
     },
     setCalibration: (state, action: PayloadAction<CalibrationCoefficients>) => {
-      state.calibration = action.payload;
+      state.calibrationsBySide[getEffectiveMeasurementSide(state)] =
+        action.payload;
     },
     resetCalibration: (state) => {
-      state.calibration = createInitialCalibration();
+      state.calibrationsBySide[getEffectiveMeasurementSide(state)] =
+        createInitialCalibration();
       state.showNormalized = false;
     },
     toggleNormalizedMode: (state) => {
-      if (state.calibration.calibratedAt !== null) {
+      if (
+        state.calibrationsBySide[getEffectiveMeasurementSide(state)]
+          .calibratedAt !== null
+      ) {
         state.showNormalized = !state.showNormalized;
       }
     },
     setInjuredSide: (state, action: PayloadAction<InjuredSide>) => {
       state.injuredSide = action.payload;
+      state.measurementSide = action.payload;
+      if (state.calibrationsBySide[action.payload].calibratedAt === null) {
+        state.showNormalized = false;
+      }
+      state.profileOwnerEmail = state.email;
+    },
+    setMeasurementSide: (state, action: PayloadAction<InjuredSide>) => {
+      state.measurementSide = action.payload;
+      if (state.calibrationsBySide[action.payload].calibratedAt === null) {
+        state.showNormalized = false;
+      }
       state.profileOwnerEmail = state.email;
     },
     setInjuryDetails: (state, action: PayloadAction<string>) => {
@@ -142,14 +174,24 @@ export const {
   resetCalibration,
   toggleNormalizedMode,
   setInjuredSide,
+  setMeasurementSide,
   setInjuryDetails,
   setTherapyGoal,
   completeOnboarding,
 } = userSlice.actions;
 
-export const selectCalibration = (state: RootState) => state.user.calibration;
+export const selectMeasurementSide = (state: RootState) =>
+  state.user.measurementSide ?? state.user.injuredSide ?? "LEFT";
+export const selectCalibration = (state: RootState) =>
+  state.user.calibrationsBySide[selectMeasurementSide(state)];
+export const selectCalibrationForSide = (state: RootState, side: InjuredSide) =>
+  state.user.calibrationsBySide[side];
 export const selectIsCalibrated = (state: RootState) =>
-  state.user.calibration.calibratedAt !== null;
+  selectCalibration(state).calibratedAt !== null;
+export const selectHasCalibrationForSide = (
+  state: RootState,
+  side: InjuredSide,
+) => state.user.calibrationsBySide[side].calibratedAt !== null;
 export const selectShowNormalized = (state: RootState) =>
   state.user.showNormalized;
 export const selectInjuredSide = (state: RootState) => state.user.injuredSide;

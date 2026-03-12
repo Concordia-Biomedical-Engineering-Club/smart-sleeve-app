@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   ScrollView,
@@ -15,15 +15,25 @@ import {
   selectIsWorkoutActive,
   selectWorkout,
 } from "../../store/deviceSlice";
+import { fetchSessionsByFilters } from "@/services/Database";
+import {
+  findLatestBilateralComparison,
+  type BilateralComparisonResult,
+} from "@/services/SymmetryService";
 import {
   selectIsCalibrated,
   selectShowNormalized,
   toggleNormalizedMode,
   setCalibration,
   selectInjuredSide,
+  selectMeasurementSide,
+  setMeasurementSide,
 } from "../../store/userSlice";
-import type { CalibrationCoefficients } from "../../store/userSlice";
-import { RootState } from "../../store/store";
+import type {
+  CalibrationCoefficients,
+  InjuredSide,
+} from "../../store/userSlice";
+import type { RootState } from "../../store/store";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors, Shadows } from "@/constants/theme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -39,36 +49,30 @@ import {
   getSignalBadgeLabel,
   getSignalToggleLabel,
 } from "@/components/dashboard/signalDisplay";
+import SymmetryCard from "@/components/dashboard/SymmetryCard";
 
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 
-const getChannels = (injuredSide: "LEFT" | "RIGHT" | null, theme: any) => {
-  const isLeftInjured = (injuredSide ?? "LEFT") === "LEFT";
-  const injured = (name: string) => `${name} (Injured)`;
-  const healthy = (name: string) => `${name} (Healthy)`;
+const getChannels = (theme: any) => {
   return [
     {
       id: 0,
-      label: isLeftInjured ? injured("VMO") : healthy("VMO"),
+      label: "VMO",
       color: theme.primary,
     },
     {
       id: 1,
-      label: isLeftInjured ? injured("VL") : healthy("VL"),
+      label: "VL",
       color: "#FF6B6B",
     },
     {
       id: 2,
-      label: isLeftInjured
-        ? injured("Semitendinosus")
-        : healthy("Semitendinosus"),
+      label: "Semitendinosus",
       color: "#4ECDC4",
     },
     {
       id: 3,
-      label: isLeftInjured
-        ? injured("Biceps Femoris")
-        : healthy("Biceps Femoris"),
+      label: "Biceps Femoris",
       color: "#FFE66D",
     },
   ];
@@ -86,8 +90,11 @@ export default function DashboardScreen() {
     (state: RootState) => state.device.latestCalibrationSample,
   );
   const injuredSide = useSelector(selectInjuredSide);
+  const measurementSide = useSelector(selectMeasurementSide);
 
   const [showCalibration, setShowCalibration] = useState(false);
+  const [comparison, setComparison] =
+    useState<BilateralComparisonResult | null>(null);
 
   const currentKneeAngle =
     kneeAngleBuffer.length > 0
@@ -96,10 +103,58 @@ export default function DashboardScreen() {
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
-  const [timeframe, setTimeframe] = useState("Daily");
 
   const userName = user?.email ? user.email.split("@")[0] : "Athlete";
-  const channels = getChannels(injuredSide, theme);
+  const channels = getChannels(theme);
+  const healthySide = injuredSide === "LEFT" ? "RIGHT" : "LEFT";
+  const measurementOptions: { label: string; side: InjuredSide }[] = injuredSide
+    ? [
+        {
+          label: injuredSide === "LEFT" ? "Injured Left" : "Injured Right",
+          side: injuredSide,
+        },
+        {
+          label: healthySide === "LEFT" ? "Healthy Left" : "Healthy Right",
+          side: healthySide,
+        },
+      ]
+    : [
+        { label: "Left Leg", side: "LEFT" as const },
+        { label: "Right Leg", side: "RIGHT" as const },
+      ];
+  const selectedMeasurementLabel =
+    measurementOptions.find((option) => option.side === measurementSide)
+      ?.label ?? "Left Leg";
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadComparison() {
+      if (!injuredSide) {
+        if (isActive) setComparison(null);
+        return;
+      }
+
+      try {
+        const sessions = await fetchSessionsByFilters({
+          userId: user.email ?? "guest_user",
+        });
+
+        if (!isActive) return;
+        setComparison(findLatestBilateralComparison(sessions, injuredSide));
+      } catch (error) {
+        if (!isActive) return;
+        console.error("Failed to load bilateral comparison", error);
+        setComparison(null);
+      }
+    }
+
+    void loadComparison();
+
+    return () => {
+      isActive = false;
+    };
+  }, [injuredSide, isWorkoutActive, user.email]);
 
   const handleCalibrationComplete = (coeffs: CalibrationCoefficients) => {
     dispatch(setCalibration(coeffs));
@@ -108,6 +163,14 @@ export default function DashboardScreen() {
 
   const handleToggleNormalized = () => {
     dispatch(toggleNormalizedMode());
+  };
+
+  const handleMeasurementSideChange = (optionLabel: string) => {
+    const option = measurementOptions.find(
+      (item) => item.label === optionLabel,
+    );
+    if (!option) return;
+    dispatch(setMeasurementSide(option.side));
   };
 
   const sortedChannels = React.useMemo(() => {
@@ -149,20 +212,30 @@ export default function DashboardScreen() {
               <ThemedText
                 style={[styles.sideLabel, { color: theme.textSecondary }]}
               >
-                REHABBING: {injuredSide === "LEFT" ? "Left" : "Right"} Knee
+                RECOVERY TARGET: {injuredSide === "LEFT" ? "Left" : "Right"}{" "}
+                Knee
               </ThemedText>
             )}
-            <View style={{ marginTop: 24 }}>
-              <SegmentedControl
-                options={["Daily", "Weekly", "Monthly"]}
-                selectedOption={timeframe}
-                onSelect={setTimeframe}
-              />
-            </View>
           </View>
         ) : (
           <View style={styles.workoutHudHeader}>
             <WorkoutOverlay />
+          </View>
+        )}
+
+        {!isWorkoutActive && (
+          <View style={styles.measurementSection}>
+            <ThemedText
+              type="label"
+              style={[styles.sectionTitle, { color: theme.textSecondary }]}
+            >
+              Measuring Today
+            </ThemedText>
+            <SegmentedControl
+              options={measurementOptions.map((option) => option.label)}
+              selectedOption={selectedMeasurementLabel}
+              onSelect={handleMeasurementSideChange}
+            />
           </View>
         )}
 
@@ -181,7 +254,9 @@ export default function DashboardScreen() {
             <ThemedText
               style={[styles.calibrateBtnText, { color: theme.primary }]}
             >
-              {isCalibrated ? "Calibrated" : "Calibrate Sensors"}
+              {isCalibrated
+                ? `Recalibrate ${selectedMeasurementLabel}`
+                : `Calibrate ${selectedMeasurementLabel}`}
             </ThemedText>
           </TouchableOpacity>
 
@@ -220,7 +295,7 @@ export default function DashboardScreen() {
           >
             <View style={styles.actionTextContainer}>
               <ThemedText style={[styles.actionTitle, { color: "#fff" }]}>
-                Start Rehab Session
+                Start Measurement Session
               </ThemedText>
               <ThemedText
                 style={[
@@ -228,7 +303,7 @@ export default function DashboardScreen() {
                   { color: "rgba(255,255,255,0.8)" },
                 ]}
               >
-                Follow clinical exercise library
+                Record the healthy or injured leg with the same protocol
               </ThemedText>
             </View>
             <IconSymbol name="chevron.right" size={24} color="#fff" />
@@ -278,6 +353,42 @@ export default function DashboardScreen() {
           })}
         </View>
 
+        {!isWorkoutActive && injuredSide && (
+          <View style={styles.sectionTitleRow}>
+            <ThemedText
+              type="label"
+              style={[styles.sectionTitle, { color: theme.textSecondary }]}
+            >
+              Healthy vs Injured Comparison
+            </ThemedText>
+          </View>
+        )}
+
+        {!isWorkoutActive && comparison && (
+          <SymmetryCard comparison={comparison} />
+        )}
+
+        {!isWorkoutActive && injuredSide && !comparison && (
+          <View
+            style={[
+              styles.comparisonHintCard,
+              {
+                backgroundColor: theme.secondaryCard,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <ThemedText type="bodyBold" style={{ color: theme.text }}>
+              Symmetry Score appears after both legs are recorded.
+            </ThemedText>
+            <ThemedText style={{ color: theme.textSecondary }}>
+              Complete one calibrated session on the healthy leg and one on the
+              injured leg for the same exercise. The comparison card will appear
+              here on the Dashboard.
+            </ThemedText>
+          </View>
+        )}
+
         {!isWorkoutActive && (
           <View style={styles.gridContainer}>
             <View style={styles.gridRow}>
@@ -317,6 +428,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 24,
   },
+  measurementSection: { gap: 12, marginBottom: 20 },
   calibrateBtn: {
     flex: 1,
     flexDirection: "row",
@@ -345,6 +457,13 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 12, fontWeight: "700", letterSpacing: 1 },
   pill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   unitLabel: { fontSize: 9, fontWeight: "800", color: "#64748B" },
+  comparisonHintCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 18,
+    gap: 8,
+    marginBottom: 16,
+  },
   gridContainer: { gap: 16, marginTop: 12 },
   gridRow: {
     flexDirection: "row",
