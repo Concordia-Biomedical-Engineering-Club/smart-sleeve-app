@@ -43,7 +43,7 @@ def generate_synthetic_data(filename):
     min_rest_duration = 2 * SAMPLE_RATE
     max_rest_duration = 5 * SAMPLE_RATE
     
-    baseline_noise_std = 0.05
+    baseline_noise_std = 0.01 # Lowered from 0.05 to make REST more distinct
     
     i = 0
     while i < TOTAL_SAMPLES:
@@ -60,25 +60,17 @@ def generate_synthetic_data(filename):
             break
             
         if current_state == 0:
-            # Generate REST (Stationary Gaussian Noise + Drift)
-            # We add drift and then filter it out later to ensure baseline is stable
-            drift = 0.3 * np.sin(2 * np.pi * 0.1 * t_sec[i:end_idx])[:, np.newaxis]
-            noise = np.random.normal(0, baseline_noise_std, (actual_duration, CHANNELS))
-            data[i:end_idx, :] = noise + drift
+            # Generate REST (Small but non-zero noise)
+            noise = np.random.normal(0, 0.05, (actual_duration, CHANNELS))
+            data[i:end_idx, :] = noise
             labels[i:end_idx] = 0
         else:
-            # Generate EXERCISE (Muscle Sizzle Bursts)
-            # Create a Hanning-style envelope for smooth contraction/relaxation
+            # Generate EXERCISE (Very distinct muscle sizzle)
             envelope = np.hanning(actual_duration)
-            
             for ch in range(CHANNELS):
-                # Randomized amplitude for each channel to simulate electrode placement
-                burst_amp = np.random.uniform(0.3, 1.2)
-                # "Muscle Sizzle" is high freq noise modulated by the envelope
+                burst_amp = np.random.uniform(1.0, 5.0) 
                 sizzle = np.random.normal(0, burst_amp, actual_duration) * envelope
-                # Add baseline noise and drift
-                drift = 0.5 * np.sin(2 * np.pi * 0.2 * t_sec[i:end_idx])
-                data[i:end_idx, ch] = sizzle + np.random.normal(0, baseline_noise_std, actual_duration) + drift
+                data[i:end_idx, ch] = sizzle 
                 
             labels[i:end_idx] = 1
             
