@@ -191,6 +191,27 @@ Notes:
 - This app already declares the Android BLE permissions required for sleeve testing.
 - Use `eas build` for teammate installs and `npx expo run:android` for local debugging.
 
+### iOS: Dev Build vs Installable App
+
+For iPhone, there are two different workflows:
+
+1. **Native dev build (`npx expo run:ios --device`)**
+  - Requires Metro to be running whenever you open the app.
+  - Start with `npx expo start --dev-client` (or `--tunnel` if needed).
+2. **Installable iOS build (no dev server required)**
+  - Build with EAS and install the signed output on device.
+  - Command:
+
+```bash
+cd smart-sleeve-app/smart-sleeve-app
+eas build --platform ios --profile preview
+```
+
+Notes:
+
+- iOS installable builds require Apple Developer signing/provisioning.
+- Android APK sideloading is simpler; iOS always requires Apple signing.
+
 ---
 
 ## 📁 Project Structure
