@@ -26,6 +26,7 @@ import {
 } from "../../services/auth";
 import { StatusBar } from "expo-status-bar";
 import { AppModal } from "@/components/ui/AppModal";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
 export default function AuthScreen() {
   const dispatch = useDispatch();
@@ -43,6 +44,8 @@ export default function AuthScreen() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRetypePassword, setShowRetypePassword] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -164,11 +167,21 @@ export default function AuthScreen() {
         <TouchableOpacity
           style={[
             styles.button,
-            { backgroundColor: theme.primary, width: "80%" },
+            { backgroundColor: theme.primary, width: "80%", marginBottom: 12 },
+          ]}
+          onPress={() => router.replace("/")}
+        >
+          <Text style={styles.buttonText}>Continue to App</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.button,
+            { backgroundColor: theme.secondaryCard, width: "80%", marginTop: 0, borderWidth: 1, borderColor: theme.border },
           ]}
           onPress={handleLogout}
         >
-          <Text style={styles.buttonText}>Logout</Text>
+          <Text style={[styles.buttonText, { color: theme.warning }]}>Logout</Text>
         </TouchableOpacity>
       </View>
     );
@@ -240,21 +253,34 @@ export default function AuthScreen() {
               <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
                 PASSWORD
               </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    color: theme.text,
-                    borderColor: theme.border,
-                    backgroundColor: theme.secondaryCard,
-                  },
-                ]}
-                placeholder="••••••••"
-                placeholderTextColor={theme.textTertiary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.passwordInput,
+                    {
+                      color: theme.text,
+                      borderColor: theme.border,
+                      backgroundColor: theme.secondaryCard,
+                    },
+                  ]}
+                  placeholder="••••••••"
+                  placeholderTextColor={theme.textTertiary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <IconSymbol 
+                    name={showPassword ? "eye.fill" : "eye.slash.fill"} 
+                    size={22} 
+                    color={theme.textSecondary} 
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {!isLogin && (
@@ -264,21 +290,34 @@ export default function AuthScreen() {
                 >
                   CONFIRM PASSWORD
                 </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      color: theme.text,
-                      borderColor: theme.border,
-                      backgroundColor: theme.secondaryCard,
-                    },
-                  ]}
-                  placeholder="••••••••"
-                  placeholderTextColor={theme.textTertiary}
-                  value={retypePassword}
-                  onChangeText={setRetypePassword}
-                  secureTextEntry
-                />
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.passwordInput,
+                      {
+                        color: theme.text,
+                        borderColor: theme.border,
+                        backgroundColor: theme.secondaryCard,
+                      },
+                    ]}
+                    placeholder="••••••••"
+                    placeholderTextColor={theme.textTertiary}
+                    value={retypePassword}
+                    onChangeText={setRetypePassword}
+                    secureTextEntry={!showRetypePassword}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowRetypePassword(!showRetypePassword)}
+                  >
+                    <IconSymbol 
+                      name={showRetypePassword ? "eye.fill" : "eye.slash.fill"} 
+                      size={22} 
+                      color={theme.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
@@ -438,10 +477,11 @@ const styles = StyleSheet.create({
     ...Typography.body,
   },
   button: {
-    paddingVertical: 16,
-    borderRadius: 14,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: "center",
     marginTop: 24,
+    ...Shadows.button,
   },
   buttonText: {
     color: "#fff",
@@ -479,4 +519,21 @@ const styles = StyleSheet.create({
   },
   modalBox: {},
   modalTitle: {},
+  passwordInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative",
+  },
+  passwordInput: {
+    flex: 1,
+    paddingRight: 50,
+  },
+  eyeButton: {
+    position: "absolute",
+    right: 14,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 40,
+  },
 });

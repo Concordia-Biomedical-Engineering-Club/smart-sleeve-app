@@ -11,11 +11,18 @@ import { useRouter, Redirect } from "expo-router";
 import { resendVerificationEmail, logout } from "../services/auth";
 import { RootState } from "../store/store";
 import { useSelector } from "react-redux";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Colors, Typography, Shadows } from "@/constants/theme";
+import { ThemedText } from "@/components/themed-text";
+import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function EmailVerificationScreen() {
   const [resending, setResending] = useState(false);
   const router = useRouter();
   const user = useSelector((state: RootState) => state.user);
+  const colorScheme = useColorScheme() ?? "light";
+  const theme = Colors[colorScheme];
 
   // If user becomes verified, redirect to tabs
   if (user.isAuthenticated) {
@@ -43,154 +50,72 @@ export default function EmailVerificationScreen() {
   const handleLogout = async () => {
     try {
       await logout();
-      router.push("/auth");
+      router.push("/(auth)/login");
     } catch (error) {
       console.error("Logout error:", error);
     }
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      
       <View style={styles.headerContainer}>
-        <Text style={styles.projectTitle}>
-          Smart Rehabilitation Knee Sleeve
-        </Text>
-        <Text style={styles.subtitle}>True North Biomedical 2025–2026</Text>
+        <View style={[styles.brandBadge, { backgroundColor: theme.primary + '15' }]}>
+          <ThemedText style={[styles.brandBadgeText, { color: theme.primary }]}>TRUE NORTH BIOMEDICAL</ThemedText>
+        </View>
+        <ThemedText style={[styles.title, { color: theme.text }]}>Verify Your Email</ThemedText>
+        <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+          Advanced ACL Rehabilitation Monitoring
+        </ThemedText>
       </View>
 
-      <View style={styles.verificationBox}>
-        <Text style={styles.title}>Verify Your Email</Text>
+      <View style={[styles.verificationBox, { backgroundColor: theme.cardBackground, ...Shadows.card }]}>
+        <ThemedText style={[styles.message, { color: theme.textSecondary }]}>
+          We've sent a verification link to:
+        </ThemedText>
+        <ThemedText type="bodyBold" style={[styles.email, { color: theme.primary }]}>{user?.email}</ThemedText>
 
-        <Text style={styles.message}>
-          We&apos;ve sent a verification email to:
-        </Text>
-        <Text style={styles.email}>{user?.email}</Text>
-
-        <Text style={styles.instructions}>
-          Please check your email and click the verification link to activate
-          your account. Once verified, you will be automatically redirected to
-          the app.
-        </Text>
+        <ThemedText style={[styles.instructions, { color: theme.textSecondary }]}>
+          Please check your inbox (and spam folder) and click the link to activate
+          your account.
+        </ThemedText>
 
         <TouchableOpacity
-          style={[styles.secondaryButton, resending && styles.buttonDisabled]}
+          style={[styles.primaryBtn, { backgroundColor: theme.primary }, resending && { opacity: 0.6 }]}
           onPress={handleResendEmail}
           disabled={resending}
         >
           {resending ? (
-            <ActivityIndicator color="#00B8A9" />
+            <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.secondaryButtonText}>
+            <ThemedText type="bodyBold" style={styles.primaryBtnText}>
               Resend Verification Email
-            </Text>
+            </ThemedText>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
+          <ThemedText style={[styles.logoutText, { color: theme.warning }]}>Use a different email / Logout</ThemedText>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A1D2E",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-  },
-  headerContainer: {
-    alignItems: "center",
-    marginBottom: 40,
-  },
-  projectTitle: {
-    color: "#E6F4F1",
-    fontSize: 20,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  subtitle: {
-    color: "#6CC5C0",
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 4,
-  },
-  verificationBox: {
-    width: "100%",
-    backgroundColor: "#132E45",
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  title: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  message: {
-    color: "#C7DDE7",
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  email: {
-    color: "#00B8A9",
-    fontSize: 18,
-    fontWeight: "600",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  instructions: {
-    color: "#C7DDE7",
-    fontSize: 14,
-    textAlign: "center",
-    marginBottom: 32,
-    lineHeight: 20,
-  },
-  button: {
-    backgroundColor: "#00B8A9",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  secondaryButton: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: "#00B8A9",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  secondaryButtonText: {
-    color: "#00B8A9",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  logoutButton: {
-    alignItems: "center",
-  },
-  logoutButtonText: {
-    color: "#FF6B6B",
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  container: { flex: 1, paddingHorizontal: 24, justifyContent: 'center' },
+  headerContainer: { alignItems: 'center', marginBottom: 40 },
+  brandBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginBottom: 16 },
+  brandBadgeText: { ...Typography.label, fontSize: 10 },
+  title: { ...Typography.heading1, textAlign: 'center' },
+  subtitle: { ...Typography.body, textAlign: 'center', marginTop: 8 },
+  verificationBox: { width: '100%', borderRadius: 24, padding: 24 },
+  message: { ...Typography.body, textAlign: 'center', marginBottom: 8 },
+  email: { textAlign: 'center', fontSize: 18, marginBottom: 20 },
+  instructions: { ...Typography.body, textAlign: 'center', marginBottom: 32, lineHeight: 22, fontSize: 15 },
+  primaryBtn: { borderRadius: 16, paddingVertical: 18, alignItems: 'center', marginBottom: 20 },
+  primaryBtnText: { color: '#fff', fontSize: 16 },
+  logoutButton: { alignItems: 'center' },
+  logoutText: { ...Typography.caption, fontWeight: '600' },
 });

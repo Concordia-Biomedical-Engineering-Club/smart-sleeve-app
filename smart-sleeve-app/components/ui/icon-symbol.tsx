@@ -38,6 +38,12 @@ export const MAPPING = {
   'lightbulb.fill': 'lightbulb',
   'gearshape.fill': 'settings',
   'waveform': 'gesture',
+  'eye.fill': 'visibility',
+  'eye.slash.fill': 'visibility-off',
+  'person.fill': 'person',
+  'lock.fill': 'lock',
+  'questionmark.circle.fill': 'help-outline',
+  'arrow.left.square.fill': 'logout',
 } as IconMapping;
 
 export type IconSymbolName = keyof typeof MAPPING;

@@ -5,6 +5,9 @@ import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Typography, Shadows } from '@/constants/theme';
 import { ThemedText } from '@/components/themed-text';
+import { useDispatch } from 'react-redux';
+import { logout } from '@/store/userSlice';
+import { logout as firebaseLogout } from '@/services/auth';
 
 const BENEFITS = [
   { icon: '📡', title: 'Real-Time EMG', desc: 'Monitor your muscle activation live during every exercise.' },
@@ -15,6 +18,17 @@ const BENEFITS = [
 export default function OnboardingWelcome() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
+  const dispatch = useDispatch();
+
+  const handleSignOut = async () => {
+    try {
+      await firebaseLogout();
+      dispatch(logout());
+      router.replace('/(auth)/login' as any);
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -51,6 +65,15 @@ export default function OnboardingWelcome() {
         >
           <ThemedText type="bodyBold" style={styles.primaryBtnText}>Get Started →</ThemedText>
         </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.signOutBtn}
+          onPress={handleSignOut}
+        >
+          <ThemedText style={[styles.signOutText, { color: theme.textSecondary }]}>
+            Not your account? <ThemedText style={{ color: theme.primary, fontWeight: '600' }}>Sign Out</ThemedText>
+          </ThemedText>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -78,5 +101,7 @@ const styles = StyleSheet.create({
   benefitDesc: { ...Typography.caption, color: '#64748B' },
   footer: { paddingHorizontal: 24, paddingBottom: 40 },
   primaryBtn: { borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
-  primaryBtnText: { color: '#fff' },
+  primaryBtnText: { color: '#fff', fontSize: 17 },
+  signOutBtn: { marginTop: 20, alignItems: 'center' },
+  signOutText: { ...Typography.caption },
 });

@@ -111,7 +111,7 @@ export default function OnboardingPairing() {
 
   const handleFinish = () => {
     dispatch(completeOnboarding());
-    router.replace("/(tabs)" as any);
+    router.replace("/(tabs)/dashboard" as any);
   };
 
   const renderContent = () => {
@@ -142,6 +142,14 @@ export default function OnboardingPairing() {
             >
               <ThemedText type="bodyBold" style={styles.primaryBtnText}>
                 Search for Device
+              </ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.skipBtn}
+              onPress={handleFinish}
+            >
+              <ThemedText style={[styles.skipBtnText, { color: theme.textSecondary }]}>
+                Skip for now
               </ThemedText>
             </TouchableOpacity>
           </>
@@ -249,6 +257,14 @@ export default function OnboardingPairing() {
             >
               <ThemedText type="bodyBold" style={styles.primaryBtnText}>Try Again</ThemedText>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.skipBtn}
+              onPress={handleFinish}
+            >
+              <ThemedText style={[styles.skipBtnText, { color: theme.textSecondary }]}>
+                Skip & Go to Dashboard
+              </ThemedText>
+            </TouchableOpacity>
           </>
         );
     }
@@ -259,9 +275,12 @@ export default function OnboardingPairing() {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <View style={styles.content}>
-        <ThemedText style={[styles.step, { color: theme.primary }]}>
-          STEP 2 OF 2
-        </ThemedText>
+        <View style={styles.headerRow}>
+          <View style={styles.progressContainer}>
+            <View style={[styles.progressBar, { backgroundColor: theme.primary, width: '90%' }]} />
+          </View>
+          <ThemedText style={[styles.stepText, { color: theme.textSecondary }]}>Almost Done</ThemedText>
+        </View>
         <View style={styles.centerContent}>{renderContent()}</View>
       </View>
 
@@ -277,6 +296,17 @@ export default function OnboardingPairing() {
               ← Back
             </ThemedText>
           </TouchableOpacity>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            onPress={handleFinish}
+            style={styles.backBtn}
+          >
+            <ThemedText
+              style={[styles.backBtnText, { color: theme.textSecondary }]}
+            >
+              Skip Step →
+            </ThemedText>
+          </TouchableOpacity>
         </View>
       )}
     </SafeAreaView>
@@ -286,11 +316,19 @@ export default function OnboardingPairing() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1, paddingHorizontal: 24, paddingTop: 60 },
-  step: {
-    ...Typography.label,
-    fontSize: 10,
-    marginBottom: 60,
+  headerRow: { marginBottom: 60, paddingHorizontal: 24 },
+  progressContainer: {
+    height: 6,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
+    marginBottom: 8,
+    overflow: 'hidden',
   },
+  progressBar: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  stepText: { ...Typography.label, fontSize: 10 },
   centerContent: { alignItems: "center", gap: 24 },
   deviceIcon: {
     width: 120,
@@ -300,7 +338,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 8,
   },
-  deviceEmoji: { fontSize: 48 },
+  deviceEmoji: { fontSize: 44 },
   title: { ...Typography.heading1, textAlign: "center" },
   subtitle: { ...Typography.body, textAlign: "center", maxWidth: '90%' },
   primaryBtn: {
@@ -318,5 +356,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   backBtn: { paddingVertical: 8 },
-  backBtnText: { ...Typography.body, fontSize: 15 },
+  backBtnText: { ...Typography.body, fontSize: 14, fontWeight: '600' },
+  skipBtn: { marginTop: 8, paddingVertical: 12 },
+  skipBtnText: { ...Typography.body, fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
 });

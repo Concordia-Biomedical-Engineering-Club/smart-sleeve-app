@@ -3,7 +3,7 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import { Stack, router } from "expo-router";
+import { Stack, router, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -31,16 +31,31 @@ function AppNavigator({
   );
   const isLoggedIn = useSelector((state: RootState) => state.user.isLoggedIn);
   const injuredSide = useSelector((state: RootState) => state.user.injuredSide);
+  const segments = useSegments();
 
   useEffect(() => {
-    if (isLoggedIn && (!hasCompletedOnboarding || !injuredSide)) {
-      router.replace("/onboarding" as any);
+    const inOnboarding = segments[0] === "onboarding";
+    const inAuth = segments[0] === "(auth)";
+    const inVerification = segments[0] === "email-verification";
+
+    // Auth Guard
+    if (!isLoggedIn && !inAuth) {
+      router.replace("/(auth)/login" as any);
+      return;
     }
-  }, [isLoggedIn, hasCompletedOnboarding, injuredSide]);
+
+    // Onboarding Guard
+    if (isLoggedIn && (!hasCompletedOnboarding || !injuredSide)) {
+      if (!inOnboarding && !inVerification) {
+        router.replace("/onboarding" as any);
+      }
+    }
+  }, [isLoggedIn, hasCompletedOnboarding, injuredSide, segments]);
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="debug-db" options={{ title: "Database Debug" }} />

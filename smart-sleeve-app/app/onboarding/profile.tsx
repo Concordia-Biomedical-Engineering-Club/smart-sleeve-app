@@ -37,10 +37,16 @@ export default function OnboardingProfile() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <ThemedText style={[styles.step, { color: theme.primary }]}>STEP 1 OF 2</ThemedText>
-        <ThemedText style={[styles.title, { color: theme.text }]}>Your Profile</ThemedText>
+        <View style={styles.headerRow}>
+          <View style={styles.progressContainer}>
+            <View style={[styles.progressBar, { backgroundColor: theme.primary, width: '50%' }]} />
+          </View>
+          <ThemedText style={[styles.stepText, { color: theme.textSecondary }]}>50% Complete</ThemedText>
+        </View>
+
+        <ThemedText style={[styles.title, { color: theme.text }]}>Personalise Your Plan</ThemedText>
         <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-          Help us personalise your rehabilitation experience.
+          This data helps our AI coach tailor your daily rehabilitation exercises.
         </ThemedText>
 
         {/* Injured Side */}
@@ -123,11 +129,8 @@ export default function OnboardingProfile() {
             disabled={!canContinue}
           >
             <ThemedText type="bodyBold" style={[styles.primaryBtnText, { color: canContinue ? '#fff' : theme.textSecondary }]}>
-              Continue →
+              Next: Pair Device →
             </ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <ThemedText style={[styles.backBtnText, { color: theme.textSecondary }]}>← Back</ThemedText>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -137,10 +140,22 @@ export default function OnboardingProfile() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 48 },
-  step: { ...Typography.label, fontSize: 10, marginBottom: 8 },
-  title: { ...Typography.heading1, marginBottom: 8 },
-  subtitle: { ...Typography.body, marginBottom: 32 },
+  scrollContent: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 48 },
+  headerRow: { marginBottom: 32 },
+  progressContainer: {
+    height: 6,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  stepText: { ...Typography.label, fontSize: 10 },
+  title: { ...Typography.heading1, marginBottom: 12 },
+  subtitle: { ...Typography.body, marginBottom: 32, fontSize: 15 },
   sectionLabel: { fontSize: 15, marginBottom: 12, marginTop: 8 },
   optionsRow: { flexDirection: 'row', gap: 16, marginBottom: 24 },
   sideCard: {

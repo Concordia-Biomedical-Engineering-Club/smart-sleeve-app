@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Shadows } from '@/constants/theme';
 import { ThemedText } from '../themed-text';
@@ -35,7 +35,10 @@ export function AppModal({
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.overlay}
+      >
         <TouchableOpacity 
           style={styles.dismissArea} 
           activeOpacity={1} 
@@ -49,6 +52,7 @@ export function AppModal({
           <ScrollView 
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
           >
             {title && (
               <ThemedText type="subtitle" style={styles.modalTitle}>
@@ -62,9 +66,11 @@ export function AppModal({
               </ThemedText>
             )}
 
-            <View style={styles.content}>
-              {children}
-            </View>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View style={styles.content}>
+                {children}
+              </View>
+            </TouchableWithoutFeedback>
           </ScrollView>
 
           {/* Optional Fixed Footer (e.g., action buttons) */}
@@ -74,7 +80,7 @@ export function AppModal({
             </View>
           )}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
