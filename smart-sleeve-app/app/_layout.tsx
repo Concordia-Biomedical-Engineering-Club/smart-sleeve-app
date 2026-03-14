@@ -12,11 +12,13 @@ import { store, persistor } from "../store/store";
 import { PersistGate } from "redux-persist/integration/react";
 import { onAuthStateChanged } from "firebase/auth";
 import { login, logout } from "../store/userSlice";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { AppState } from "react-native";
+import NetInfo from "@react-native-community/netinfo";
 import { initDatabase } from "@/services/Database";
 import type { RootState } from "@/store/store";
 import { auth } from "@/firebaseConfig";
-import { downloadSessionsForUser, syncNow } from "@/services/SyncService";
+import { syncNow } from "@/services/SyncService";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -82,24 +84,64 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         store.dispatch(
-          login({ email: user.email, isAuthenticated: user.emailVerified }),
+          login({
+            email: user.email,
+            isAuthenticated: user.emailVerified,
+            uid: user.uid,
+          }),
         );
         // Trigger a download/sync on login to recover any sessions from the cloud
         if (user.emailVerified) {
-          syncNow(user.email).catch(console.error);
+          try {
+            await initDatabase();
+            // Pass UID as canonical key, and email as legacy fallback for migration
+            await syncNow(user.uid, user.email);
+          } catch (error) {
+            console.error("[RootLayout] Sync initialization failed:", error);
+          }
         }
       } else {
         store.dispatch(logout());
       }
     });
+
+    initDatabase().catch(console.error);
+
     return unsubscribe;
   }, []);
 
+  // Guarded Reconnect Auto-Flush
+  const lastSyncAttempt = useRef<number>(0);
+
   useEffect(() => {
-    initDatabase().catch(console.error);
+    const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
+      // 1. Must be connected to the internet
+      if (!state.isConnected) return;
+
+      // 2. Must be in the foreground
+      if (AppState.currentState !== "active") return;
+
+      // 3. Must have an authenticated user
+      const user = auth.currentUser;
+      if (!user || !user.emailVerified) return;
+
+      // 4. Time-based throttle (e.g. 30 seconds) to prevent spamming on unstable networks
+      const now = Date.now();
+      if (now - lastSyncAttempt.current < 30000) return;
+
+      lastSyncAttempt.current = now;
+      console.log(
+        "[RootLayout] Network restored. Triggering offline queue flush...",
+      );
+
+      // The SyncService _isSyncing mutex naturally protects against overlapping calls
+      syncNow(user.uid, user.email).catch(console.error);
+    });
+
+    return unsubscribeNetInfo;
   }, []);
 
   return (

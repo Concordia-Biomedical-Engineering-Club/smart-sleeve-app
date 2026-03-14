@@ -137,7 +137,7 @@ export default function DashboardScreen() {
 
       try {
         const sessions = await fetchSessionsByFilters({
-          userId: user.email ?? "guest_user",
+          userId: user.uid ?? user.email ?? "guest_user",
         });
 
         if (!isActive) return;
@@ -154,7 +154,7 @@ export default function DashboardScreen() {
     return () => {
       isActive = false;
     };
-  }, [injuredSide, isWorkoutActive, user.email]);
+  }, [injuredSide, isWorkoutActive, user.email, user.uid]);
 
   const handleCalibrationComplete = (coeffs: CalibrationCoefficients) => {
     dispatch(setCalibration(coeffs));

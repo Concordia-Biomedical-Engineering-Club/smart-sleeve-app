@@ -261,8 +261,9 @@ export function WorkoutOverlay() {
   const handleFinishSession = async () => {
     try {
       // 1. Save to SQLite via our orchestrated hook
-      const userId = user.email || "guest_user";
-      const result = await endAndSave(userId);
+      const userId = user.uid || "guest_user";
+      // We pass the legacy email to the hook as well in case it's needed for migration
+      const result = await endAndSave(userId, user.email || undefined);
       console.log(`[WorkoutOverlay] endAndSave result:`, result);
 
       const sessionId = result?.sessionId;

@@ -41,6 +41,7 @@ describe("SymmetryService", () => {
       avgFlexion: 90,
       exerciseIds: ["quad-sets"],
       synced: false,
+      updatedAt: Date.now(),
       ...sessionOverrides,
       analytics: buildAnalytics(analytics),
     };

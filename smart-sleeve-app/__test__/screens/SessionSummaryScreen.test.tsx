@@ -60,6 +60,7 @@ function createSession(overrides: any = {}) {
     targetReps: 10,
     exerciseIds: ["quad-sets"],
     synced: false,
+      updatedAt: Date.now(),
     analytics: {
       avgActivation: 0.42,
       maxActivation: 0.78,

@@ -75,16 +75,16 @@ export default function AuthScreen() {
         const userCredential = await firebaseLogin(email, password);
         const user = userCredential.user;
         if (user.emailVerified) {
-          dispatch(login({ email: user.email, isAuthenticated: true }));
+          dispatch(login({ email: user.email, isAuthenticated: true, uid: user.uid }));
           router.push("/");
         } else {
-          dispatch(login({ email: user.email, isAuthenticated: false }));
+          dispatch(login({ email: user.email, isAuthenticated: false, uid: user.uid }));
           router.push("/email-verification");
         }
       } else {
         const userCredential = await firebaseRegister(email, password);
         const user = userCredential.user;
-        dispatch(signup({ email: user.email, isAuthenticated: false }));
+        dispatch(signup({ email: user.email, isAuthenticated: false, uid: user.uid }));
         router.push("/email-verification");
       }
     } catch (e) {

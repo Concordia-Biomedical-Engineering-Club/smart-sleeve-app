@@ -41,6 +41,7 @@ export function useWorkoutSession() {
    */
   const endAndSave = async (
     userId: string,
+    legacyEmail?: string,
   ): Promise<SaveSessionResult | null> => {
     console.log(
       `[useWorkoutSession] endAndSave called. Current status: ${sessionStatus}`,
@@ -59,6 +60,7 @@ export function useWorkoutSession() {
       // 2. Perform the heavy SQLite write off the main UI interactions
       const result = await saveSession({
         userId,
+        legacyEmail,
         exerciseId: workout.exerciseId ?? "unknown_exercise",
         exerciseName: workout.exerciseName ?? "Unknown",
         side: workout.targetSide ?? "LEFT",

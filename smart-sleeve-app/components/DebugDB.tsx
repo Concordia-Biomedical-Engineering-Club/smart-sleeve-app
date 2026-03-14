@@ -27,12 +27,14 @@ function makeDummySession(): Session {
     avgFlexion: 72.5,
     exerciseIds: ["quad_sets", "straight_leg_raises"],
     synced: false,
+      updatedAt: Date.now(),
     analytics: {
       avgActivation: 42.5,
       maxActivation: 87.3,
       deficitPercentage: 12.1,
       fatigueScore: 0.34,
       romDegrees: 95.0,
+      completionRate: 0,
       exerciseQuality: 0.78,
     },
   };

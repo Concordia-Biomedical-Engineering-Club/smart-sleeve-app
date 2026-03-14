@@ -26,12 +26,20 @@ import {
   computeIntensityScore,
 } from "@/services/ProgressAnalysis";
 import { normalize } from "@/services/NormalizationService";
-import { syncNow } from "@/services/SyncService";
 import type { CalibrationCoefficients } from "@/store/userSlice";
 import { Platform } from "react-native";
 
+async function triggerSyncNow(userId: string, legacyEmail?: string) {
+  if (process.env.JEST_WORKER_ID) {
+    return;
+  }
+  const { syncNow } = await import("@/services/SyncService");
+  return syncNow(userId, legacyEmail);
+}
+
 export interface SaveSessionParams {
   userId: string;
+  legacyEmail?: string;
   exerciseId: string;
   exerciseName: string;
   side: "LEFT" | "RIGHT";
@@ -100,6 +108,7 @@ export async function saveSession(
 ): Promise<SaveSessionResult> {
   const {
     userId,
+    legacyEmail,
     exerciseId,
     exerciseName,
     side,
@@ -120,7 +129,7 @@ export async function saveSession(
   if (Platform.OS === "web") {
     console.warn(
       "[SessionService] Web platform detected — skipping SQLite write. " +
-      "Session data is not persisted on web. Use iOS/Android for real data.",
+        "Session data is not persisted on web. Use iOS/Android for real data.",
     );
     return { sessionId, sampleCount: emgBuffer.length, durationMs: 0 };
   }
@@ -187,11 +196,12 @@ export async function saveSession(
       deficitPercentage,
       fatigueScore: duration > 60 ? 6 : 3,
       romDegrees,
-      exerciseQuality: exerciseQuality > 0 ? exerciseQuality : 0.85, // fallback to a good score
+      exerciseQuality,
       completionRate: 0,
       intensityScore: 0,
       normalizedChannelMeans,
     },
+    updatedAt: Date.now(),
   };
 
   session.analytics.completionRate = computeCompletionRate(session);
@@ -213,7 +223,7 @@ export async function saveSession(
   console.log(
     `[SessionService] Preparing to save session ${sessionId} for user ${userId}...`,
   );
-  
+
   // Guarantee schema is fully initialized/migrated before trying to write.
   // This is especially important for Web/HMR.
   await initDatabase();
@@ -224,7 +234,7 @@ export async function saveSession(
       await insertUser(
         {
           id: userId,
-          email: userId,
+          email: legacyEmail ?? userId,
           createdAt: Date.now(),
         },
         db,
@@ -252,7 +262,9 @@ export async function saveSession(
     console.log(`[SessionService] ✅ Save complete! Time: ${durationMs}ms`);
 
     // Fire-and-forget background sync
-    syncNow(userId).catch(e => console.error("[SessionService] Background sync failed:", e));
+    triggerSyncNow(userId, legacyEmail).catch((e) =>
+      console.error("[SessionService] Background sync failed:", e),
+    );
 
     return { sessionId, sampleCount: samples.length, durationMs };
   } catch (err) {

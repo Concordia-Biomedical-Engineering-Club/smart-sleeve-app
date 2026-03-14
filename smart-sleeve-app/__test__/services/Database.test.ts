@@ -92,6 +92,7 @@ describe("Database service", () => {
       targetReps: 10,
       exerciseIds: ["quad-sets"],
       synced: false,
+      updatedAt: Date.now(),
       analytics: {
         avgActivation: 0.3,
         maxActivation: 0.6,
@@ -108,8 +109,8 @@ describe("Database service", () => {
     const [sql, values] = mockDb.runAsync.mock.calls[0];
     const placeholderCount = (sql.match(/\?/g) ?? []).length;
 
-    expect(placeholderCount).toBe(20);
-    expect(values).toHaveLength(20);
+    expect(placeholderCount).toBe(21);
+    expect(values).toHaveLength(21);
   });
 
   test("bulkInsertEMGSamples batches many EMG rows into a single multi-value insert", async () => {

@@ -27,6 +27,7 @@ function createSession(overrides: Partial<Session> = {}): Session {
     avgFlexion: 85,
     exerciseIds: ["quad-sets"],
     synced: false,
+      updatedAt: Date.now(),
     analytics: {
       avgActivation: 0.42,
       maxActivation: 0.78,

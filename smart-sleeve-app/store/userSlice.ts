@@ -17,6 +17,7 @@ export interface CalibrationsBySide {
 interface AuthPayload {
   email: string | null;
   isAuthenticated: boolean;
+  uid?: string | null;
 }
 
 export type SyncStatus = "idle" | "syncing" | "synced" | "error";
@@ -24,6 +25,7 @@ export type SyncStatus = "idle" | "syncing" | "synced" | "error";
 export interface UserState {
   isLoggedIn: boolean;
   email: string | null;
+  uid?: string | null;
   isAuthenticated: boolean;
   calibrationsBySide: CalibrationsBySide;
   measurementSide: InjuredSide | null;
@@ -71,6 +73,7 @@ const hydrateAuthenticatedUser = (
 
   state.isLoggedIn = true;
   state.email = nextEmail;
+  state.uid = action.payload.uid ?? null;
   state.isAuthenticated = action.payload.isAuthenticated;
 
   if (!nextEmail) {
@@ -97,6 +100,7 @@ const hydrateAuthenticatedUser = (
 const initialState: UserState = {
   isLoggedIn: false,
   email: null,
+  uid: null,
   isAuthenticated: false,
   calibrationsBySide: createInitialCalibrationsBySide(),
   measurementSide: null,

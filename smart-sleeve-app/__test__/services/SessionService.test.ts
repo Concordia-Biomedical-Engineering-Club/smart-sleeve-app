@@ -7,6 +7,7 @@ import {
   bulkInsertEMGSamples,
   bulkInsertEMGSamplesWithDatabase,
   getDatabase,
+  initDatabase,
   insertSession,
   insertUser,
 } from "@/services/Database";
@@ -17,6 +18,7 @@ jest.mock("@/services/Database", () => ({
   bulkInsertEMGSamplesWithDatabase: jest.fn(),
   insertUser: jest.fn(),
   getDatabase: jest.fn(),
+  initDatabase: jest.fn(),
 }));
 
 const mockedInsertSession = insertSession as jest.MockedFunction<
@@ -32,6 +34,9 @@ const mockedBulkInsertEMGSamplesWithDatabase =
 const mockedInsertUser = insertUser as jest.MockedFunction<typeof insertUser>;
 const mockedGetDatabase = getDatabase as jest.MockedFunction<
   typeof getDatabase
+>;
+const mockedInitDatabase = initDatabase as jest.MockedFunction<
+  typeof initDatabase
 >;
 
 describe("SessionService", () => {
@@ -56,6 +61,7 @@ describe("SessionService", () => {
         await callback();
       },
     );
+    mockedInitDatabase.mockResolvedValue(undefined);
     mockedGetDatabase.mockResolvedValue(mockDb);
     jest.spyOn(Math, "random").mockReturnValue(0.424242);
   });
