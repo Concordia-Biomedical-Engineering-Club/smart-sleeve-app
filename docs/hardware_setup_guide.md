@@ -15,17 +15,18 @@ This guide covers how to prepare the SparkFun Thing Plus ESP32 WROOM, the MyoWar
 
 ## ⚡ 1. Wiring the ESP32 & MyoWare
 
-The app is expecting the MyoWare **Envelope (ENV)** signal to be sent on **GPIO 34**. The ENV output provides a smooth, rectified curve of muscle activation, replacing the need for complex on-device DSP.
+The current BLE firmware reads two MyoWare **Envelope (ENV)** outputs using the same pin mapping as the known-good bench sketch.
 
-| MyoWare 2.0 Pin | SparkFun ESP32 Pin | Purpose                                          |
-| :-------------- | :----------------- | :----------------------------------------------- |
-| **+ (VIN)**     | **3V3**            | Powers the sensor (Do **NOT** use 5V or USB pin) |
-| **- (GND)**     | **GND**            | Common Ground                                    |
-| **ENV**         | **34 (A2)**        | Analog Output (Signal Envelope)                  |
+| MyoWare 2.0 Pin  | SparkFun ESP32 Pin | Purpose                                          |
+| :--------------- | :----------------- | :----------------------------------------------- |
+| **Sensor 1 ENV** | **36 (A0)**        | Primary EMG channel                              |
+| **Sensor 2 ENV** | **39 (A1)**        | Secondary EMG channel                            |
+| **+ (VIN)**      | **3V3**            | Powers the sensor (Do **NOT** use 5V or USB pin) |
+| **- (GND)**      | **GND**            | Common Ground                                    |
 
 ### AS5600 Magnetic Encoder (Angle Sensor)
 
-The knee flexion angle is measured by the **AS5600** sensor over **I2C**. The firmware reads the **RAW ANGLE** register and sends the raw 12-bit value over BLE.
+The knee flexion angle is measured by the **AS5600** sensor over **I2C** using the Rob Tillaart `AS5600` Arduino library.
 
 | AS5600 Pin         | SparkFun ESP32 Pin | Purpose                    |
 | :----------------- | :----------------- | :------------------------- |
@@ -38,7 +39,7 @@ The knee flexion angle is measured by the **AS5600** sensor over **I2C**. The fi
 | **PGO**            | Not connected      | Not used by this firmware  |
 
 > [!NOTE]
-> The AS5600 default I2C address is `0x36`. This firmware does not use the analog or PWM output path; it reads the digital RAW ANGLE register pair over I2C.
+> The AS5600 default I2C address is `0x36`. This firmware uses the library-backed `rawAngle()` path and sends the raw 12-bit angle over BLE.
 
 > [!WARNING]
 > **Voltage Limits**: The ESP32's Analog-to-Digital Converter (ADC) can only handle a maximum of **3.3V**. Ensure all sensors are powered from the **3V3** pin, NOT the 5V/VUSB pin, to prevent damaging the GPIO pins.
@@ -54,13 +55,12 @@ We will be flashing the ESP32 using the Arduino IDE. You need the correct board 
    - Go to **Tools > Board > Boards Manager**, search for `esp32`, and install it.
    - Under **Tools > Board**, select **SparkFun ESP32 Thing Plus**.
 
-2. **Install the NimBLE Library**
+2. **Install the required libraries**
    - The standard ESP32 BLE library uses too much memory. We strictly use **NimBLE**.
    - Go to **Sketch > Include Library > Manage Libraries**.
-   - Search for **"NimBLE-Arduino"** (by h2zero) and install **version 1.4.x** — do not install v2.x, as the API is incompatible with this firmware.
-
-3. **No extra AS5600 library is required**
-   - The firmware talks to the AS5600 directly over Arduino `Wire`, so you do not need to install a separate AS5600 helper library.
+   - Install **"NimBLE-Arduino"** (by h2zero) version **1.4.x**.
+   - Install **"AS5600"** (by Rob Tillaart).
+   - Install **"MyoWare Arduino Library"** (by Advancer Technologies).
 
 ---
 
@@ -183,10 +183,10 @@ If the firmware changes any of those fields, the parser tests and the debug scre
 
 ### What the firmware is sending
 
-- **EMG**: one live ADC channel on CH1 from the MyoWare ENV pin, channels 2-8 set to zero
-- **Angle**: raw **AS5600 12-bit RAW ANGLE** value in the IMU angle field
+- **EMG**: CH1 = MyoWare sensor 1 on `A0/GPIO36`, CH2 = MyoWare sensor 2 on `A1/GPIO39`, channels 3-8 set to zero
+- **Angle**: raw **AS5600 12-bit angle** in the IMU angle field
 - **Pitch/Yaw**: always zero in this firmware
-- **Fault handling**: if the AS5600 read fails or no magnet is detected, the firmware sends `0x7FFF` as the angle sentinel
+- **Fault handling**: if the magnet is not detected, the firmware sends `0x7FFF` as the angle sentinel
 
 ### Healthy connection checklist
 
@@ -202,25 +202,17 @@ On a healthy real connection in the BLE debug screen, you should see:
 - `EMG stale: no` and `IMU stale: no`
 - `Characteristics` listing both BLE characteristic UUIDs above
 
-For this firmware specifically, EMG traffic is expected on CH1 only. Channels 2-8 staying near zero is normal.
+For this firmware specifically, EMG traffic is expected on CH1 and CH2. Channels 3-8 staying near zero is normal.
 
 ### Serial Monitor sanity check
 
 If you open the Arduino Serial Monitor at `115200`, you should see lines like:
 
 ```text
-[DATA] EMG=1832  AngleRaw=1024 (OK)
+[123456] EMG1=1832 EMG2=1740 Angle=1024
 ```
 
-Possible angle statuses are:
-
-- `OK`: angle read succeeded
-- `MAGNET_WEAK`: angle read succeeded, but the magnet field is weak
-- `MAGNET_STRONG`: angle read succeeded, but the magnet field is too strong
-- `NO_MAGNET`: the AS5600 does not detect a usable magnet
-- `I2C_ERROR`: ESP32 could not read the AS5600 over I2C
-
-If the app connects but the knee angle stays at zero while the Serial Monitor shows `NO_MAGNET` or `I2C_ERROR`, the problem is on the hardware side, not in the BLE packet format.
+If the app connects but the knee angle stays at zero while the Serial Monitor shows `Angle=FAULT`, the problem is on the encoder magnet side, not in the BLE packet format.
 
 ### Interpreting app-side failures
 

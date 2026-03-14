@@ -21,6 +21,7 @@ import {
   completeWorkout,
   selectWorkoutPhase,
   sessionSaveFailed,
+  selectLatestFeatures,
 } from "@/store/deviceSlice";
 import { useWorkoutSession } from "@/hooks/useWorkoutSession";
 import { useWorkoutTimer } from "@/hooks/useWorkoutTimer";
@@ -175,6 +176,73 @@ function CoachingCard({
   );
 }
 
+/**
+ * Modular Sub-Component: Muscle Harmony / Firing Index
+ */
+function HarmonyIndicator({ theme }: { theme: any }) {
+  const latestFeatures = useAppSelector(selectLatestFeatures);
+  const phase = useAppSelector(selectWorkoutPhase);
+  const workout = useWorkoutTimer();
+
+  const activeExercise = useMemo(() => {
+    return EXERCISE_LIBRARY.find((ex) => ex.id === workout.exerciseId);
+  }, [workout.exerciseId]);
+
+  const harmonyData = useMemo(() => {
+    if (!latestFeatures || phase !== "ACTIVE_WORK") return null;
+
+    // We assume Sensor 1 is m1 and Sensor 2 is m2
+    // If the athlete is doing Quads, it's VMO vs VL
+    // If Hamstrings, it's ST vs BF
+    const m1 = latestFeatures.rms[0] ?? 0;
+    const m2 = latestFeatures.rms[1] ?? 0;
+
+    if (m1 < 0.05 && m2 < 0.05) return null;
+
+    const ratio = m1 / Math.max(0.01, m2);
+
+    let status: "PERFECT" | "BALANCED" | "LAGGING" = "LAGGING";
+    if (ratio >= 0.9 && ratio <= 1.2) status = "PERFECT";
+    else if (ratio >= 0.6 && ratio <= 1.5) status = "BALANCED";
+
+    const isHamstring = activeExercise?.focus.includes("Hamstring");
+    const pairLabel = isHamstring ? "ST (Medial) vs BF (Lateral)" : "VMO (Stabilizer) vs VL (Prime)";
+
+    return { status, pairLabel };
+  }, [latestFeatures, phase, activeExercise]);
+
+  if (!harmonyData) return null;
+
+  const config = {
+    PERFECT: { label: "Perfect Harmony", color: theme.success, emoji: "✨", detail: "Muscles firing in sync" },
+    BALANCED: { label: "Functional Balance", color: theme.primary, emoji: "👍", detail: "Good symmetry maintained" },
+    LAGGING: { label: "Delay Detected", color: theme.warning, emoji: "⚠️", detail: "Focus on even activation" },
+  }[harmonyData.status];
+
+  return (
+    <ThemedView
+      style={[
+        styles.harmonyCard,
+        {
+          borderColor: config.color,
+          backgroundColor: theme.cardBackground + "F2",
+        },
+        Shadows.card,
+      ]}
+    >
+      <View style={[styles.harmonyDot, { backgroundColor: config.color }]} />
+      <View style={styles.harmonyTextGroup}>
+        <ThemedText style={[styles.harmonyLabel, { color: config.color }]}>
+          {config.label} {config.emoji}
+        </ThemedText>
+        <ThemedText style={styles.harmonyValue}>
+          {harmonyData.pairLabel} • {config.detail}
+        </ThemedText>
+      </View>
+    </ThemedView>
+  );
+}
+
 export function WorkoutOverlay() {
   const dispatch = useAppDispatch();
   const phase = useAppSelector(selectWorkoutPhase);
@@ -262,6 +330,8 @@ export function WorkoutOverlay() {
           workout={workout}
           theme={theme}
         />
+
+        <HarmonyIndicator theme={theme} />
       </View>
 
       {/* BOTTOM CONTROL / COACHING ZONE */}
@@ -408,6 +478,33 @@ const styles = StyleSheet.create({
     ...Typography.label,
     fontWeight: "800",
     opacity: 0.7,
+  },
+  harmonyCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    gap: 12,
+  },
+  harmonyDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  harmonyTextGroup: {
+    flex: 1,
+  },
+  harmonyLabel: {
+    fontSize: 14,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  harmonyValue: {
+    fontSize: 12,
+    opacity: 0.6,
+    fontWeight: "600",
   },
   miniProgressBg: {
     height: 4,

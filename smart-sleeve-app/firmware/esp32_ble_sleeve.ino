@@ -1,337 +1,323 @@
-#include <NimBLEDevice.h>
-#include <Wire.h>
-
 /**
- * ESP32 Firmware for Smart Sleeve
- * ─────────────────────────────────────────────────────────────────────────────
- * Hardware:
- *   EMG  — MyoWare 2.0 ENV output  →  GPIO 34 (ADC1_CH6, input-only, 3.3 V max)
- *   Angle — AS5600 via I2C
+ * Smart Sleeve — ESP32 BLE Firmware  v2
+ * ═══════════════════════════════════════════════════════════════════════════════
  *
- * Library Versions (install EXACTLY these in Arduino Library Manager):
- *   NimBLE-Arduino  1.4.x   (h2zero)   ← NOT v2.x
- *   arduino-esp32   2.x.x
+ * Streams EMG + knee-angle data to the Smart Sleeve iOS/Android app over BLE.
  *
- * BLE Protocol (Little Endian):
- *   EMG: [Header(1) | Timestamp(4) | CH0-CH7 x int16(16) | Checksum(1)] = 22 bytes
- *   IMU: [Header(1) | Timestamp(4) | Angle(2) | Pitch(2) | Yaw(2) | CRC(1)]  = 12 bytes
- *        Angle is raw 12-bit AS5600 RAW ANGLE (0-4095). Error state is 0x7FFF.
+ * ── Target ───────────────────────────────────────────────────────────────────
+ *   Board:   SparkFun ESP32 Thing Plus
+ *   Core:    ESP32 Arduino Core  2.0.17   (Boards Manager)
+ *   Libs:    NimBLE-Arduino      1.4.x    (Library Manager — h2zero)
+ *            AS5600              latest    (Library Manager — Rob Tillaart)
+ *            MyoWare             latest    (Library Manager — Advancer Technologies)
  *
- * ─────────────────────────── WIRING GUIDE ────────────────────────────────────
+ * ── Known Issue This Fixes ───────────────────────────────────────────────────
+ *   The v1 firmware called pEmgChar->notify() and pImuChar->notify() back-to-
+ *   back in the same loop tick.  On iOS (CoreBluetooth) the NimBLE TX queue
+ *   can only hold a few outstanding notifications before the second notify()
+ *   returns BLE_HS_ENOMEM — which react-native-ble-plx surfaces as a
+ *   "notification error" and the packet is lost.
  *
- *  MyoWare 2.0 → ESP32 SparkFun Thing Plus
- *  ─────────────────────────────────────────
- *  ENV (signal)  →  GPIO 34
- *  VCC (+)       →  3V3   ← CRITICAL: Do NOT use 5V / VUSB
- *  GND (-)       →  GND
+ *   Fix: stagger the two notifications.  EMG fires on even ticks, IMU fires
+ *   on odd ticks, each at 50 Hz (every 20 ms).  This means each characteristic
+ *   still sends 50 packets/sec but they never collide in the same TX window.
  *
- *  AS5600 Magnetic Encoder → ESP32 SparkFun Thing Plus (I2C)
- *  ──────────────────────────────────────────────────────────────
- *  VDD3V3 / VDD5V →  3V3
- *  GND            →  GND
- *  SDA            →  GPIO 21
- *  SCL            →  GPIO 22
- *  DIR            →  GND or 3V3 (fixed direction select)
- *  OUT / PWM      →  Not used in this firmware
+ * ── BLE Protocol  (must match constants/ble.ts) ─────────────────────────────
  *
- *  Notes:
- *  - AS5600 default I2C slave address is 0x36.
- *  - This firmware uses the RAW ANGLE register so the BLE payload stays
- *    unscaled and matches the app-side 12-bit parser.
- * ─────────────────────────────────────────────────────────────────────────────
+ *   Service:  e0d10001-6b6e-4c52-9c3b-6a8e858c5d93
+ *   EMG Char: e0d10002-...  (Notify)   22 bytes
+ *   IMU Char: e0d10003-...  (Notify)   12 bytes
+ *
+ *   EMG layout  [little-endian]:
+ *     [0]       0xA1 header
+ *     [1-4]     uint32  timestamp (millis)
+ *     [5-20]    8× int16  channels  (raw ADC 0-4095)
+ *     [21]      uint8   XOR checksum of bytes [0..20]
+ *
+ *   IMU layout  [little-endian]:
+ *     [0]       0xB1 header
+ *     [1-4]     uint32  timestamp (millis)
+ *     [5-6]     int16   angle  (AS5600 raw 0-4095, or 0x7FFF = fault)
+ *     [7-8]     int16   pitch  (reserved, 0)
+ *     [9-10]    int16   yaw    (reserved, 0)
+ *     [11]      uint8   XOR checksum of bytes [0..10]
+ *
+ * ── Wiring ───────────────────────────────────────────────────────────────────
+ *   MyoWare 2.0 Sensor 1:  ENV → GPIO 36 (A0)   VCC → 3V3   GND → GND
+ *   MyoWare 2.0 Sensor 2:  ENV → GPIO 39 (A1)   VCC → 3V3   GND → GND
+ *   AS5600:  SDA → GPIO 21   SCL → GPIO 22   VDD → 3V3   GND → GND
+ *            DIR → GND  (clockwise)
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-// ── BLE UUIDs (must match constants/ble.ts exactly) ──────────────────────────
+#include <NimBLEDevice.h>
+#include <Wire.h>
+#include <MyoWare.h>
+#include <AS5600.h>
+
+// ─── BLE UUIDs  (constants/ble.ts) ───────────────────────────────────────────
 #define SERVICE_UUID "e0d10001-6b6e-4c52-9c3b-6a8e858c5d93"
 #define EMG_CHARACTERISTIC_UUID "e0d10002-6b6e-4c52-9c3b-6a8e858c5d93"
 #define IMU_CHARACTERISTIC_UUID "e0d10003-6b6e-4c52-9c3b-6a8e858c5d93"
 
-// ── Pin Definitions ───────────────────────────────────────────────────────────
-const int EMG_PIN = 34; // MyoWare ENV — ADC1_CH6
-const int I2C_SDA = 21;
-const int I2C_SCL = 22;
+#define BLE_DEVICE_NAME "SMART-SLEEVE-01"
 
-// ── AS5600 Register Map ───────────────────────────────────────────────────────
-const uint8_t AS5600_I2C_ADDRESS = 0x36;
-const uint8_t AS5600_REG_STATUS = 0x0B;
-const uint8_t AS5600_REG_RAW_ANGLE_HI = 0x0C;
-const uint8_t AS5600_STATUS_MH = 0x08;
-const uint8_t AS5600_STATUS_ML = 0x10;
-const uint8_t AS5600_STATUS_MD = 0x20;
-const uint16_t AS5600_ANGLE_MASK = 0x0FFF;
-const int16_t ANGLE_FAULT_SENTINEL = 0x7FFF;
+// ─── Pins ────────────────────────────────────────────────────────────────────
+static const int EMG1_PIN = A0; // GPIO 36 — MyoWare sensor 1 ENV
+static const int EMG2_PIN = A1; // GPIO 39 — MyoWare sensor 2 ENV
 
-// ── Protocol Constants ────────────────────────────────────────────────────────
-const uint8_t EMG_HEADER = 0xA1;
-const uint8_t IMU_HEADER = 0xB1;
+// ─── Protocol constants ──────────────────────────────────────────────────────
+static const uint8_t EMG_HEADER = 0xA1;
+static const uint8_t IMU_HEADER = 0xB1;
+static const int16_t ANGLE_FAULT = 0x7FFF;
 
-// ── BLE Handles ───────────────────────────────────────────────────────────────
-NimBLECharacteristic *pEmgChar = nullptr;
-NimBLECharacteristic *pImuChar = nullptr;
-bool deviceConnected = false;
+// ─── Timing ──────────────────────────────────────────────────────────────────
+// 10 ms tick → EMG on even ticks (0, 20, 40 …), IMU on odd ticks (10, 30, 50 …)
+// Each characteristic gets 50 Hz but they never notify in the same tick.
+static const uint32_t TICK_MS = 10;
+static const uint32_t DEBUG_INTERVAL = 2000;
 
-// ── Packet Buffers ────────────────────────────────────────────────────────────
-uint8_t emgBuffer[22];
-uint8_t imuBuffer[12];
+// ─── Sensor objects ──────────────────────────────────────────────────────────
+MyoWare emgSensor1;
+MyoWare emgSensor2;
+AS5600 angleSensor;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AS5600 I2C Helper Functions
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── BLE state ───────────────────────────────────────────────────────────────
+static NimBLEServer *pServer = nullptr;
+static NimBLECharacteristic *pEmgChar = nullptr;
+static NimBLECharacteristic *pImuChar = nullptr;
+static volatile bool deviceConnected = false;
 
-enum AS5600ReadStatus
+// ─── Packet buffers ──────────────────────────────────────────────────────────
+static uint8_t emgBuf[22];
+static uint8_t imuBuf[12];
+
+// ─── Tick counter ────────────────────────────────────────────────────────────
+static uint32_t tickCount = 0;
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  Checksum  — XOR of bytes [0..len-1], matches packetParsers.ts
+// ══════════════════════════════════════════════════════════════════════════════
+
+static uint8_t xorChecksum(const uint8_t *buf, uint8_t len)
 {
-    AS5600_OK,
-    AS5600_I2C_ERROR,
-    AS5600_NO_MAGNET,
-    AS5600_MAGNET_WEAK,
-    AS5600_MAGNET_STRONG,
-};
-
-static bool as5600_readRegister(uint8_t reg, uint8_t *value)
-{
-    Wire.beginTransmission(AS5600_I2C_ADDRESS);
-    Wire.write(reg);
-
-    if (Wire.endTransmission(false) != 0)
-    {
-        return false;
-    }
-
-    if (Wire.requestFrom(AS5600_I2C_ADDRESS, (uint8_t)1) != 1)
-    {
-        return false;
-    }
-
-    *value = Wire.read();
-    return true;
+    uint8_t cs = buf[0];
+    for (uint8_t i = 1; i < len; i++)
+        cs ^= buf[i];
+    return cs;
 }
 
-/**
- * Read the RAW ANGLE register pair (0x0C / 0x0D).
- * The AS5600 exposes 12 valid bits across the two bytes.
- */
-static bool as5600_readRawAngleRegister(uint16_t *rawAngle)
+// ══════════════════════════════════════════════════════════════════════════════
+//  BLE Callbacks  (NimBLE-Arduino 1.4.x API)
+// ══════════════════════════════════════════════════════════════════════════════
+
+class ServerCB : public NimBLEServerCallbacks
 {
-    Wire.beginTransmission(AS5600_I2C_ADDRESS);
-    Wire.write(AS5600_REG_RAW_ANGLE_HI);
-
-    if (Wire.endTransmission(false) != 0)
-    {
-        return false;
-    }
-
-    if (Wire.requestFrom(AS5600_I2C_ADDRESS, (uint8_t)2) != 2)
-    {
-        return false;
-    }
-
-    const uint8_t hi = Wire.read();
-    const uint8_t lo = Wire.read();
-
-    *rawAngle = (((uint16_t)hi << 8) | lo) & AS5600_ANGLE_MASK;
-    return true;
-}
-
-/**
- * Read the current AS5600 raw angle.
- *
- * Returns a 12-bit value in the range [0, 4095] when the sensor is readable.
- * Returns -1 when the sensor cannot provide a usable value.
- *
- * Magnet field diagnostics:
- * - No magnet detected: unusable, returns -1.
- * - Magnet too weak / too strong: returns the current raw angle but flags status.
- */
-static int32_t as5600_readRawAngle(AS5600ReadStatus *statusOut)
-{
-    uint8_t statusReg = 0;
-    if (!as5600_readRegister(AS5600_REG_STATUS, &statusReg))
-    {
-        *statusOut = AS5600_I2C_ERROR;
-        return -1;
-    }
-
-    if ((statusReg & AS5600_STATUS_MD) == 0)
-    {
-        *statusOut = AS5600_NO_MAGNET;
-        return -1;
-    }
-
-    uint16_t rawAngle = 0;
-    if (!as5600_readRawAngleRegister(&rawAngle))
-    {
-        *statusOut = AS5600_I2C_ERROR;
-        return -1;
-    }
-
-    if (statusReg & AS5600_STATUS_MH)
-    {
-        *statusOut = AS5600_MAGNET_STRONG;
-    }
-    else if (statusReg & AS5600_STATUS_ML)
-    {
-        *statusOut = AS5600_MAGNET_WEAK;
-    }
-    else
-    {
-        *statusOut = AS5600_OK;
-    }
-
-    return (int32_t)rawAngle;
-}
-
-static const char *as5600StatusToString(AS5600ReadStatus status)
-{
-    switch (status)
-    {
-    case AS5600_OK:
-        return "OK";
-    case AS5600_I2C_ERROR:
-        return "I2C_ERROR";
-    case AS5600_NO_MAGNET:
-        return "NO_MAGNET";
-    case AS5600_MAGNET_WEAK:
-        return "MAGNET_WEAK";
-    case AS5600_MAGNET_STRONG:
-        return "MAGNET_STRONG";
-    default:
-        return "UNKNOWN";
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// BLE Server Callbacks  (NimBLE-Arduino v1.4.x API)
-// ─────────────────────────────────────────────────────────────────────────────
-class SleeveServerCallbacks : public NimBLEServerCallbacks
-{
-    void onConnect(NimBLEServer *pServer) override
+    void onConnect(NimBLEServer *s, ble_gap_conn_desc *desc) override
     {
         deviceConnected = true;
-        Serial.println("[BLE] App connected.");
+        Serial.println(F("[BLE] Client connected"));
+
+        // Request faster connection parameters for iOS.
+        // Without this, iOS defaults to ~30-50 ms intervals which is fine,
+        // but explicitly requesting 15-30 ms improves notification throughput.
+        s->updateConnParams(desc->conn_handle,
+                            12, // min interval  = 12 × 1.25 ms = 15 ms
+                            24, // max interval  = 24 × 1.25 ms = 30 ms
+                            0,  // latency
+                            400 // supervision timeout = 4 s
+        );
     }
-    void onDisconnect(NimBLEServer *pServer) override
+
+    void onDisconnect(NimBLEServer *s) override
     {
         deviceConnected = false;
-        Serial.println("[BLE] App disconnected — restarting advertising.");
+        Serial.println(F("[BLE] Disconnected — restarting advertising"));
         NimBLEDevice::startAdvertising();
     }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// setup()
-// ─────────────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+//  Packet builders
+// ══════════════════════════════════════════════════════════════════════════════
+
+static void buildAndSendEMG(uint32_t ts)
+{
+    // Read both MyoWare sensors via library
+    int emg1 = emgSensor1.readSensorOutput(); // 0-4095
+    int emg2 = emgSensor2.readSensorOutput(); // 0-4095
+
+    emgBuf[0] = EMG_HEADER;
+    memcpy(&emgBuf[1], &ts, 4);
+
+    // CH0 = sensor 1, CH1 = sensor 2, CH2-CH7 = 0
+    int16_t channels[8] = {
+        (int16_t)emg1,
+        (int16_t)emg2,
+        0, 0, 0, 0, 0, 0};
+
+    for (int ch = 0; ch < 8; ch++)
+    {
+        memcpy(&emgBuf[5 + ch * 2], &channels[ch], 2);
+    }
+
+    emgBuf[21] = xorChecksum(emgBuf, 21);
+
+    pEmgChar->setValue(emgBuf, 22);
+    pEmgChar->notify();
+}
+
+static void buildAndSendIMU(uint32_t ts)
+{
+    // Read AS5600 via library — returns 0-4095 raw, magnet must be present
+    int16_t angleToSend;
+
+    if (angleSensor.detectMagnet())
+    {
+        uint16_t raw = angleSensor.rawAngle(); // 0-4095  (12-bit)
+        angleToSend = (int16_t)raw;
+    }
+    else
+    {
+        angleToSend = ANGLE_FAULT; // 0x7FFF → app maps to 0°
+    }
+
+    int16_t pitch = 0;
+    int16_t yaw = 0;
+
+    imuBuf[0] = IMU_HEADER;
+    memcpy(&imuBuf[1], &ts, 4);
+    memcpy(&imuBuf[5], &angleToSend, 2);
+    memcpy(&imuBuf[7], &pitch, 2);
+    memcpy(&imuBuf[9], &yaw, 2);
+
+    imuBuf[11] = xorChecksum(imuBuf, 11);
+
+    pImuChar->setValue(imuBuf, 12);
+    pImuChar->notify();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  setup()
+// ══════════════════════════════════════════════════════════════════════════════
+
 void setup()
 {
     Serial.begin(115200);
+    delay(200);
+    Serial.println(F("\n========================================"));
+    Serial.println(F(" Smart Sleeve Firmware v2"));
+    Serial.println(F("========================================"));
 
-    // ── ADC for MyoWare ENV ───────────────────────────────────────────────────
-    analogReadResolution(12); // 0–4095, matches 3.3 V reference
+    // ── ADC ──────────────────────────────────────────────────────────────────
+    analogReadResolution(12);
+    analogSetAttenuation(ADC_11db);
 
-    // ── I2C for AS5600 ────────────────────────────────────────────────────────
-    Wire.begin(I2C_SDA, I2C_SCL);
-    Wire.setClock(400000); // Stable fast-mode I2C on ESP32
-    delay(10);             // Allow AS5600 power-up settling
+    // ── MyoWare sensors ──────────────────────────────────────────────────────
+    emgSensor1.setENVPin(EMG1_PIN);
+    emgSensor2.setENVPin(EMG2_PIN);
 
-    // Warm-up read so the first loop iteration doesn't pay the initialization cost.
-    AS5600ReadStatus warmupStatus = AS5600_OK;
-    as5600_readRawAngle(&warmupStatus);
+    // Warm-up reads (ESP32 ADC first-read jitter)
+    for (int i = 0; i < 5; i++)
+    {
+        emgSensor1.readSensorOutput();
+        emgSensor2.readSensorOutput();
+    }
+    Serial.println(F("[EMG] MyoWare sensors initialized on A0, A1"));
 
-    // ── BLE Init ─────────────────────────────────────────────────────────────
-    NimBLEDevice::init("SMART-SLEEVE-01");
-    NimBLEServer *pServer = NimBLEDevice::createServer();
-    pServer->setCallbacks(new SleeveServerCallbacks());
+    // ── AS5600 ───────────────────────────────────────────────────────────────
+    Wire.begin(); // SDA=21, SCL=22 (ESP32 defaults)
+    Wire.setClock(400000);
+    delay(50);
+
+    angleSensor.begin(); // uses default Wire, address 0x36
+    angleSensor.setDirection(AS5600_CLOCK_WISE);
+
+    bool magnetPresent = angleSensor.detectMagnet();
+    Serial.printf("[AS5600] Magnet: %s", magnetPresent ? "DETECTED" : "NOT FOUND");
+    if (magnetPresent)
+    {
+        Serial.printf("  rawAngle=%d\n", angleSensor.rawAngle());
+    }
+    else
+    {
+        Serial.println(F("  — will send fault sentinel (0x7FFF)"));
+    }
+
+    // ── BLE ──────────────────────────────────────────────────────────────────
+    Serial.println(F("[BLE] Initializing NimBLE..."));
+    NimBLEDevice::init(BLE_DEVICE_NAME);
+    NimBLEDevice::setPower(ESP_PWR_LVL_P6);
+    NimBLEDevice::setMTU(72);
+
+    pServer = NimBLEDevice::createServer();
+    pServer->setCallbacks(new ServerCB());
 
     NimBLEService *pService = pServer->createService(SERVICE_UUID);
 
-    pEmgChar = pService->createCharacteristic(EMG_CHARACTERISTIC_UUID, NIMBLE_PROPERTY::NOTIFY);
-    pImuChar = pService->createCharacteristic(IMU_CHARACTERISTIC_UUID, NIMBLE_PROPERTY::NOTIFY);
+    pEmgChar = pService->createCharacteristic(
+        EMG_CHARACTERISTIC_UUID,
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+
+    pImuChar = pService->createCharacteristic(
+        IMU_CHARACTERISTIC_UUID,
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
 
     pService->start();
 
+    // ── Advertising ──────────────────────────────────────────────────────────
     NimBLEAdvertising *pAdv = NimBLEDevice::getAdvertising();
     pAdv->addServiceUUID(SERVICE_UUID);
     pAdv->setScanResponse(true);
+    pAdv->setMinInterval(0x20); // 20 ms  (Apple BLE guidelines)
+    pAdv->setMaxInterval(0x40); // 40 ms
     pAdv->start();
 
-    Serial.println("[BLE] Advertising as 'SMART-SLEEVE-01'. Waiting for app...");
+    Serial.println(F("[BLE] Advertising as '" BLE_DEVICE_NAME "'"));
+    Serial.println(F("[BLE] Waiting for app...\n"));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// loop()
-// ─────────────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+//  loop()  — 10 ms tick, alternating EMG / IMU to avoid TX queue collision
+// ══════════════════════════════════════════════════════════════════════════════
+
 void loop()
 {
-    static uint32_t lastSampleTime = 0;
-    static uint32_t lastSerialTime = 0;
-    const uint32_t sampleInterval = 20; // 50 Hz
-    const uint32_t debugInterval = 500; // 2 Hz
-
     if (!deviceConnected)
-        return;
-
-    // Use non-blocking timer for sampling
-    uint32_t now = millis();
-    if (now - lastSampleTime < sampleInterval)
-        return;
-    lastSampleTime = now;
-
-    // ── 1. Read sensors ───────────────────────────────────────────────────────
-    const int16_t emgRaw = (int16_t)analogRead(EMG_PIN); // 0–4095
-    AS5600ReadStatus angleStatus = AS5600_OK;
-    const int32_t angleResult = as5600_readRawAngle(&angleStatus); // 0–4095, or -1 on error
-
-    // Convert to protocol-safe sentinel (0x7FFF) if sensor error
-    const int16_t angleToSend =
-        (angleResult < 0) ? ANGLE_FAULT_SENTINEL : (int16_t)angleResult;
-
-    // ── 2. Build EMG packet (22 bytes) ───────────────────────────────────────
-    emgBuffer[0] = EMG_HEADER;
-    memcpy(&emgBuffer[1], &now, 4);
-
-    uint8_t emgChecksum = EMG_HEADER;
-    for (int i = 0; i < 4; i++)
-        emgChecksum ^= emgBuffer[1 + i];
-
-    for (int i = 0; i < 8; i++)
     {
-        const int16_t val = (i == 0) ? emgRaw : (int16_t)0;
-        memcpy(&emgBuffer[5 + i * 2], &val, 2);
-        emgChecksum ^= (uint8_t)(val & 0xFF) ^ (uint8_t)(val >> 8);
+        delay(100);
+        return;
     }
-    emgBuffer[21] = emgChecksum;
 
-    pEmgChar->setValue(emgBuffer, 22);
-    pEmgChar->notify();
+    static uint32_t lastTick = 0;
+    static uint32_t lastDebug = 0;
 
-    // ── 3. Build IMU/Angle packet (12 bytes) ─────────────────────────────────
-    const int16_t pitch = 0;
-    const int16_t yaw = 0;
+    uint32_t now = millis();
+    if (now - lastTick < TICK_MS)
+        return;
+    lastTick = now;
 
-    imuBuffer[0] = IMU_HEADER;
-    memcpy(&imuBuffer[1], &now, 4);
-    memcpy(&imuBuffer[5], &angleToSend, 2);
-    memcpy(&imuBuffer[7], &pitch, 2);
-    memcpy(&imuBuffer[9], &yaw, 2);
-
-    uint8_t imuChecksum = IMU_HEADER;
-    for (int i = 0; i < 4; i++)
-        imuChecksum ^= imuBuffer[1 + i];
-    imuChecksum ^= (uint8_t)(angleToSend & 0xFF) ^ (uint8_t)(angleToSend >> 8);
-    imuChecksum ^= (uint8_t)(pitch & 0xFF) ^ (uint8_t)(pitch >> 8);
-    imuChecksum ^= (uint8_t)(yaw & 0xFF) ^ (uint8_t)(yaw >> 8);
-
-    imuBuffer[11] = imuChecksum;
-
-    pImuChar->setValue(imuBuffer, 12);
-    pImuChar->notify();
-
-    // ── 4. Debug output (Throttled) ───────────────────────────────────────────
-    if (now - lastSerialTime >= debugInterval)
+    // ── Alternate: even tick → EMG,  odd tick → IMU ──────────────────────────
+    if (tickCount % 2 == 0)
     {
-        lastSerialTime = now;
-        Serial.printf("[DATA] EMG=%d  AngleRaw=%d (%s)\n",
-                      emgRaw,
-                      angleResult,
-                      as5600StatusToString(angleStatus));
+        buildAndSendEMG(now);
+    }
+    else
+    {
+        buildAndSendIMU(now);
+    }
+    tickCount++;
+
+    // ── Serial debug (throttled) ─────────────────────────────────────────────
+    if (now - lastDebug >= DEBUG_INTERVAL)
+    {
+        lastDebug = now;
+        int e1 = emgSensor1.readSensorOutput();
+        int e2 = emgSensor2.readSensorOutput();
+        bool mag = angleSensor.detectMagnet();
+        Serial.printf("[%lu] EMG1=%d EMG2=%d Angle=%s\n",
+                      now, e1, e2,
+                      mag ? String(angleSensor.rawAngle()).c_str() : "FAULT");
     }
 }

@@ -7,7 +7,7 @@ export default function Index() {
 
   // If no user, redirect to auth
   if (!user.isLoggedIn) {
-    return <Redirect href="/auth" />;
+    return <Redirect href="/(auth)/login" />;
   }
 
   // If user exists but email is not verified, redirect to verification
@@ -15,6 +15,10 @@ export default function Index() {
     return <Redirect href="/email-verification" />;
   }
 
-  // If user is verified, redirect to tabs (home)
-  return <Redirect href="/(tabs)" />;
+  // If user is verified, redirect to tabs (home) or onboarding
+  if (!user.hasCompletedOnboarding) {
+    return <Redirect href="/onboarding" />;
+  }
+
+  return <Redirect href="/(tabs)/dashboard" />;
 }

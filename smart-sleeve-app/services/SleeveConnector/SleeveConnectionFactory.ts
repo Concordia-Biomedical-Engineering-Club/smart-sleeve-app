@@ -28,7 +28,7 @@ export class SleeveConnectionFactory {
    */
   public static getConnector(): ISleeveConnector {
     if (!this.instance) {
-      const useMock = process.env[USE_MOCK_HARDWARE_ENV_KEY] !== "false";
+      const useMock = process.env[USE_MOCK_HARDWARE_ENV_KEY] === "true";
 
       if (useMock) {
         console.log(
@@ -59,7 +59,12 @@ export class SleeveConnectionFactory {
   }
 
   private static isBleNativeModuleAvailable(): boolean {
-    return NativeModules.BlePlx != null;
+    // react-native-ble-plx may expose either key depending on runtime/architecture.
+    return (
+      NativeModules.BlePlx != null ||
+      NativeModules.BleClientManager != null ||
+      NativeModules.BleManager != null
+    );
   }
 }
 

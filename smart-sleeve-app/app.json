@@ -32,7 +32,6 @@
         "android.permission.BLUETOOTH_CONNECT",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "minSdkVersion": 24,
       "package": "com.anonymous.smartsleeveapp"
     },
     "web": {
@@ -67,6 +66,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "091d3d77-3825-4d23-8c80-c1b0ca4b2316"
+      }
     }
   }
 }

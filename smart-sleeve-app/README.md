@@ -159,6 +159,59 @@ For physical sleeve testing, use this short checklist:
 
 The full wiring, firmware, and troubleshooting workflow is documented in [../docs/hardware_setup_guide.md](../docs/hardware_setup_guide.md).
 
+### Shareable Android APK For Teammates
+
+If teammates should install the app without Android Studio, use an EAS Android APK build instead of a local dev build.
+
+1. Install EAS CLI once:
+
+```bash
+npm install -g eas-cli
+```
+
+2. Log in to Expo:
+
+```bash
+eas login
+```
+
+3. From the app folder, build the Android APK:
+
+```bash
+cd smart-sleeve-app/smart-sleeve-app
+eas build --platform android --profile preview
+```
+
+4. Download the generated APK from the Expo build link.
+5. Send that APK or link to teammates so they can install it directly on Android.
+
+Notes:
+
+- The `preview` build profile in `eas.json` is configured to output an APK.
+- This app already declares the Android BLE permissions required for sleeve testing.
+- Use `eas build` for teammate installs and `npx expo run:android` for local debugging.
+
+### iOS: Dev Build vs Installable App
+
+For iPhone, there are two different workflows:
+
+1. **Native dev build (`npx expo run:ios --device`)**
+  - Requires Metro to be running whenever you open the app.
+  - Start with `npx expo start --dev-client` (or `--tunnel` if needed).
+2. **Installable iOS build (no dev server required)**
+  - Build with EAS and install the signed output on device.
+  - Command:
+
+```bash
+cd smart-sleeve-app/smart-sleeve-app
+eas build --platform ios --profile preview
+```
+
+Notes:
+
+- iOS installable builds require Apple Developer signing/provisioning.
+- Android APK sideloading is simpler; iOS always requires Apple signing.
+
 ---
 
 ## 📁 Project Structure

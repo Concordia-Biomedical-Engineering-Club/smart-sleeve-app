@@ -49,10 +49,21 @@ export default function TestBLEScreen() {
   const MAX_POINTS = 50;
   const [devices, setDevices] = useState<string[]>([]);
   const [isScanning, setIsScanningState] = useState(false);
-  const requestedMockMode = process.env[USE_MOCK_HARDWARE_ENV_KEY] !== "false";
+  const [clockTick, setClockTick] = useState(0);
+  const requestedMockMode = process.env[USE_MOCK_HARDWARE_ENV_KEY] === "true";
   const isUsingMockConnector = connector instanceof MockSleeveConnector;
   const isFallbackRoute = !requestedMockMode && isUsingMockConnector;
   const isMock = isUsingMockConnector;
+
+  // Force a lightweight UI refresh every second so age/stale diagnostics
+  // remain visible even when packets pause (e.g., link drop/reconnect).
+  useEffect(() => {
+    const id = setInterval(() => setClockTick((prev) => prev + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  void clockTick;
+
   const now = Date.now();
   const lastEmgAgeMs = transportDiagnostics.lastEMGPacketTimestamp
     ? now - transportDiagnostics.lastEMGPacketTimestamp
@@ -68,6 +79,25 @@ export default function TestBLEScreen() {
     connectionStatus.connected &&
     (lastImuAgeMs == null ||
       lastImuAgeMs > transportDiagnostics.imuStaleTimeoutMs);
+  const phase = transportDiagnostics.lastConnectionPhase;
+  const reason = transportDiagnostics.lastConnectionReason;
+  const isLinkHealthy =
+    connectionStatus.connected && !isEmgStale && !isImuStale;
+
+  const getPhaseTone = () => {
+    switch (phase) {
+      case "connected":
+        return "#2ECC71";
+      case "connecting":
+      case "reconnecting":
+      case "scanning":
+        return "#F1C40F";
+      case "failed":
+        return "#E74C3C";
+      default:
+        return "#95A5A6";
+    }
+  };
 
   // Update Chart Data (Channel 1 only for viz) - Throttled for readability
   useEffect(() => {
@@ -175,6 +205,80 @@ export default function TestBLEScreen() {
             </ThemedText>
           </ThemedText>
 
+          <View style={styles.healthPanel}>
+            <View style={styles.healthRow}>
+              <View
+                style={[
+                  styles.phaseDot,
+                  {
+                    backgroundColor: getPhaseTone(),
+                  },
+                ]}
+              />
+              <ThemedText
+                testID="connection-phase-status"
+                style={styles.healthText}
+              >
+                Phase: {phase}
+                {reason ? ` (${reason})` : ""}
+              </ThemedText>
+            </View>
+
+            <ThemedText style={styles.healthText}>
+              Auto-reconnect: {phase === "reconnecting" ? "ACTIVE" : "idle"}
+              {transportDiagnostics.reconnectAttemptCount > 0
+                ? ` (attempt ${transportDiagnostics.reconnectAttemptCount})`
+                : ""}
+            </ThemedText>
+
+            <View style={styles.healthRow}>
+              <ThemedText style={styles.healthText}>EMG stream:</ThemedText>
+              <View
+                style={[
+                  styles.streamDot,
+                  {
+                    backgroundColor:
+                      connectionStatus.connected && !isEmgStale
+                        ? "#2ECC71"
+                        : "#E74C3C",
+                  },
+                ]}
+              />
+              <ThemedText style={styles.healthText}>
+                {lastEmgAgeMs == null ? "no packets" : `${lastEmgAgeMs} ms age`}
+              </ThemedText>
+            </View>
+
+            <View style={styles.healthRow}>
+              <ThemedText style={styles.healthText}>IMU stream:</ThemedText>
+              <View
+                style={[
+                  styles.streamDot,
+                  {
+                    backgroundColor:
+                      connectionStatus.connected && !isImuStale
+                        ? "#2ECC71"
+                        : "#E74C3C",
+                  },
+                ]}
+              />
+              <ThemedText style={styles.healthText}>
+                {lastImuAgeMs == null ? "no packets" : `${lastImuAgeMs} ms age`}
+              </ThemedText>
+            </View>
+
+            <ThemedText
+              style={[
+                styles.healthSummary,
+                { color: isLinkHealthy ? "#2ECC71" : "#F1C40F" },
+              ]}
+            >
+              {isLinkHealthy
+                ? "Link healthy: packets flowing"
+                : "Link degraded: waiting for fresh packets"}
+            </ThemedText>
+          </View>
+
           {isFallbackRoute && (
             <ThemedText style={styles.routeHint}>
               Connecting route: bridge
@@ -254,7 +358,7 @@ export default function TestBLEScreen() {
           <ThemedText>
             Active: {transportDiagnostics.activeTransportMode}
           </ThemedText>
-          <ThemedText>
+          <ThemedText testID="transport-diagnostics-phase">
             Phase: {transportDiagnostics.lastConnectionPhase}
           </ThemedText>
           <ThemedText>
@@ -556,6 +660,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.45,
     letterSpacing: 0.3,
+  },
+  healthPanel: {
+    marginTop: 10,
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.16)",
+    gap: 6,
+  },
+  healthRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  phaseDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 10,
+  },
+  streamDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 8,
+  },
+  healthText: {
+    fontSize: 12,
+    opacity: 0.9,
+  },
+  healthSummary: {
+    marginTop: 4,
+    fontWeight: "700",
+    fontSize: 12,
   },
   highlight: {
     marginTop: 8,

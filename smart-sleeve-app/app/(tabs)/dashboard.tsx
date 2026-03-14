@@ -57,22 +57,22 @@ const getChannels = (theme: any) => {
   return [
     {
       id: 0,
-      label: "VMO",
+      label: "VMO (Stabilizer)",
       color: theme.primary,
     },
     {
       id: 1,
-      label: "VL",
+      label: "VL (Prime Mover)",
       color: "#FF6B6B",
     },
     {
       id: 2,
-      label: "Semitendinosus",
+      label: "ST (Inner Hamstring)",
       color: "#4ECDC4",
     },
     {
       id: 3,
-      label: "Biceps Femoris",
+      label: "BF (Outer Hamstring)",
       color: "#FFE66D",
     },
   ];
@@ -392,7 +392,7 @@ export default function DashboardScreen() {
         {!isWorkoutActive && (
           <View style={styles.gridContainer}>
             <View style={styles.gridRow}>
-              <StatCard value="-1°" label="Extension Deficit" />
+              <StatCard value="-1°" label="Leg Extension Gap" />
               <StatCard value="12 Days" label="Rehab Streak" />
             </View>
             <View style={styles.gridRow}>
