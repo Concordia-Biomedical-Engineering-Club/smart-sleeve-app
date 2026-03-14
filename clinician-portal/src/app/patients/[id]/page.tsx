@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   ArrowLeft,
   Calendar,
@@ -14,6 +14,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { MOCK_PATIENTS } from "@/data/mockPatients";
 import { MOCK_SESSIONS } from "@/data/mockSessions";
 import { EXERCISE_LIBRARY } from "@/data/exercises";
@@ -34,12 +35,9 @@ import { TelemetryChart } from "@/components/shared/TelemetryChart";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
-export default function PatientDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function PatientDetailPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id ?? "";
   const { patients } = usePatients();
   const { sessions, loading: sessionsLoading } = useSessions(id);
   const [activeTab, setActiveTab] = useState<"trends" | "history">("trends");
