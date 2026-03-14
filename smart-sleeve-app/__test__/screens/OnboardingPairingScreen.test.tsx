@@ -11,7 +11,7 @@ import { Animated } from "react-native";
 import OnboardingPairing from "@/app/onboarding/pairing";
 import userReducer from "@/store/userSlice";
 import deviceReducer from "@/store/deviceSlice";
-import type { ISleeveConnector } from "@/services/SleeveConnector/ISleeveConnector";
+import { createMockSleeveConnector } from "@/__test__/helpers/createMockSleeveConnector";
 
 const mockRouter = {
   replace: jest.fn(),
@@ -22,16 +22,7 @@ jest.mock("expo-router", () => ({
   useRouter: () => mockRouter,
 }));
 
-const mockConnector: jest.Mocked<ISleeveConnector> = {
-  scan: jest.fn(),
-  connect: jest.fn(),
-  disconnect: jest.fn(),
-  subscribeToEMG: jest.fn(),
-  subscribeToIMU: jest.fn(),
-  onConnectionStatusChange: jest.fn(),
-  onTransportEvent: jest.fn(),
-  setScenario: jest.fn(),
-};
+const mockConnector = createMockSleeveConnector();
 
 jest.mock("@/hooks/useSleeve", () => ({
   useSleeve: () => mockConnector,
@@ -74,9 +65,9 @@ describe("OnboardingPairing", () => {
 
     const { screen, store } = renderScreen();
 
-    expect(screen.getByText("Skip Step →")).toBeTruthy();
+    expect(screen.getByTestId("onboarding-skip-step-button")).toBeTruthy();
 
-    fireEvent.press(screen.getByText("Search for Device"));
+    fireEvent.press(screen.getByTestId("onboarding-search-device-button"));
 
     await waitFor(() => {
       expect(mockConnector.scan).toHaveBeenCalledTimes(1);
@@ -87,7 +78,7 @@ describe("OnboardingPairing", () => {
       expect(screen.getByText("Connected!")).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByText("Go to Dashboard →"));
+    fireEvent.press(screen.getByTestId("onboarding-go-dashboard-button"));
 
     expect(store.getState().user.hasCompletedOnboarding).toBe(true);
     expect(mockRouter.replace).toHaveBeenCalledWith("/(tabs)/dashboard");
@@ -98,11 +89,11 @@ describe("OnboardingPairing", () => {
 
     const { screen, store } = renderScreen();
 
-    fireEvent.press(screen.getByText("Search for Device"));
+    fireEvent.press(screen.getByTestId("onboarding-search-device-button"));
 
     await waitFor(() => {
       expect(screen.getByText("Pairing Failed")).toBeTruthy();
-      expect(screen.getByText("Try Again")).toBeTruthy();
+      expect(screen.getByTestId("onboarding-try-again-button")).toBeTruthy();
     });
 
     expect(store.getState().user.hasCompletedOnboarding).toBe(false);

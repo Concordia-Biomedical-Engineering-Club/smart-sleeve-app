@@ -215,7 +215,10 @@ export default function TestBLEScreen() {
                   },
                 ]}
               />
-              <ThemedText style={styles.healthText}>
+              <ThemedText
+                testID="connection-phase-status"
+                style={styles.healthText}
+              >
                 Phase: {phase}
                 {reason ? ` (${reason})` : ""}
               </ThemedText>
@@ -355,7 +358,7 @@ export default function TestBLEScreen() {
           <ThemedText>
             Active: {transportDiagnostics.activeTransportMode}
           </ThemedText>
-          <ThemedText>
+          <ThemedText testID="transport-diagnostics-phase">
             Phase: {transportDiagnostics.lastConnectionPhase}
           </ThemedText>
           <ThemedText>

@@ -212,7 +212,9 @@ describe("TestBLEScreen", () => {
       expect(screen.getByText(/IMU checksum errors: 1/)).toBeTruthy();
       expect(screen.getByText(/IMU notify errors: 1/)).toBeTruthy();
       expect(screen.getByText(/Reconnect attempts: 3/)).toBeTruthy();
-      expect(screen.getAllByText(/Phase: failed/).length).toBeGreaterThan(0);
+      expect(
+        screen.getByTestId("transport-diagnostics-phase"),
+      ).toHaveTextContent(/Phase: failed/);
     });
   });
 
@@ -225,7 +227,9 @@ describe("TestBLEScreen", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Scanning...")).toBeTruthy();
-      expect(screen.getAllByText(/Phase: scanning/).length).toBeGreaterThan(0);
+      expect(screen.getByTestId("connection-phase-status")).toHaveTextContent(
+        /Phase: scanning/,
+      );
     });
 
     await act(async () => {
@@ -235,8 +239,8 @@ describe("TestBLEScreen", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Scan for Devices")).toBeTruthy();
-      expect(screen.getAllByText(/Phase: disconnected/).length).toBeGreaterThan(
-        0,
+      expect(screen.getByTestId("connection-phase-status")).toHaveTextContent(
+        /Phase: disconnected/,
       );
       expect(screen.queryByText(/Connect to:/)).toBeNull();
     });
@@ -250,7 +254,9 @@ describe("TestBLEScreen", () => {
     fireEvent.press(screen.getByText("Scan for Devices"));
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Phase: scanning/).length).toBeGreaterThan(0);
+      expect(screen.getByTestId("connection-phase-status")).toHaveTextContent(
+        /Phase: scanning/,
+      );
     });
 
     await act(async () => {
@@ -259,7 +265,9 @@ describe("TestBLEScreen", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Phase: failed/).length).toBeGreaterThan(0);
+      expect(screen.getByTestId("connection-phase-status")).toHaveTextContent(
+        /Phase: failed/,
+      );
     });
   });
 
@@ -293,7 +301,9 @@ describe("TestBLEScreen", () => {
     fireEvent.press(screen.getByText("Scan for Devices"));
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Phase: failed/).length).toBeGreaterThan(0);
+      expect(screen.getByTestId("connection-phase-status")).toHaveTextContent(
+        /Phase: failed/,
+      );
       expect(screen.getByText("Scan for Devices")).toBeTruthy();
       expect(screen.queryByText(/Connect to:/)).toBeNull();
     });
