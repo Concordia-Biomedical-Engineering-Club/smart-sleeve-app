@@ -40,6 +40,7 @@ export interface UserState {
 }
 
 const CHANNELS = 4;
+export const CALIBRATION_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const createInitialCalibration = (): CalibrationCoefficients => ({
   baseline: new Array(CHANNELS).fill(0),
@@ -206,6 +207,11 @@ export const selectCalibrationForSide = (state: RootState, side: InjuredSide) =>
   state.user.calibrationsBySide[side];
 export const selectIsCalibrated = (state: RootState) =>
   selectCalibration(state).calibratedAt !== null;
+export const selectIsCalibrationStale = (state: RootState) => {
+  const cal = selectCalibration(state);
+  if (!cal.calibratedAt) return false;
+  return Date.now() - cal.calibratedAt > CALIBRATION_STALE_THRESHOLD_MS;
+};
 export const selectHasCalibrationForSide = (
   state: RootState,
   side: InjuredSide,

@@ -168,7 +168,7 @@ export function buildMetricTrend(
   });
 
   // 2. Map every date to a value — skip days with no sessions
-  const points: { date: Date; value: number; label: string }[] = [];
+  const points: { date: Date; value: number }[] = [];
 
   dates.forEach((date, index) => {
     const matchingSessions = sessions.filter(
@@ -204,22 +204,20 @@ export function buildMetricTrend(
               }, 0) / matchingSessions.length,
             );
 
-    let label: string;
-    if (days <= 7) {
-      label = date.toLocaleDateString([], { weekday: "short" });
-    } else {
-      const labelStep = days === 30 ? 5 : 14;
-      label =
-        index % labelStep === 0 || index === days - 1
-          ? date.toLocaleDateString([], { month: "short", day: "numeric" })
-          : "";
-    }
-
-    points.push({ date, value, label });
+    points.push({ date, value });
   });
 
   return {
-    labels: points.map(({ label }) => label),
+    labels: points.map(({ date }, pointIndex) => {
+      if (days <= 7) {
+        return date.toLocaleDateString([], { weekday: "short" });
+      }
+
+      const labelStep = days === 30 ? 5 : 14;
+      return pointIndex % labelStep === 0 || pointIndex === points.length - 1
+        ? date.toLocaleDateString([], { month: "short", day: "numeric" })
+        : "";
+    }),
     values: points.map(({ value }) => value),
   };
 }

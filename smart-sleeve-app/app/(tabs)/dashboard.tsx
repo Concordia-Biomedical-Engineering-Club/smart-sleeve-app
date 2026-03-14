@@ -22,6 +22,7 @@ import {
 } from "@/services/SymmetryService";
 import {
   selectIsCalibrated,
+  selectIsCalibrationStale,
   selectShowNormalized,
   toggleNormalizedMode,
   setCalibration,
@@ -85,6 +86,7 @@ export default function DashboardScreen() {
   const isWorkoutActive = useSelector(selectIsWorkoutActive);
   const workout = useSelector(selectWorkout);
   const isCalibrated = useSelector(selectIsCalibrated);
+  const isCalibrationStale = useSelector(selectIsCalibrationStale);
   const showNormalized = useSelector(selectShowNormalized);
   const latestCalibrationSample = useSelector(
     (state: RootState) => state.device.latestCalibrationSample,
@@ -244,19 +246,23 @@ export default function DashboardScreen() {
             style={[
               styles.calibrateBtn,
               {
-                backgroundColor: theme.primary + "10",
-                borderColor: theme.primary,
+                backgroundColor: isCalibrationStale ? theme.warning + "15" : theme.primary + "10",
+                borderColor: isCalibrationStale ? theme.warning : theme.primary,
               },
             ]}
             onPress={() => setShowCalibration(true)}
           >
-            <IconSymbol name="waveform" size={16} color={theme.primary} />
+            <IconSymbol 
+              name={isCalibrationStale ? "exclamationmark.triangle.fill" : "waveform"} 
+              size={16} 
+              color={isCalibrationStale ? theme.warning : theme.primary} 
+            />
             <ThemedText
-              style={[styles.calibrateBtnText, { color: theme.primary }]}
+              style={[styles.calibrateBtnText, { color: isCalibrationStale ? theme.warning : theme.primary }]}
             >
-              {isCalibrated
-                ? `Recalibrate ${selectedMeasurementLabel}`
-                : `Calibrate ${selectedMeasurementLabel}`}
+              {isCalibrationStale ? "Recalibrate (Stale Data)" : 
+               isCalibrated ? `Recalibrate ${selectedMeasurementLabel}` : 
+               `Calibrate ${selectedMeasurementLabel}`}
             </ThemedText>
           </TouchableOpacity>
 

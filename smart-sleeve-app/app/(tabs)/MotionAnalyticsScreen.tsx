@@ -61,7 +61,10 @@ export default function MotionAnalyticsScreen() {
     const balanceTrend = buildMetricTrend(sessions, tfOption, "muscleBalance");
 
     const tfDays = tfOption === "7D" ? 7 : tfOption === "30D" ? 30 : 90;
-    const tfStart = Date.now() - tfDays * 24 * 60 * 60 * 1000;
+    const tfStartDate = new Date();
+    tfStartDate.setHours(0, 0, 0, 0);
+    tfStartDate.setDate(tfStartDate.getDate() - (tfDays - 1));
+    const tfStart = tfStartDate.getTime();
     const allSymmetryPoints = computeHistoricalSymmetryTrends(
       sessions,
       injuredSide || "LEFT",
@@ -70,22 +73,32 @@ export default function MotionAnalyticsScreen() {
       (p) => p.timestamp >= tfStart,
     );
 
-    const hasData = romTrend.values.some((v: number) => v > 0);
+    const hasData = romTrend.values.length > 0;
     const hasSymmetryData = symmetryPoints.length > 0;
 
     return {
       motion: {
-        labels: romTrend.labels,
+        labels: hasData
+          ? romTrend.labels.length === 1
+            ? [romTrend.labels[0], romTrend.labels[0]]
+            : romTrend.labels
+          : ["", ""],
         datasets: [
           {
-            data: hasData ? romTrend.values : romTrend.values.map(() => 0),
+            data: hasData
+              ? romTrend.values.length === 1
+                ? [romTrend.values[0], romTrend.values[0]]
+                : romTrend.values
+              : [0, 0],
             color: () => theme.primary,
             strokeWidth: 3,
           } as any,
           {
             data: hasData
-              ? qualityTrend.values
-              : qualityTrend.values.map(() => 0),
+              ? qualityTrend.values.length === 1
+                ? [qualityTrend.values[0], qualityTrend.values[0]]
+                : qualityTrend.values
+              : [0, 0],
             color: () => theme.success,
             strokeWidth: 3,
           } as any,
@@ -93,12 +106,18 @@ export default function MotionAnalyticsScreen() {
         legend: ["Range of Motion (°)", "Quality Score (%)"],
       },
       balance: {
-        labels: balanceTrend.labels,
+        labels: hasData
+          ? balanceTrend.labels.length === 1
+            ? [balanceTrend.labels[0], balanceTrend.labels[0]]
+            : balanceTrend.labels
+          : ["", ""],
         datasets: [
           {
             data: hasData
-              ? balanceTrend.values
-              : balanceTrend.values.map(() => 0),
+              ? balanceTrend.values.length === 1
+                ? [balanceTrend.values[0], balanceTrend.values[0]]
+                : balanceTrend.values
+              : [0, 0],
             color: () => "#8338EC",
             strokeWidth: 3,
           } as any,
@@ -107,18 +126,31 @@ export default function MotionAnalyticsScreen() {
       },
       symmetry: {
         labels: hasSymmetryData
-          ? symmetryPoints.map((p) =>
-              new Date(p.timestamp).toLocaleDateString([], {
-                month: "short",
-                day: "numeric",
-              }),
-            )
-          : ["No data"],
+          ? symmetryPoints.length === 1
+            ? [
+                new Date(symmetryPoints[0].timestamp).toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
+                }),
+                new Date(symmetryPoints[0].timestamp).toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
+                }),
+              ]
+            : symmetryPoints.map((p) =>
+                new Date(p.timestamp).toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
+                }),
+              )
+          : ["No data", ""],
         datasets: [
           {
             data: hasSymmetryData
-              ? symmetryPoints.map((p) => p.symmetryScore)
-              : [0],
+              ? symmetryPoints.length === 1
+                ? [symmetryPoints[0].symmetryScore, symmetryPoints[0].symmetryScore]
+                : symmetryPoints.map((p) => p.symmetryScore)
+              : [0, 0],
             color: () => theme.primary,
             strokeWidth: 3,
           } as any,

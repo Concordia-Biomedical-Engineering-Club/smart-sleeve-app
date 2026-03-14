@@ -30,11 +30,30 @@ jest.mock("@/components/analytics/TrendChart", () => ({
 const mockedFetchSessionsByFilters =
   fetchSessionsByFilters as jest.MockedFunction<typeof fetchSessionsByFilters>;
 
-type TestUserState = {
-  isLoggedIn: boolean;
-  email: string | null;
-  isAuthenticated: boolean;
-};
+import type { UserState } from "@/store/userSlice";
+
+function createInitialUserState(overrides: Partial<UserState> = {}): UserState {
+  return {
+    isLoggedIn: true,
+    email: "patient@example.com",
+    uid: "test-uid",
+    isAuthenticated: true,
+    calibrationsBySide: {
+      LEFT: { baseline: [0, 0, 0, 0], mvc: [1, 1, 1, 1], calibratedAt: Date.now() },
+      RIGHT: { baseline: [0, 0, 0, 0], mvc: [1, 1, 1, 1], calibratedAt: null },
+    },
+    measurementSide: "LEFT",
+    showNormalized: true,
+    injuredSide: "LEFT",
+    hasCompletedOnboarding: true,
+    injuryDetails: "Tear",
+    therapyGoal: "Strength",
+    profileOwnerEmail: "patient@example.com",
+    syncStatus: "synced",
+    lastSyncedAt: Date.now(),
+    ...overrides,
+  };
+}
 
 function createSession(overrides: any = {}) {
   return {
@@ -79,11 +98,7 @@ describe("ProgressScreen", () => {
   });
 
   function renderScreen(
-    preloadedUser: TestUserState = {
-      isLoggedIn: true,
-      email: "patient@example.com",
-      isAuthenticated: true,
-    },
+    preloadedUser: UserState = createInitialUserState(),
   ) {
     const store = configureStore({
       reducer: {
@@ -116,7 +131,7 @@ describe("ProgressScreen", () => {
   });
 
   test("falls back to the guest user history when no email is available", async () => {
-    renderScreen({ isLoggedIn: false, email: null, isAuthenticated: false });
+    renderScreen(createInitialUserState({ isLoggedIn: false, email: null, isAuthenticated: false }));
 
     await waitFor(() => {
       expect(mockedFetchSessionsByFilters).toHaveBeenCalledWith(

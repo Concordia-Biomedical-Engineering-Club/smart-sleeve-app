@@ -23,6 +23,7 @@ import {
   setCalibrationScenarioOverride,
 } from "@/store/deviceSlice";
 import { RAW_SIGNAL_READING_LABEL } from "@/components/dashboard/signalDisplay";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
 const MVC_DURATION_SEC = 5;
 export const CALIBRATION_CHANNEL_LABELS = ["VMO", "VL", "ST", "BF"];
@@ -254,11 +255,30 @@ export default function CalibrationOverlay({
                 reference point.
               </ThemedText>
             </View>
+            <View
+              style={[
+                styles.stepCard,
+                { backgroundColor: theme.primary + "08", borderLeftWidth: 4, borderLeftColor: theme.primary },
+              ]}
+            >
+              <ThemedText
+                type="label"
+                style={{ color: theme.primary, marginBottom: 4 }}
+              >
+                CLINICAL RATIONALE
+              </ThemedText>
+              <ThemedText
+                style={[styles.stepDesc, { color: theme.textSecondary, fontSize: 13 }]}
+              >
+                Standardizing your results as a percentage of maximum effort (% MVC) allows surgeons to track objective muscle recovery independently of fatigue or sensor positioning.
+              </ThemedText>
+            </View>
           </View>
         );
       case "rest":
         return (
           <View style={styles.centerPhase}>
+            <IconSymbol name="leaf.fill" size={48} color={theme.primary} />
             <ThemedText
               type="label"
               style={[styles.phaseIndicator, { color: theme.primary }]}
@@ -279,13 +299,14 @@ export default function CalibrationOverlay({
               />
             </View>
             <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
-              Measuring baseline noise floor…
+              Relax all muscles. Stay completely still.
             </ThemedText>
           </View>
         );
       case "flex":
         return (
           <View style={styles.centerPhase}>
+            <IconSymbol name="bolt.fill" size={48} color={theme.success} />
             <ThemedText
               type="label"
               style={[styles.phaseIndicator, { color: theme.success }]}
@@ -306,7 +327,7 @@ export default function CalibrationOverlay({
               />
             </View>
             <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
-              Hold maximum contraction…
+              FLEX! Squeeze your quad as hard as possible!
             </ThemedText>
           </View>
         );
@@ -321,7 +342,7 @@ export default function CalibrationOverlay({
                 >
                   Baseline (Rest) — {RAW_SIGNAL_READING_LABEL}
                 </ThemedText>
-                {renderChannelRow(baseline)}
+                {renderChannelRow(baseline!)}
               </View>
             )}
             {mvc && (
@@ -332,7 +353,7 @@ export default function CalibrationOverlay({
                 >
                   MVC Peak (500ms window) — {RAW_SIGNAL_READING_LABEL}
                 </ThemedText>
-                {renderChannelRow(mvc)}
+                {renderChannelRow(mvc!)}
               </View>
             )}
           </View>

@@ -237,7 +237,7 @@ describe("RealSleeveConnector", () => {
           PermissionsAndroid.RESULTS.GRANTED,
         [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION]:
           PermissionsAndroid.RESULTS.GRANTED,
-      });
+      } as any);
 
     Object.defineProperty(Platform, "OS", {
       configurable: true,
