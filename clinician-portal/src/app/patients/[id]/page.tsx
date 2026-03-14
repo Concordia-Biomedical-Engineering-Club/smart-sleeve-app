@@ -1,17 +1,17 @@
 "use client";
 
-import { use } from "react";
+import { use, useRef, useState } from "react";
 import {
   ArrowLeft,
   Calendar,
   Target,
   Zap,
   TrendingUp,
-  AlertTriangle,
   ChevronRight,
   Activity,
   History,
   FileText,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import { MOCK_PATIENTS } from "@/data/mockPatients";
@@ -42,6 +42,11 @@ export default function PatientDetailPage({
   const { id } = use(params);
   const { patients } = usePatients();
   const { sessions, loading: sessionsLoading } = useSessions(id);
+  const [activeTab, setActiveTab] = useState<"trends" | "history">("trends");
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(
+    null,
+  );
+  const protocolRef = useRef<HTMLDivElement | null>(null);
 
   const fetchedPatient = patients.find((p) => p.uid === id);
   const patient = fetchedPatient || MOCK_PATIENTS.find((p) => p.uid === id);
@@ -63,6 +68,50 @@ export default function PatientDetailPage({
       quality: s.analytics?.exerciseQuality || 0,
     }))
     .reverse(); // Sessions are desc, charts usually want chron
+
+  const handleUpdateProtocol = () => {
+    setActiveTab("trends");
+    setTimeout(() => {
+      protocolRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 60);
+  };
+
+  const handleExportClearanceReport = () => {
+    const latest = displaySessions[0];
+    const reportLines = [
+      "SMART SLEEVE CLEARANCE REPORT",
+      `Generated: ${new Date().toLocaleString()}`,
+      "",
+      `Patient: ${patient.displayName ?? "Unknown"}`,
+      `Patient ID: ${patient.uid}`,
+      `Email: ${patient.email ?? "N/A"}`,
+      `Injured Side: ${patient.injuredSide ?? "N/A"}`,
+      `Therapy Goal: ${patient.therapyGoal ?? "N/A"}`,
+      `Recent ROM: ${patient.recentROM ?? "N/A"}`,
+      `Recent Symmetry: ${patient.recentSymmetry ?? "N/A"}`,
+      `Compliance Score: ${patient.complianceScore ?? "N/A"}`,
+      "",
+      "Latest Session",
+      latest
+        ? `Date: ${new Date(latest.timestamp).toLocaleString()}\nExercise: ${latest.exerciseType}\nDuration (min): ${Math.round(latest.duration / 60)}\nROM: ${latest.analytics?.romDegrees ?? 0}\nQuality: ${latest.analytics?.exerciseQuality ?? 0}%`
+        : "No session data available.",
+    ];
+
+    const blob = new Blob([reportLines.join("\n")], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `clearance-${patient.uid}-${Date.now()}.txt`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
@@ -87,7 +136,7 @@ export default function PatientDetailPage({
                 variant="outline"
                 className="bg-green-500/10 text-green-500 border-none capitalize"
               >
-                {patient.injuredSide}-Side Recovery
+                {patient.injuredSide ?? "Unknown"}-Side Recovery
               </Badge>
             </div>
             <p className="text-muted-foreground">
@@ -99,11 +148,15 @@ export default function PatientDetailPage({
           <Button
             variant="outline"
             className="gap-2 bg-background/50 border-border/50"
+            onClick={handleExportClearanceReport}
           >
             <FileText className="h-4 w-4" />
             Clearance Report
           </Button>
-          <Button className="gap-2 shadow-lg shadow-primary/20">
+          <Button
+            className="gap-2 shadow-lg shadow-primary/20"
+            onClick={handleUpdateProtocol}
+          >
             <Target className="h-4 w-4" />
             Update Protocol
           </Button>
@@ -175,7 +228,11 @@ export default function PatientDetailPage({
       </div>
 
       {/* Analytics Tabs */}
-      <Tabs defaultValue="trends" className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as "trends" | "history")}
+        className="w-full"
+      >
         <TabsList className="bg-card/40 backdrop-blur-md border-none p-1 rounded-xl mb-6">
           <TabsTrigger
             value="trends"
@@ -208,7 +265,9 @@ export default function PatientDetailPage({
               </CardContent>
             </Card>
 
-            {patient && <GoalPrescription patient={patient as any} />}
+            <div ref={protocolRef}>
+              {patient && <GoalPrescription patient={patient as any} />}
+            </div>
           </div>
         </TabsContent>
 
@@ -216,54 +275,123 @@ export default function PatientDetailPage({
           <Card className="border-none bg-card/40 backdrop-blur-md">
             <CardContent className="p-0">
               <div className="divide-y divide-border/20">
-                {displaySessions.map((session, i) => (
-                  <div
-                    key={session.id}
-                    className="p-6 flex items-center justify-between hover:bg-accent/20 transition-colors"
-                  >
-                    <div className="flex items-center gap-6">
-                      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                        <Calendar className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <div className="font-bold">
-                          {format(new Date(session.timestamp), "EEEE, MMMM do")}
+                {displaySessions.map((session) => {
+                  const expanded = expandedSessionId === session.id;
+                  return (
+                    <div
+                      key={session.id}
+                      className="hover:bg-accent/20 transition-colors"
+                    >
+                      <div className="p-6 flex items-center justify-between">
+                        <div className="flex items-center gap-6">
+                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                            <Calendar className="h-6 w-6 text-primary" />
+                          </div>
+                          <div>
+                            <div className="font-bold">
+                              {format(
+                                new Date(session.timestamp),
+                                "EEEE, MMMM do",
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {EXERCISE_LIBRARY.find(
+                                (e) => e.id === session.exerciseType,
+                              )?.name || "Unknown Exercise"}{" "}
+                              • {Math.round(session.duration / 60)}m •{" "}
+                              {session.completedReps} reps
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {EXERCISE_LIBRARY.find((e) => e.id === session.exerciseType)?.name || "Unknown Exercise"} • {Math.round(session.duration / 60)}m • {session.completedReps} reps
+                        <div className="flex gap-8 items-center">
+                          <div className="text-right">
+                            <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">
+                              Peak ROM
+                            </div>
+                            <div className="font-mono text-lg">
+                              {session.analytics?.romDegrees || 0}°
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">
+                              Quality
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-500/10 text-blue-500 border-none"
+                            >
+                              {session.analytics?.exerciseQuality || 0}%
+                            </Badge>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="rounded-full"
+                            onClick={() =>
+                              setExpandedSessionId((prev) =>
+                                prev === session.id ? null : session.id,
+                              )
+                            }
+                            title={
+                              expanded
+                                ? "Hide session details"
+                                : "Show session details"
+                            }
+                          >
+                            {expanded ? (
+                              <ChevronDown className="h-5 w-5" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5" />
+                            )}
+                          </Button>
                         </div>
                       </div>
+                      {expanded && (
+                        <div className="px-6 pb-6">
+                          <div className="rounded-xl border border-border/30 bg-background/30 p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <div className="text-muted-foreground">
+                                Activation Avg
+                              </div>
+                              <div className="font-semibold">
+                                {session.analytics?.avgActivation ?? 0}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">
+                                Activation Max
+                              </div>
+                              <div className="font-semibold">
+                                {session.analytics?.maxActivation ?? 0}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">
+                                Deficit
+                              </div>
+                              <div className="font-semibold">
+                                {session.analytics?.deficitPercentage ?? 0}%
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">
+                                Fatigue
+                              </div>
+                              <div className="font-semibold">
+                                {session.analytics?.fatigueScore ?? 0}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-8 items-center">
-                      <div className="text-right">
-                        <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">
-                          Peak ROM
-                        </div>
-                        <div className="font-mono text-lg">
-                          {session.analytics?.romDegrees || 0}°
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">
-                          Quality
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className="bg-blue-500/10 text-blue-500 border-none"
-                        >
-                          {session.analytics?.exerciseQuality || 0}%
-                        </Badge>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full"
-                      >
-                        <ChevronRight className="h-5 w-5" />
-                      </Button>
-                    </div>
+                  );
+                })}
+                {sessionsLoading && (
+                  <div className="p-6 text-sm text-muted-foreground">
+                    Loading sessions...
                   </div>
-                ))}
+                )}
               </div>
             </CardContent>
           </Card>

@@ -10,6 +10,8 @@ import {
   Filter,
   ChevronRight,
   FlaskConical,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { MOCK_PATIENTS } from "@/data/mockPatients";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
@@ -24,15 +26,36 @@ import { PatientTable } from "@/components/shared/PatientTable";
 export default function DashboardPage() {
   const { patients, loading, error } = usePatients();
   const [searchTerm, setSearchTerm] = useState("");
+  const [includeDemoPatients, setIncludeDemoPatients] = useState(true);
+  const [atRiskOnly, setAtRiskOnly] = useState(false);
 
-  const isUsingMockData = !loading && !error && patients.length === 0;
-  const data = isUsingMockData ? MOCK_PATIENTS : patients;
+  const demoPatientsToInject = includeDemoPatients
+    ? MOCK_PATIENTS.filter(
+        (mock) => !patients.some((real) => real.uid === mock.uid),
+      )
+    : [];
+  const data = [...patients, ...demoPatientsToInject];
+
+  const isRealDataEmpty = patients.length === 0;
+  const isDemoOnly = includeDemoPatients && isRealDataEmpty;
 
   const filteredPatients = data.filter(
     (p) =>
-      p.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.email?.toLowerCase().includes(searchTerm.toLowerCase()),
+      (p.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (!atRiskOnly || p.riskStatus === "high"),
   );
+
+  const complianceScores = data
+    .map((p) => p.complianceScore)
+    .filter((score): score is number => typeof score === "number");
+  const averageCompliance =
+    complianceScores.length > 0
+      ? Math.round(
+          complianceScores.reduce((sum, score) => sum + score, 0) /
+            complianceScores.length,
+        )
+      : 0;
 
   const stats = [
     {
@@ -61,7 +84,7 @@ export default function DashboardPage() {
     },
     {
       name: "Avg. Compliance",
-      value: "88%",
+      value: `${averageCompliance}%`,
       icon: Clock,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
@@ -117,11 +140,18 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {isUsingMockData && (
+      {isDemoOnly && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-sm font-medium">
           <FlaskConical className="h-4 w-4 shrink-0" />
-          Demo mode — displaying sample data. Connect Firebase with real patient
-          records to see live telemetry.
+          Demo mode — showing sample patients because no real patient profiles
+          were found yet.
+        </div>
+      )}
+      {!includeDemoPatients && isRealDataEmpty && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-500 text-sm font-medium">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          Demo patients are hidden. Add patients from the Patients page or wait
+          for mobile app sync.
         </div>
       )}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -135,6 +165,18 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-4">
+          <Button
+            variant="outline"
+            className="h-11 px-5 rounded-xl gap-2 border-border/50 bg-background/50"
+            onClick={() => setIncludeDemoPatients((v) => !v)}
+          >
+            {includeDemoPatients ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+            {includeDemoPatients ? "Hide Demo" : "Show Demo"}
+          </Button>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -147,9 +189,10 @@ export default function DashboardPage() {
           <Button
             variant="outline"
             className="h-11 px-5 rounded-xl gap-2 border-border/50 bg-background/50"
+            onClick={() => setAtRiskOnly((v) => !v)}
           >
             <Filter className="h-4 w-4" />
-            Filter
+            {atRiskOnly ? "All Risk Levels" : "At Risk Only"}
           </Button>
         </div>
       </div>
