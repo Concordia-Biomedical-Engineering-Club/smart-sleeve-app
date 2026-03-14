@@ -5,6 +5,7 @@ import {
   Alert,
   ActivityIndicator,
   View,
+  Platform,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -260,8 +261,9 @@ export function WorkoutOverlay() {
   const handleFinishSession = async () => {
     try {
       // 1. Save to SQLite via our orchestrated hook
-      const userId = user.email || "guest_user";
-      const result = await endAndSave(userId);
+      const userId = user.uid || "guest_user";
+      // We pass the legacy email to the hook as well in case it's needed for migration
+      const result = await endAndSave(userId, user.email || undefined);
       console.log(`[WorkoutOverlay] endAndSave result:`, result);
 
       const sessionId = result?.sessionId;
@@ -269,8 +271,13 @@ export function WorkoutOverlay() {
       // 2. Clear UI state
       dispatch(completeWorkout());
 
-      // 3. Navigate to Summary
-      if (sessionId) {
+      // 3. Navigate to Summary or show Web Alert
+      if (Platform.OS === "web") {
+        Alert.alert(
+          "Session Completed",
+          "Web Demo: Your session finished, but data is only saved/synced when using the real iOS or Android app.",
+        );
+      } else if (sessionId) {
         router.push(`/session-summary/${sessionId}`);
       } else {
         Alert.alert("Session Saved", `Your workout was stored locally.`);

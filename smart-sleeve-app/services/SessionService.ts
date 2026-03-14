@@ -15,6 +15,7 @@ import {
   insertUser,
   insertSession,
   getDatabase,
+  initDatabase,
   Session,
   EMGSample,
 } from "@/services/Database";
@@ -26,9 +27,19 @@ import {
 } from "@/services/ProgressAnalysis";
 import { normalize } from "@/services/NormalizationService";
 import type { CalibrationCoefficients } from "@/store/userSlice";
+import { Platform } from "react-native";
+
+export async function triggerSyncNow(userId: string, legacyEmail?: string) {
+  if (process.env.JEST_WORKER_ID) {
+    return;
+  }
+  const { syncNow } = await import("@/services/SyncService");
+  return syncNow(userId, legacyEmail);
+}
 
 export interface SaveSessionParams {
   userId: string;
+  legacyEmail?: string;
   exerciseId: string;
   exerciseName: string;
   side: "LEFT" | "RIGHT";
@@ -97,6 +108,7 @@ export async function saveSession(
 ): Promise<SaveSessionResult> {
   const {
     userId,
+    legacyEmail,
     exerciseId,
     exerciseName,
     side,
@@ -111,6 +123,17 @@ export async function saveSession(
 
   const sessionId = `session_${startTime}_${Math.random().toString(36).slice(2, 7)}`;
   const duration = Math.round((endTime - startTime) / 1000);
+
+  // expo-sqlite cannot open OPFS files on the Expo dev server web preview.
+  // The web build exists for UI demos only — skip the write and succeed silently.
+  if (Platform.OS === "web") {
+    console.warn(
+      "[SessionService] Web platform detected — skipping SQLite write. " +
+        "Session data is not persisted on web. Use iOS/Android for real data.",
+    );
+    return { sessionId, sampleCount: emgBuffer.length, durationMs: 0 };
+  }
+
   const exercise = EXERCISE_LIBRARY.find((item) => item.id === exerciseId);
   const recordedAngles = kneeAngleBuffer.map((frame) => frame.roll);
   const alignedKneeAngles = alignKneeAnglesToEMGFrames(
@@ -173,11 +196,12 @@ export async function saveSession(
       deficitPercentage,
       fatigueScore: duration > 60 ? 6 : 3,
       romDegrees,
-      exerciseQuality: exerciseQuality > 0 ? exerciseQuality : 0.85, // fallback to a good score
+      exerciseQuality,
       completionRate: 0,
       intensityScore: 0,
       normalizedChannelMeans,
     },
+    updatedAt: Date.now(),
   };
 
   session.analytics.completionRate = computeCompletionRate(session);
@@ -199,6 +223,10 @@ export async function saveSession(
   console.log(
     `[SessionService] Preparing to save session ${sessionId} for user ${userId}...`,
   );
+
+  // Guarantee schema is fully initialized/migrated before trying to write.
+  // This is especially important for Web/HMR.
+  await initDatabase();
   const db = await getDatabase();
 
   try {
@@ -206,7 +234,7 @@ export async function saveSession(
       await insertUser(
         {
           id: userId,
-          email: userId,
+          email: legacyEmail ?? userId,
           createdAt: Date.now(),
         },
         db,
@@ -232,6 +260,12 @@ export async function saveSession(
 
     const durationMs = Date.now() - t0;
     console.log(`[SessionService] ✅ Save complete! Time: ${durationMs}ms`);
+
+    // Fire-and-forget background sync
+    triggerSyncNow(userId, legacyEmail).catch((e) =>
+      console.error("[SessionService] Background sync failed:", e),
+    );
+
     return { sessionId, sampleCount: samples.length, durationMs };
   } catch (err) {
     console.error(`[SessionService] ❌ Save FAILED:`, err);

@@ -17,11 +17,15 @@ export interface CalibrationsBySide {
 interface AuthPayload {
   email: string | null;
   isAuthenticated: boolean;
+  uid?: string | null;
 }
+
+export type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
 export interface UserState {
   isLoggedIn: boolean;
   email: string | null;
+  uid?: string | null;
   isAuthenticated: boolean;
   calibrationsBySide: CalibrationsBySide;
   measurementSide: InjuredSide | null;
@@ -31,9 +35,12 @@ export interface UserState {
   injuryDetails: string | null;
   therapyGoal: string | null;
   profileOwnerEmail: string | null;
+  syncStatus: SyncStatus;
+  lastSyncedAt: number | null;
 }
 
 const CHANNELS = 4;
+export const CALIBRATION_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const createInitialCalibration = (): CalibrationCoefficients => ({
   baseline: new Array(CHANNELS).fill(0),
@@ -67,6 +74,7 @@ const hydrateAuthenticatedUser = (
 
   state.isLoggedIn = true;
   state.email = nextEmail;
+  state.uid = action.payload.uid ?? null;
   state.isAuthenticated = action.payload.isAuthenticated;
 
   if (!nextEmail) {
@@ -93,6 +101,7 @@ const hydrateAuthenticatedUser = (
 const initialState: UserState = {
   isLoggedIn: false,
   email: null,
+  uid: null,
   isAuthenticated: false,
   calibrationsBySide: createInitialCalibrationsBySide(),
   measurementSide: null,
@@ -102,6 +111,8 @@ const initialState: UserState = {
   injuryDetails: null,
   therapyGoal: null,
   profileOwnerEmail: null,
+  syncStatus: "idle",
+  lastSyncedAt: null,
 };
 
 const userSlice = createSlice({
@@ -163,6 +174,12 @@ const userSlice = createSlice({
       state.hasCompletedOnboarding = true;
       state.profileOwnerEmail = state.email;
     },
+    setSyncStatus: (state, action: PayloadAction<SyncStatus>) => {
+      state.syncStatus = action.payload;
+    },
+    setLastSyncedAt: (state, action: PayloadAction<number>) => {
+      state.lastSyncedAt = action.payload;
+    },
   },
 });
 
@@ -178,6 +195,8 @@ export const {
   setInjuryDetails,
   setTherapyGoal,
   completeOnboarding,
+  setSyncStatus,
+  setLastSyncedAt,
 } = userSlice.actions;
 
 export const selectMeasurementSide = (state: RootState) =>
@@ -188,6 +207,11 @@ export const selectCalibrationForSide = (state: RootState, side: InjuredSide) =>
   state.user.calibrationsBySide[side];
 export const selectIsCalibrated = (state: RootState) =>
   selectCalibration(state).calibratedAt !== null;
+export const selectIsCalibrationStale = (state: RootState) => {
+  const cal = selectCalibration(state);
+  if (!cal.calibratedAt) return false;
+  return Date.now() - cal.calibratedAt > CALIBRATION_STALE_THRESHOLD_MS;
+};
 export const selectHasCalibrationForSide = (
   state: RootState,
   side: InjuredSide,
@@ -200,5 +224,7 @@ export const selectHasCompletedOnboarding = (state: RootState) =>
 export const selectInjuryDetails = (state: RootState) =>
   state.user.injuryDetails;
 export const selectTherapyGoal = (state: RootState) => state.user.therapyGoal;
+export const selectSyncStatus = (state: RootState) => state.user.syncStatus;
+export const selectLastSyncedAt = (state: RootState) => state.user.lastSyncedAt;
 
 export default userSlice.reducer;

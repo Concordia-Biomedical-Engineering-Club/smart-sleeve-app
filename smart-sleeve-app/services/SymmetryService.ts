@@ -3,6 +3,18 @@ import type { InjuredSide } from "@/store/userSlice";
 
 export const WARNING_THRESHOLD = 30;
 
+/** Maximum time between an injured and healthy session to be considered a bilateral pair. */
+export const BILATERAL_PAIRING_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export interface SymmetryTrendPoint {
+  timestamp: number;
+  symmetryScore: number;
+  averageDeficit: number;
+  exerciseType: string;
+  healthySessionId: string;
+  injuredSessionId: string;
+}
+
 export interface BilateralChannelComparison {
   channelIndex: number;
   label: string;
@@ -123,4 +135,75 @@ export function findLatestBilateralComparison(
   }
 
   return null;
+}
+
+/**
+ * Calculates a timeline of symmetry scores by pairing healthy and injured sessions.
+ * Pairs are formed when a healthy and injured session for the same exercise occur within 24 hours.
+ */
+export function computeHistoricalSymmetryTrends(
+  sessions: Session[],
+  injuredSide: InjuredSide,
+): SymmetryTrendPoint[] {
+  const healthySide = injuredSide === "LEFT" ? "RIGHT" : "LEFT";
+  const points: SymmetryTrendPoint[] = [];
+
+  // 1. Filter sessions with valid data
+  const validSessions = sessions.filter(
+    (s) => getNormalizedChannelMeans(s) !== null,
+  );
+
+  // 2. Group by exercise type
+  const exerciseGroups: Record<string, Session[]> = {};
+  for (const s of validSessions) {
+    if (!exerciseGroups[s.exerciseType]) exerciseGroups[s.exerciseType] = [];
+    exerciseGroups[s.exerciseType].push(s);
+  }
+
+  // 3. For each exercise, find nearest-match pairs within the pairing window
+  for (const exerciseType in exerciseGroups) {
+    const group = exerciseGroups[exerciseType];
+    const healthySessions = group
+      .filter((s) => s.side === healthySide)
+      .sort((a, b) => a.timestamp - b.timestamp);
+    const injuredSessions = group
+      .filter((s) => s.side === injuredSide)
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    const usedHealthyIds = new Set<string>();
+
+    for (const injured of injuredSessions) {
+      // Find the closest healthy session within the pairing window that hasn't been used yet
+      let bestMatch: Session | null = null;
+      let bestDiff = Infinity;
+
+      for (const healthy of healthySessions) {
+        if (usedHealthyIds.has(healthy.id)) continue;
+        const diff = Math.abs(healthy.timestamp - injured.timestamp);
+        if (diff <= BILATERAL_PAIRING_WINDOW_MS && diff < bestDiff) {
+          bestMatch = healthy;
+          bestDiff = diff;
+        }
+      }
+
+      if (bestMatch) {
+        usedHealthyIds.add(bestMatch.id);
+        const result = buildBilateralComparison(bestMatch, injured);
+        const averageDeficit =
+          result.channels.reduce((sum, ch) => sum + ch.deficit, 0) /
+          result.channels.length;
+
+        points.push({
+          timestamp: injured.timestamp,
+          symmetryScore: result.symmetryScore,
+          averageDeficit,
+          exerciseType,
+          healthySessionId: bestMatch.id,
+          injuredSessionId: injured.id,
+        });
+      }
+    }
+  }
+
+  return points.sort((a, b) => a.timestamp - b.timestamp);
 }

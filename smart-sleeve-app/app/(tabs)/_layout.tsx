@@ -128,6 +128,13 @@ export default function TabLayout() {
           href: null,
         }}
       />
+
+      <Tabs.Screen
+        name="debug-db"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

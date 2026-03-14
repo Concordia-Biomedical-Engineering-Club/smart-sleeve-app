@@ -52,6 +52,7 @@ export interface Session {
   exerciseIds: string[]; // JSON-serialised in DB
   analytics: SessionAnalytics;
   synced: boolean; // false = in offline queue
+  updatedAt?: number; // For Last-Write-Wins conflict resolution
 }
 
 export interface SessionFilters {
@@ -138,6 +139,7 @@ export async function initDatabase(): Promise<void> {
         intensity_score     REAL NOT NULL DEFAULT 0,
         normalized_channel_means TEXT NOT NULL DEFAULT '[]',
         synced              INTEGER NOT NULL DEFAULT 0,
+        updated_at          INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (user_id) REFERENCES users(id)
       );
 
@@ -206,6 +208,7 @@ export async function insertSession(
 ): Promise<void> {
   const db = dbOverride ?? (await getDatabase());
   const { analytics: a } = session;
+  const resolvedUpdatedAt = session.updatedAt ?? session.timestamp;
   console.log(`[Database] Inserting session row: ${session.id}`);
   await db.runAsync(
     `INSERT INTO sessions (
@@ -213,8 +216,8 @@ export async function insertSession(
       completed_reps, target_reps,
       exercise_ids, avg_activation, max_activation, deficit_percentage,
       fatigue_score, rom_degrees, exercise_quality, completion_rate,
-      intensity_score, normalized_channel_means, synced
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      intensity_score, normalized_channel_means, synced, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       session.id,
       session.userId,
@@ -236,9 +239,70 @@ export async function insertSession(
       a.intensityScore ?? 0,
       JSON.stringify(a.normalizedChannelMeans ?? []),
       session.synced ? 1 : 0,
+      resolvedUpdatedAt,
     ],
   );
   console.log(`[Database] Session row inserted successfully`);
+}
+
+/**
+ * Used by SyncService to safely insert downloaded sessions from the cloud.
+ * Will ignore if the session ID already exists locally.
+ */
+export async function upsertSession(
+  session: Session,
+  dbOverride?: SQLite.SQLiteDatabase,
+): Promise<void> {
+  const db = dbOverride ?? (await getDatabase());
+  const { analytics: a } = session;
+  const incomingUpdatedAt = session.updatedAt ?? session.timestamp;
+
+  // Enforce Last-Write-Wins (LWW) conflict policy
+  const existing = await db.getFirstAsync<any>(
+    `SELECT updated_at FROM sessions WHERE id = ?`,
+    [session.id],
+  );
+
+  if (existing && existing.updated_at > incomingUpdatedAt) {
+    console.log(
+      `[Database] Ignoring older cloud session ${session.id} (Local: ${existing.updated_at}, Cloud: ${incomingUpdatedAt})`,
+    );
+    return;
+  }
+
+  console.log(`[Database] Upserting session row: ${session.id} (LWW resolved)`);
+  await db.runAsync(
+    `INSERT OR REPLACE INTO sessions (
+      id, user_id, exercise_type, side, timestamp, duration, avg_flexion,
+      completed_reps, target_reps,
+      exercise_ids, avg_activation, max_activation, deficit_percentage,
+      fatigue_score, rom_degrees, exercise_quality, completion_rate,
+      intensity_score, normalized_channel_means, synced, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      session.id,
+      session.userId,
+      session.exerciseType,
+      session.side,
+      session.timestamp,
+      session.duration,
+      session.avgFlexion,
+      session.completedReps ?? 0,
+      session.targetReps ?? 0,
+      JSON.stringify(session.exerciseIds),
+      a.avgActivation,
+      a.maxActivation,
+      a.deficitPercentage,
+      a.fatigueScore,
+      a.romDegrees,
+      a.exerciseQuality,
+      a.completionRate ?? 0,
+      a.intensityScore ?? 0,
+      JSON.stringify(a.normalizedChannelMeans ?? []),
+      session.synced ? 1 : 0,
+      incomingUpdatedAt,
+    ],
+  );
 }
 
 export async function fetchSessionsByUser(userId: string): Promise<Session[]> {
@@ -395,6 +459,12 @@ export async function countEMGSamples(sessionId: string): Promise<number> {
   return row?.count ?? 0;
 }
 
+export async function clearAllSessions(): Promise<void> {
+  const db = await getDatabase();
+  await db.execAsync("DELETE FROM sessions;");
+  await db.execAsync("DELETE FROM emg_samples;");
+}
+
 // ── Row mapper ────────────────────────────────────────────────────────────────
 
 function rowToSession(row: any): Session {
@@ -410,6 +480,7 @@ function rowToSession(row: any): Session {
     targetReps: row.target_reps ?? 0,
     exerciseIds: JSON.parse(row.exercise_ids ?? "[]"),
     synced: row.synced === 1,
+    updatedAt: row.updated_at ?? row.timestamp, // Fallback to timestamp if missing on early db versions
     analytics: {
       avgActivation: row.avg_activation,
       maxActivation: row.max_activation,
@@ -449,6 +520,14 @@ async function ensureSessionColumns(db: SQLite.SQLiteDatabase): Promise<void> {
     {
       name: "normalized_channel_means",
       sql: `ALTER TABLE sessions ADD COLUMN normalized_channel_means TEXT NOT NULL DEFAULT '[]'`,
+    },
+    {
+      name: "synced",
+      sql: `ALTER TABLE sessions ADD COLUMN synced INTEGER NOT NULL DEFAULT 0`,
+    },
+    {
+      name: "updated_at",
+      sql: `ALTER TABLE sessions ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0`,
     },
   ];
 

@@ -26,6 +26,10 @@ jest.mock("@/components/ui/AppModal", () => ({
     ) : null,
 }));
 
+jest.mock("@/components/ui/icon-symbol", () => ({
+  IconSymbol: () => null,
+}));
+
 describe("CalibrationOverlay", () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -84,16 +88,44 @@ describe("CalibrationOverlay", () => {
       sessionStartTime: null,
       recordingBuffer: [],
       recordingKneeAngles: [],
+      transportDiagnostics: {
+        requestedTransportMode: "mock",
+        activeTransportMode: "mock",
+        usingFallbackTransport: false,
+        lastConnectionPhase: "disconnected",
+        lastConnectionReason: null,
+        reconnectAttemptCount: 0,
+        lastEMGPacketTimestamp: null,
+        lastIMUPacketTimestamp: null,
+        emgPacketCount: 0,
+        imuPacketCount: 0,
+        emgChecksumErrorCount: 0,
+        imuChecksumErrorCount: 0,
+        emgDroppedPacketCount: 0,
+        imuDroppedPacketCount: 0,
+        emgNotificationErrorCount: 0,
+        imuNotificationErrorCount: 0,
+        emgStaleTimeoutMs: 5000,
+        imuStaleTimeoutMs: 5000,
+        discoveredCharacteristics: [],
+      },
     };
 
     const preloadedUserState: UserState = {
       isLoggedIn: false,
       email: null,
       isAuthenticated: false,
-      calibration: {
-        baseline: [0, 0, 0, 0],
-        mvc: [1, 1, 1, 1],
-        calibratedAt: null,
+      calibrationsBySide: {
+        LEFT: {
+          baseline: [0, 0, 0, 0],
+          mvc: [1, 1, 1, 1],
+          calibratedAt: null,
+        },
+        RIGHT: {
+          baseline: [0, 0, 0, 0],
+          mvc: [1, 1, 1, 1],
+          calibratedAt: null,
+        },
       },
       showNormalized: false,
       injuredSide: null,
@@ -101,6 +133,9 @@ describe("CalibrationOverlay", () => {
       injuryDetails: null,
       therapyGoal: null,
       profileOwnerEmail: null,
+      measurementSide: null,
+      syncStatus: "idle",
+      lastSyncedAt: null,
     };
 
     const store = configureStore({

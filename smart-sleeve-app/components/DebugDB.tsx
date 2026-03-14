@@ -8,13 +8,20 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { router } from "expo-router";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useWorkoutSession } from "@/hooks/useWorkoutSession";
 import {
   insertSession,
   fetchAllSessions,
   countEMGSamples,
+  clearAllSessions,
 } from "@/services/Database";
 import type { Session } from "@/services/Database";
+import { generateDemoData } from "@/services/DemoDataService";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/store/store";
+import { triggerSyncNow } from "@/services/SessionService";
 
 function makeDummySession(): Session {
   return {
@@ -27,12 +34,14 @@ function makeDummySession(): Session {
     avgFlexion: 72.5,
     exerciseIds: ["quad_sets", "straight_leg_raises"],
     synced: false,
+      updatedAt: Date.now(),
     analytics: {
       avgActivation: 42.5,
       maxActivation: 87.3,
       deficitPercentage: 12.1,
       fatigueScore: 0.34,
       romDegrees: 95.0,
+      completionRate: 0,
       exerciseQuality: 0.78,
     },
   };
@@ -41,6 +50,7 @@ function makeDummySession(): Session {
 export default function DebugDB() {
   const { sessionStatus, startRecording, endAndSave, recordingBufferLength } =
     useWorkoutSession();
+  const user = useSelector((state: RootState) => state.user);
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sampleCounts, setSampleCounts] = useState<Record<string, number>>({});
@@ -54,6 +64,8 @@ export default function DebugDB() {
     setLoading(true);
     try {
       const session = makeDummySession();
+      // Ensure it uses the real UID if available
+      session.userId = user.uid ?? user.email ?? "debug_user_001";
       await insertSession(session);
       addLog(`✅ Created session: ${session.id}`);
     } catch (e: any) {
@@ -61,6 +73,65 @@ export default function DebugDB() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGenerateDemoData = async () => {
+    const userId = user.uid ?? user.email ?? "debug_user_001";
+    Alert.alert(
+      "Demo Data",
+      `This will generate 45 days of trending data for ${userId}. Correct?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Yes, Generate", 
+          onPress: async () => {
+            setLoading(true);
+            try {
+              addLog(`🛠 Generating 45 days of data for ${userId}...`);
+              const count = await generateDemoData(userId, user.injuredSide || "LEFT");
+              addLog(`✅ Generated ${count} sessions successfully.`);
+              
+              // Trigger a sync so they go to cloud
+              await triggerSyncNow(user.uid ?? "", user.email ?? "");
+              addLog("📤 Cloud sync triggered.");
+              
+              await handleFetchSessions();
+            } catch (e: any) {
+              addLog(`❌ Error during demo generation: ${e.message}`);
+            } finally {
+              setLoading(false);
+            }
+          } 
+        }
+      ]
+    );
+  };
+
+  const handleClearDatabase = async () => {
+    Alert.alert(
+      "Nuclear Option",
+      "This will DELETE ALL sessions and EMG samples permanently from local storage. Sync status will NOT be preserved. Proceed?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "DELETE EVERYTHING",
+          style: "destructive",
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await clearAllSessions();
+              addLog("☣️ Database WIPED successfully.");
+              setSessions([]);
+              setSampleCounts({});
+            } catch (e: any) {
+              addLog(`❌ Wipe failed: ${e.message}`);
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleFetchSessions = async () => {
@@ -111,10 +182,20 @@ export default function DebugDB() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🗄️ SQLite Debug Screen</Text>
-      <Text style={styles.subtitle}>
-        Issues #54 & #7 — expo-sqlite verification
-      </Text>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>🗄️ SQLite Debug Screen</Text>
+          <Text style={styles.subtitle}>
+            Issues #54 & #7 — expo-sqlite verification
+          </Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.closeBtn} 
+          onPress={() => router.back()}
+        >
+          <IconSymbol name="xmark.circle.fill" size={28} color="#666" />
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.btnRow}>
         <TouchableOpacity
@@ -122,14 +203,30 @@ export default function DebugDB() {
           onPress={handleCreateSession}
           disabled={loading}
         >
-          <Text style={styles.btnText}>Create Test Session</Text>
+          <Text style={styles.btnText}>Create 1 Test Session</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: "#8338EC" }]}
+          onPress={handleGenerateDemoData}
+          disabled={loading}
+        >
+          <Text style={styles.btnText}>JUDGE DEMO: +45 Days</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.btnRow}>
         <TouchableOpacity
           style={[styles.btn, styles.btnFetch]}
           onPress={handleFetchSessions}
           disabled={loading}
         >
-          <Text style={styles.btnText}>Fetch Sessions</Text>
+          <Text style={styles.btnText}>Fetch/Refresh List</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: "#E63946" }]}
+          onPress={handleClearDatabase}
+          disabled={loading}
+        >
+          <Text style={styles.btnText}>CLEAR DATABASE</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.btnRow}>
@@ -216,11 +313,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    paddingTop: 60,
     backgroundColor: "#F8F9FA",
   },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+    marginTop: 10,
+  },
+  closeBtn: { padding: 4 },
   title: { fontSize: 22, fontWeight: "700", color: "#1A1A1A" },
-  subtitle: { fontSize: 13, color: "#666", marginBottom: 16 },
+  subtitle: { fontSize: 13, color: "#666", marginBottom: 0 },
   btnRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
   btn: { flex: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   btnCreate: { backgroundColor: "#0B74E6" },

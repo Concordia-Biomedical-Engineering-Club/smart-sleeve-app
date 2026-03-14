@@ -48,8 +48,16 @@ export const register = async (email: string, password: string) => {
     password
   );
   console.log("user credential:", userCredential.user);
+  
   // Send verification email after successful registration
-  await sendEmailVerification(userCredential.user);
+  // Wrapped in try/catch so a failure to send doesn't roll back the whole registration process
+  try {
+    await sendEmailVerification(userCredential.user);
+  } catch (emailError) {
+    console.warn("[AuthService] Registration succeeded but failed to send verification email:", emailError);
+    // We don't throw here because the user is already registered in Firebase.
+  }
+  
   return userCredential;
 };
 

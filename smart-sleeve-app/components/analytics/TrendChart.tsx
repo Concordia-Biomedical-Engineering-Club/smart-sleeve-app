@@ -85,7 +85,7 @@ export function TrendChart({
           height={height}
           chartConfig={chartConfig}
           style={styles.chart}
-          bezier
+          bezier={data.datasets[0]?.data?.length > 1}
           segments={6}
           withInnerLines={true}
           withOuterLines={true}

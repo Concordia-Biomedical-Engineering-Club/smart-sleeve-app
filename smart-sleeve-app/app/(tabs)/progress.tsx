@@ -18,14 +18,20 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { fetchSessionsByFilters, Session } from "@/services/Database";
 import { EXERCISE_LIBRARY } from "@/constants/exercises";
 import StatCard from "@/components/StatCard";
-import { TrendChart } from "@/components/analytics/TrendChart";
 import { RootState } from "@/store/store";
+import { selectSyncStatus, selectLastSyncedAt } from "@/store/userSlice";
 import { SegmentedControl } from "@/components/dashboard/SegmentedControl";
 import { buildMetricTrend, TimeframeOption } from "@/services/ProgressAnalysis";
+import { TrendChart } from "@/components/analytics/TrendChart";
 
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 
 type SideFilter = "BOTH" | "LEFT" | "RIGHT";
+
+async function triggerSyncNow(uid: string, legacyEmail?: string | null) {
+  const { syncNow } = await import("@/services/SyncService");
+  return syncNow(uid, legacyEmail);
+}
 
 /**
  * Session Row Item for the history list
@@ -90,6 +96,16 @@ function SessionHistoryCard({
           <ThemedText type="bodyBold" style={styles.exerciseNameText}>
             {exerciseName}
           </ThemedText>
+          {/* Per-Session Sync Badge */}
+          <View style={styles.rowSyncBadge}>
+            <IconSymbol
+              name={
+                session.synced ? "checkmark.icloud.fill" : "arrow.up.doc.fill"
+              }
+              size={12}
+              color={session.synced ? theme.success : theme.textSecondary}
+            />
+          </View>
         </View>
         <ThemedText style={styles.sessionTimeText}>{timeStr}</ThemedText>
       </View>
@@ -144,6 +160,10 @@ export default function ProgressScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
   const user = useSelector((state: RootState) => state.user);
+
+  const syncStatus = useSelector(selectSyncStatus);
+  const lastSyncedAt = useSelector(selectLastSyncedAt);
+
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -164,7 +184,7 @@ export default function ProgressScreen() {
     try {
       setErrorMessage(null);
       const data = await fetchSessionsByFilters({
-        userId: user.email ?? "guest_user",
+        userId: user.uid ?? user.email ?? "guest_user",
         exerciseType: selectedExercise === "ALL" ? undefined : selectedExercise,
         side: selectedSide === "BOTH" ? undefined : selectedSide,
         startTimestamp: timeframeStart,
@@ -177,16 +197,31 @@ export default function ProgressScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [selectedExercise, selectedSide, timeframeStart, user.email]);
+  }, [selectedExercise, selectedSide, timeframeStart, user.email, user.uid]);
 
   useEffect(() => {
     loadSessions();
   }, [loadSessions]);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    loadSessions();
+
+    // First trigger a cloud sync if authenticated
+    if (user.uid) {
+      await triggerSyncNow(user.uid, user.email).catch(console.error);
+    }
+
+    // Then reload local DB
+    await loadSessions();
   };
+
+  const lastSyncedLabel = useMemo(() => {
+    if (!lastSyncedAt) return null;
+    return new Date(lastSyncedAt).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, [lastSyncedAt]);
 
   const groupedSessions = useMemo(() => {
     const groups: Record<string, Session[]> = {};
@@ -290,6 +325,80 @@ export default function ProgressScreen() {
           />
         }
       >
+        {/* Sync Status Badge Container */}
+        <View style={styles.headerTopArea}>
+          {syncStatus === "syncing" ? (
+            <View
+              style={[
+                styles.syncBadge,
+                { backgroundColor: theme.primary + "1A" },
+              ]}
+            >
+              <ActivityIndicator
+                size="small"
+                color={theme.primary}
+                style={{ transform: [{ scale: 0.7 }] }}
+              />
+              <Text style={[styles.syncText, { color: theme.primary }]}>
+                Syncing
+              </Text>
+            </View>
+          ) : syncStatus === "synced" ? (
+            <View
+              style={[
+                styles.syncBadge,
+                { backgroundColor: theme.success + "1A" },
+              ]}
+            >
+              <IconSymbol
+                name="checkmark.icloud.fill"
+                size={12}
+                color={theme.success}
+              />
+              <Text style={[styles.syncText, { color: theme.success }]}>
+                Cloud Backup Active
+              </Text>
+            </View>
+          ) : syncStatus === "error" ? (
+            <View
+              style={[
+                styles.syncBadge,
+                { backgroundColor: theme.warning + "1A" },
+              ]}
+            >
+              <IconSymbol
+                name="exclamationmark.triangle.fill"
+                size={12}
+                color={theme.warning}
+              />
+              <Text style={[styles.syncText, { color: theme.warning }]}>
+                Sync Failed
+              </Text>
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.syncBadge,
+                { backgroundColor: theme.textSecondary + "1A" },
+              ]}
+            >
+              <IconSymbol
+                name="cloud.fill"
+                size={12}
+                color={theme.textSecondary}
+              />
+              <Text style={[styles.syncText, { color: theme.textSecondary }]}>
+                Local Storage
+              </Text>
+            </View>
+          )}
+        </View>
+        {lastSyncedLabel ? (
+          <Text style={[styles.lastSyncedText, { color: theme.textSecondary }]}>
+            Last synced {lastSyncedLabel}
+          </Text>
+        ) : null}
+
         <ScreenHeader
           badgeLabel="SESSION HISTORY"
           rightIcon="arrow.triangle.2.circlepath"
@@ -492,6 +601,31 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   scrollContent: { padding: 24, paddingBottom: 40 },
+  headerTopArea: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginBottom: 16,
+  },
+  lastSyncedText: {
+    fontSize: 11,
+    textAlign: "right",
+    marginTop: -10,
+    marginBottom: 16,
+  },
+  syncBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  syncText: {
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   pageTitle: { marginBottom: 24 },
   errorBanner: {
     borderRadius: 16,
@@ -562,6 +696,10 @@ const styles = StyleSheet.create({
   },
   sideIndicatorText: { color: "#fff", fontSize: 14, fontWeight: "900" },
   exerciseNameText: { fontSize: 17 },
+  rowSyncBadge: {
+    marginLeft: 4,
+    opacity: 0.8,
+  },
   sessionTimeText: { fontSize: 12, opacity: 0.5 },
   sessionDetails: { gap: 16 },
   statItem: { gap: 8 },
