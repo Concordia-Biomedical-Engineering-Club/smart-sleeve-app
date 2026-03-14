@@ -123,7 +123,7 @@ describe("ProgressScreen", () => {
     await waitFor(() => {
       expect(mockedFetchSessionsByFilters).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: "patient@example.com",
+          userId: "test-uid",
           startTimestamp: expect.any(Number),
         }),
       );
@@ -131,7 +131,7 @@ describe("ProgressScreen", () => {
   });
 
   test("falls back to the guest user history when no email is available", async () => {
-    renderScreen(createInitialUserState({ isLoggedIn: false, email: null, isAuthenticated: false }));
+    renderScreen(createInitialUserState({ isLoggedIn: false, email: null, uid: null, isAuthenticated: false }));
 
     await waitFor(() => {
       expect(mockedFetchSessionsByFilters).toHaveBeenCalledWith(
@@ -154,7 +154,7 @@ describe("ProgressScreen", () => {
     await waitFor(() => {
       expect(mockedFetchSessionsByFilters).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          userId: "patient@example.com",
+          userId: "test-uid",
           side: "LEFT",
           exerciseType: "quad-sets",
         }),

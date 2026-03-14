@@ -78,27 +78,15 @@ export default function MotionAnalyticsScreen() {
 
     return {
       motion: {
-        labels: hasData
-          ? romTrend.labels.length === 1
-            ? [romTrend.labels[0], romTrend.labels[0]]
-            : romTrend.labels
-          : ["", ""],
+        labels: hasData ? romTrend.labels : ["", ""],
         datasets: [
           {
-            data: hasData
-              ? romTrend.values.length === 1
-                ? [romTrend.values[0], romTrend.values[0]]
-                : romTrend.values
-              : [0, 0],
+            data: hasData ? romTrend.values : [0, 0],
             color: () => theme.primary,
             strokeWidth: 3,
           } as any,
           {
-            data: hasData
-              ? qualityTrend.values.length === 1
-                ? [qualityTrend.values[0], qualityTrend.values[0]]
-                : qualityTrend.values
-              : [0, 0],
+            data: hasData ? qualityTrend.values : [0, 0],
             color: () => theme.success,
             strokeWidth: 3,
           } as any,
@@ -106,18 +94,10 @@ export default function MotionAnalyticsScreen() {
         legend: ["Range of Motion (°)", "Quality Score (%)"],
       },
       balance: {
-        labels: hasData
-          ? balanceTrend.labels.length === 1
-            ? [balanceTrend.labels[0], balanceTrend.labels[0]]
-            : balanceTrend.labels
-          : ["", ""],
+        labels: hasData ? balanceTrend.labels : ["", ""],
         datasets: [
           {
-            data: hasData
-              ? balanceTrend.values.length === 1
-                ? [balanceTrend.values[0], balanceTrend.values[0]]
-                : balanceTrend.values
-              : [0, 0],
+            data: hasData ? balanceTrend.values : [0, 0],
             color: () => "#8338EC",
             strokeWidth: 3,
           } as any,
@@ -126,30 +106,17 @@ export default function MotionAnalyticsScreen() {
       },
       symmetry: {
         labels: hasSymmetryData
-          ? symmetryPoints.length === 1
-            ? [
-                new Date(symmetryPoints[0].timestamp).toLocaleDateString([], {
-                  month: "short",
-                  day: "numeric",
-                }),
-                new Date(symmetryPoints[0].timestamp).toLocaleDateString([], {
-                  month: "short",
-                  day: "numeric",
-                }),
-              ]
-            : symmetryPoints.map((p) =>
-                new Date(p.timestamp).toLocaleDateString([], {
-                  month: "short",
-                  day: "numeric",
-                }),
-              )
+          ? symmetryPoints.map((p) =>
+              new Date(p.timestamp).toLocaleDateString([], {
+                month: "short",
+                day: "numeric",
+              }),
+            )
           : ["No data", ""],
         datasets: [
           {
             data: hasSymmetryData
-              ? symmetryPoints.length === 1
-                ? [symmetryPoints[0].symmetryScore, symmetryPoints[0].symmetryScore]
-                : symmetryPoints.map((p) => p.symmetryScore)
+              ? symmetryPoints.map((p) => p.symmetryScore)
               : [0, 0],
             color: () => theme.primary,
             strokeWidth: 3,
