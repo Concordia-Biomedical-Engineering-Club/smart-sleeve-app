@@ -13,8 +13,7 @@ import { PersistGate } from "redux-persist/integration/react";
 import { onAuthStateChanged } from "firebase/auth";
 import { login, logout } from "../store/userSlice";
 import { useEffect, useRef } from "react";
-import { AppState } from "react-native";
-import NetInfo from "@react-native-community/netinfo";
+import { AppState, AppStateStatus, Platform } from "react-native";
 import { initDatabase } from "@/services/Database";
 import type { RootState } from "@/store/store";
 import { auth } from "@/firebaseConfig";
@@ -114,34 +113,58 @@ export default function RootLayout() {
   }, []);
 
   // Guarded Reconnect Auto-Flush
+  // Uses AppState + a lightweight fetch probe to avoid native module dependencies.
+  // @react-native-community/netinfo requires CocoaPods native linking and crashes
+  // in Expo dev client without a full `pod install` + native rebuild.
   const lastSyncAttempt = useRef<number>(0);
 
   useEffect(() => {
-    const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
-      // 1. Must be connected to the internet
-      if (!state.isConnected) return;
+    if (Platform.OS === "web") return;
 
-      // 2. Must be in the foreground
+    /**
+     * Checks connectivity with a lightweight HEAD request to a reliable endpoint.
+     * Returns true if the device can reach the internet.
+     */
+    const isReachable = async (): Promise<boolean> => {
+      try {
+        const resp = await fetch("https://clients3.google.com/generate_204", {
+          method: "HEAD",
+          cache: "no-store",
+        });
+        return resp.status === 204;
+      } catch {
+        return false;
+      }
+    };
+
+    const trySync = async () => {
       if (AppState.currentState !== "active") return;
-
-      // 3. Must have an authenticated user
       const user = auth.currentUser;
       if (!user || !user.emailVerified) return;
 
-      // 4. Time-based throttle (e.g. 30 seconds) to prevent spamming on unstable networks
       const now = Date.now();
-      if (now - lastSyncAttempt.current < 30000) return;
+      if (now - lastSyncAttempt.current < 30_000) return;
+
+      const reachable = await isReachable();
+      if (!reachable) return;
 
       lastSyncAttempt.current = now;
-      console.log(
-        "[RootLayout] Network restored. Triggering offline queue flush...",
-      );
-
-      // The SyncService _isSyncing mutex naturally protects against overlapping calls
+      console.log("[RootLayout] Network restored. Triggering offline queue flush...");
       syncNow(user.uid, user.email).catch(console.error);
-    });
+    };
 
-    return unsubscribeNetInfo;
+    // Fire once on foreground resume (covers the "came back online" case).
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === "active") {
+        trySync();
+      }
+    };
+
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   return (
