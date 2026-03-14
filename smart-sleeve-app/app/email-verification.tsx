@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -72,7 +71,7 @@ export default function EmailVerificationScreen() {
 
       <View style={[styles.verificationBox, { backgroundColor: theme.cardBackground, ...Shadows.card }]}>
         <ThemedText style={[styles.message, { color: theme.textSecondary }]}>
-          We've sent a verification link to:
+          We&apos;ve sent a verification link to:
         </ThemedText>
         <ThemedText type="bodyBold" style={[styles.email, { color: theme.primary }]}>{user?.email}</ThemedText>
 
