@@ -1,18 +1,20 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { initializeAuth, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { Platform } from "react-native";
 
-const EXPO_PUBLIC_FIREBASE_API_KEY = process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
-const EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN =
-  process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN;
-const EXPO_PUBLIC_FIREBASE_PROJECT_ID =
-  process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
-const EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET =
-  process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET;
-const EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID =
-  process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
-const EXPO_PUBLIC_FIREBASE_APP_ID = process.env.EXPO_PUBLIC_FIREBASE_APP_ID;
+const sanitizeEnv = (val: string | undefined) => {
+  if (!val) return "";
+  // Remove accidental outer quotes or trailing/leading whitespace
+  return val.replace(/^["']|["']$/g, "").trim();
+};
+
+const EXPO_PUBLIC_FIREBASE_API_KEY = sanitizeEnv(process.env.EXPO_PUBLIC_FIREBASE_API_KEY);
+const EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN = sanitizeEnv(process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN);
+const EXPO_PUBLIC_FIREBASE_PROJECT_ID = sanitizeEnv(process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID);
+const EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET = sanitizeEnv(process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET);
+const EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = sanitizeEnv(process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID);
+const EXPO_PUBLIC_FIREBASE_APP_ID = sanitizeEnv(process.env.EXPO_PUBLIC_FIREBASE_APP_ID);
 
 const hasFirebaseEnv =
   !!EXPO_PUBLIC_FIREBASE_API_KEY &&
@@ -54,31 +56,19 @@ export const firebaseConfigError = hasFirebaseEnv
   ? null
   : "Missing Firebase environment variables. Check your .env file or EAS build environment.";
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase with hot-reload safety
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 /**
  * Initialize Firebase Auth with platform-specific persistence
- *
- * We use different persistence strategies based on the platform:
- * - Web: browserLocalPersistence (uses browser's localStorage)
- * - React Native: getReactNativePersistence with AsyncStorage
- *
- * The React Native modules are dynamically imported to prevent them from
- * being bundled in the web version, which would cause errors since
- * getReactNativePersistence is not available in the web Firebase SDK.
  */
 let firebaseAuth;
-
 try {
   if (Platform.OS === "web") {
-    // Web: Use browser's localStorage for auth state persistence
     firebaseAuth = initializeAuth(app, {
       persistence: browserLocalPersistence,
     });
   } else {
-    // React Native: Use AsyncStorage for auth state persistence
-    // Dynamic require() prevents these modules from being included in web bundles
     const { getReactNativePersistence } = require("firebase/auth");
     const ReactNativeAsyncStorage =
       require("@react-native-async-storage/async-storage").default;
@@ -88,18 +78,9 @@ try {
     });
   }
 } catch (error: any) {
-  /**
-   * Handle auth/already-initialized error during development hot reloads
-   * When the module is hot-reloaded, Firebase may already be initialized.
-   * In this case, we fall back to getAuth() to retrieve the existing instance.
-   */
-  if (error?.code === "auth/already-initialized") {
-    const { getAuth } = require("firebase/auth");
-    firebaseAuth = getAuth(app);
-  } else {
-    // Re-throw any other errors
-    throw error;
-  }
+  // If already initialized (common during hot reload), use getAuth()
+  const { getAuth } = require("firebase/auth");
+  firebaseAuth = getAuth(app);
 }
 
 export const auth = firebaseAuth;
