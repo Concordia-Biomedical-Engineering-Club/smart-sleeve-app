@@ -15,15 +15,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const isLoginPage = pathname === "/login";
+  const isAuthPage = pathname === "/login" || pathname === "/register";
 
   return (
     <html lang="en" className="dark">
       <body className={cn(inter.className, "bg-background min-h-screen")}>
         <AuthProvider>
           <div className="flex">
-            {!isLoginPage && <Navbar />}
-            <main className={cn("flex-1 p-10 min-h-screen", !isLoginPage && "ml-64")}>
+            {!isAuthPage && <Navbar />}
+            <main className={cn("flex-1 p-10 min-h-screen", !isAuthPage && "ml-64")}>
               {children}
             </main>
           </div>

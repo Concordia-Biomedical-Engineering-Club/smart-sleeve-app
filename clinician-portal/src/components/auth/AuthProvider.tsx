@@ -23,10 +23,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(user);
       setLoading(false);
       
+      const publicRoutes = ["/login", "/register"];
+      const isPublicRoute = publicRoutes.includes(pathname);
+
       // Protection logic
-      if (!user && pathname !== "/login") {
+      if (!user && !isPublicRoute) {
         router.push("/login");
-      } else if (user && pathname === "/login") {
+      } else if (user && isPublicRoute) {
         router.push("/dashboard");
       }
     });

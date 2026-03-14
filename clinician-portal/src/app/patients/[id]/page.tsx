@@ -23,17 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GoalPrescription } from "@/components/patients/GoalPrescription";
 import { useSessions } from "@/hooks/useSessions";
 import { usePatients } from "@/hooks/usePatients";
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
-  Area
-} from "recharts";
+import { TelemetryChart } from "@/components/shared/TelemetryChart";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -151,55 +141,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 <CardDescription>Correlation between Range of Motion and Muscle Symmetry over time.</CardDescription>
               </CardHeader>
               <CardContent className="px-0 h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorRom" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="oklch(0.65 0.18 255)" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="oklch(0.65 0.18 255)" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorSym" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="oklch(0.5 0.2 150)" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="oklch(0.5 0.2 150)" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
-                    <XAxis 
-                      dataKey="date" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: "oklch(0.65 0.02 240)", fontSize: 12 }} 
-                      dy={10}
-                    />
-                    <YAxis 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: "oklch(0.65 0.02 240)", fontSize: 12 }} 
-                    />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: "oklch(0.16 0.02 240)", border: "none", borderRadius: "12px", color: "white" }}
-                      itemStyle={{ color: "white" }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="rom" 
-                      stroke="oklch(0.65 0.18 255)" 
-                      strokeWidth={3}
-                      fillOpacity={1} 
-                      fill="url(#colorRom)" 
-                      name="Range of Motion (°)"
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="symmetry" 
-                      stroke="oklch(0.5 0.2 150)" 
-                      strokeWidth={3}
-                      fillOpacity={1} 
-                      fill="url(#colorSym)" 
-                      name="Symmetry (%)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <TelemetryChart data={chartData} />
               </CardContent>
             </Card>
 

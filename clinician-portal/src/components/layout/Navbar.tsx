@@ -13,8 +13,22 @@ const navItems = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
+
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push("/login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   return (
     <nav className="fixed left-0 top-0 h-full w-64 border-r bg-card p-6 flex flex-col glassmorphism">
@@ -48,7 +62,11 @@ export function Navbar() {
       </div>
 
       <div className="pt-6 border-t">
-        <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive transition-colors">
+        <Button 
+          variant="ghost" 
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive transition-colors"
+          onClick={handleSignOut}
+        >
           <LogOut className="h-5 w-5" />
           <span>Sign Out</span>
         </Button>

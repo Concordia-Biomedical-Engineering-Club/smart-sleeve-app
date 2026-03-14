@@ -6,9 +6,11 @@ import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Activity, Lock, Mail, AlertCircle, ArrowRight } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -99,8 +101,17 @@ export default function LoginPage() {
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="pb-8 justify-center">
-            <p className="text-sm text-muted-foreground">
+          <CardFooter className="pb-8 flex flex-col gap-4">
+            <Link 
+              href="/register" 
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "w-full h-12 rounded-xl border-border/50 bg-background/50 flex items-center justify-center"
+              )}
+            >
+              Create Professional Account
+            </Link>
+            <p className="text-sm text-muted-foreground text-center">
               Forgot your password? <span className="text-primary font-bold cursor-pointer hover:underline">Reset here</span>
             </p>
           </CardFooter>
