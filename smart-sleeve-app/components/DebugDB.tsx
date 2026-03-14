@@ -13,8 +13,13 @@ import {
   insertSession,
   fetchAllSessions,
   countEMGSamples,
+  clearAllSessions,
 } from "@/services/Database";
 import type { Session } from "@/services/Database";
+import { generateDemoData } from "@/services/DemoDataService";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/store/store";
+import { triggerSyncNow } from "@/services/SessionService";
 
 function makeDummySession(): Session {
   return {
@@ -43,6 +48,7 @@ function makeDummySession(): Session {
 export default function DebugDB() {
   const { sessionStatus, startRecording, endAndSave, recordingBufferLength } =
     useWorkoutSession();
+  const user = useSelector((state: RootState) => state.user);
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sampleCounts, setSampleCounts] = useState<Record<string, number>>({});
@@ -56,6 +62,8 @@ export default function DebugDB() {
     setLoading(true);
     try {
       const session = makeDummySession();
+      // Ensure it uses the real UID if available
+      session.userId = user.uid ?? user.email ?? "debug_user_001";
       await insertSession(session);
       addLog(`✅ Created session: ${session.id}`);
     } catch (e: any) {
@@ -63,6 +71,65 @@ export default function DebugDB() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGenerateDemoData = async () => {
+    const userId = user.uid ?? user.email ?? "debug_user_001";
+    Alert.alert(
+      "Demo Data",
+      `This will generate 45 days of trending data for ${userId}. Correct?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Yes, Generate", 
+          onPress: async () => {
+            setLoading(true);
+            try {
+              addLog(`🛠 Generating 45 days of data for ${userId}...`);
+              const count = await generateDemoData(userId);
+              addLog(`✅ Generated ${count} sessions successfully.`);
+              
+              // Trigger a sync so they go to cloud
+              await triggerSyncNow(user.uid ?? "", user.email ?? "");
+              addLog("📤 Cloud sync triggered.");
+              
+              await handleFetchSessions();
+            } catch (e: any) {
+              addLog(`❌ Error during demo generation: ${e.message}`);
+            } finally {
+              setLoading(false);
+            }
+          } 
+        }
+      ]
+    );
+  };
+
+  const handleClearDatabase = async () => {
+    Alert.alert(
+      "Nuclear Option",
+      "This will DELETE ALL sessions and EMG samples permanently from local storage. Sync status will NOT be preserved. Proceed?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "DELETE EVERYTHING",
+          style: "destructive",
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await clearAllSessions();
+              addLog("☣️ Database WIPED successfully.");
+              setSessions([]);
+              setSampleCounts({});
+            } catch (e: any) {
+              addLog(`❌ Wipe failed: ${e.message}`);
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleFetchSessions = async () => {
@@ -124,14 +191,30 @@ export default function DebugDB() {
           onPress={handleCreateSession}
           disabled={loading}
         >
-          <Text style={styles.btnText}>Create Test Session</Text>
+          <Text style={styles.btnText}>Create 1 Test Session</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: "#8338EC" }]}
+          onPress={handleGenerateDemoData}
+          disabled={loading}
+        >
+          <Text style={styles.btnText}>JUDGE DEMO: +45 Days</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.btnRow}>
         <TouchableOpacity
           style={[styles.btn, styles.btnFetch]}
           onPress={handleFetchSessions}
           disabled={loading}
         >
-          <Text style={styles.btnText}>Fetch Sessions</Text>
+          <Text style={styles.btnText}>Fetch/Refresh List</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: "#E63946" }]}
+          onPress={handleClearDatabase}
+          disabled={loading}
+        >
+          <Text style={styles.btnText}>CLEAR DATABASE</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.btnRow}>

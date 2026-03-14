@@ -29,7 +29,7 @@ import { normalize } from "@/services/NormalizationService";
 import type { CalibrationCoefficients } from "@/store/userSlice";
 import { Platform } from "react-native";
 
-async function triggerSyncNow(userId: string, legacyEmail?: string) {
+export async function triggerSyncNow(userId: string, legacyEmail?: string) {
   if (process.env.JEST_WORKER_ID) {
     return;
   }

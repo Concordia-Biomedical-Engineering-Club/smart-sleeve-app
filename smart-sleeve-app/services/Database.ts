@@ -459,6 +459,12 @@ export async function countEMGSamples(sessionId: string): Promise<number> {
   return row?.count ?? 0;
 }
 
+export async function clearAllSessions(): Promise<void> {
+  const db = await getDatabase();
+  await db.execAsync("DELETE FROM sessions;");
+  await db.execAsync("DELETE FROM emg_samples;");
+}
+
 // ── Row mapper ────────────────────────────────────────────────────────────────
 
 function rowToSession(row: any): Session {

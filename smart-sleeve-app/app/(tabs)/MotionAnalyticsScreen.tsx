@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { StyleSheet, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -8,29 +8,91 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/themed-text";
 import { SegmentedControl } from "@/components/dashboard/SegmentedControl";
 import { TrendChart } from "@/components/analytics/TrendChart";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { fetchSessionsByFilters, Session } from "@/services/Database";
+import {
+  buildMetricTrend,
+  generateSessionRecommendation,
+  findPreviousSession,
+  TimeframeOption,
+} from "@/services/ProgressAnalysis";
 
 export default function MotionAnalyticsScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
-  const [timeframe, setTimeframe] = useState("Weekly");
+  const user = useSelector((state: RootState) => state.user);
+  const [timeframe, setTimeframe] = useState<"Weekly" | "Monthly" | "Quarterly">("Weekly");
+  const [sessions, setSessions] = useState<Session[]>([]);
 
-  // Mock data for the chart
-  const mockData = {
-    labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    datasets: [
-      {
-        data: [60, 62, 68, 67, 63, 70, 75], // Flexion
-        color: () => theme.primary,
-        strokeWidth: 3,
+  useEffect(() => {
+    const loadSessions = async () => {
+      try {
+        const userId = user.uid ?? user.email ?? "guest_user";
+        // Fetch last 90 days to cover all timeframes
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 90);
+        const fetched = await fetchSessionsByFilters({
+          userId,
+          startTimestamp: startDate.getTime(),
+        });
+        setSessions(fetched);
+      } catch (err) {
+        console.error("Failed to load sessions for motion analytics", err);
+      }
+    };
+    loadSessions();
+  }, [user.uid, user.email]);
+
+  const chartData = useMemo(() => {
+    const tfOption: TimeframeOption =
+      timeframe === "Weekly" ? "7D" : timeframe === "Monthly" ? "30D" : "90D";
+
+    const romTrend = buildMetricTrend(sessions, tfOption, "romDegrees");
+    const qualityTrend = buildMetricTrend(sessions, tfOption, "exerciseQuality");
+    const balanceTrend = buildMetricTrend(sessions, tfOption, "muscleBalance");
+
+    const hasData = romTrend.values.some((v) => v > 0);
+
+    return {
+      motion: {
+        labels: romTrend.labels,
+        datasets: [
+          {
+            data: hasData ? romTrend.values : romTrend.values.map(() => 0),
+            color: () => theme.primary,
+            strokeWidth: 3,
+          } as any,
+          {
+            data: hasData
+              ? qualityTrend.values
+              : qualityTrend.values.map(() => 0),
+            color: () => theme.success,
+            strokeWidth: 3,
+          } as any,
+        ],
+        legend: ["Range of Motion (°)", "Quality Score (%)"],
       },
-      {
-        data: [20, 35, 45, 58, 42, 48, 52], // Extension
-        color: () => theme.success,
-        strokeWidth: 3,
+      balance: {
+        labels: balanceTrend.labels,
+        datasets: [
+          {
+            data: hasData ? balanceTrend.values : balanceTrend.values.map(() => 0),
+            color: () => "#8338EC", // Purple for Balance
+            strokeWidth: 3,
+          } as any,
+        ],
+        legend: ["VMO Activation Ratio (%)"],
       },
-    ],
-    legend: ["Flexion", "Extension"],
-  };
+    };
+  }, [sessions, timeframe, theme]);
+
+  const insight = useMemo(() => {
+    if (sessions.length === 0) return null;
+    const latest = sessions[0];
+    const previous = findPreviousSession(sessions, latest);
+    return generateSessionRecommendation(latest, previous);
+  }, [sessions]);
 
   return (
     <SafeAreaView
@@ -52,18 +114,27 @@ export default function MotionAnalyticsScreen() {
 
         <View style={styles.selectorWrapper}>
           <SegmentedControl
-            options={["Daily", "Weekly", "Monthly"]}
+            options={["Weekly", "Monthly", "Quarterly"]}
             selectedOption={timeframe}
-            onSelect={setTimeframe as any}
+            onSelect={(val) => setTimeframe(val as any)}
           />
         </View>
 
         <View style={styles.chartContainer}>
           <TrendChart
-            data={mockData}
+            data={chartData.motion}
             title="Range of Motion"
-            subtitle={`Active flexion/extension trend for this ${timeframe.toLowerCase()}`}
-            height={280}
+            subtitle={`Peak ROM & Form Quality trend (${timeframe.toLowerCase()})`}
+            height={220}
+          />
+        </View>
+
+        <View style={styles.chartContainer}>
+          <TrendChart
+            data={chartData.balance}
+            title="Muscle Activation Ratio"
+            subtitle={`Medial vs Lateral Quad symmetry (Goal: 50%)`}
+            height={220}
           />
         </View>
 
@@ -75,41 +146,73 @@ export default function MotionAnalyticsScreen() {
             KEY INSIGHTS
           </ThemedText>
 
-          <View
-            style={[
-              styles.insightCard,
-              {
-                backgroundColor: theme.cardBackground,
-                borderColor: theme.border,
-              },
-              Shadows.card,
-            ]}
-          >
+          {insight ? (
             <View
               style={[
-                styles.iconBox,
-                { backgroundColor: theme.success + "15" },
+                styles.insightCard,
+                {
+                  backgroundColor: theme.cardBackground,
+                  borderColor: theme.border,
+                },
+                Shadows.card,
               ]}
             >
-              <IconSymbol
-                name="checkmark.seal.fill"
-                size={20}
-                color={theme.success}
-              />
-            </View>
-            <View style={styles.insightContent}>
-              <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>
-                Improvement Detected
-              </ThemedText>
-              <ThemedText
-                style={[styles.insightText, { color: theme.textSecondary }]}
+              <View
+                style={[
+                  styles.iconBox,
+                  { 
+                    backgroundColor: 
+                      insight.tone === "positive" ? theme.success + "15" :
+                      insight.tone === "warning" ? theme.warning + "15" :
+                      theme.primary + "15"
+                  },
+                ]}
               >
-                Your flexion has improved by 12% over the last 3 days. Keep the
-                persistence!
-              </ThemedText>
+                <IconSymbol
+                  name={
+                    insight.tone === "positive" ? "checkmark.seal.fill" :
+                    insight.tone === "warning" ? "exclamationmark.triangle.fill" :
+                    "info.circle.fill"
+                  }
+                  size={20}
+                  color={
+                    insight.tone === "positive" ? theme.success :
+                    insight.tone === "warning" ? theme.warning :
+                    theme.primary
+                  }
+                />
+              </View>
+              <View style={styles.insightContent}>
+                <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>
+                  {insight.title}
+                </ThemedText>
+                <ThemedText
+                  style={[styles.insightText, { color: theme.textSecondary }]}
+                >
+                  {insight.message}
+                </ThemedText>
+              </View>
             </View>
-          </View>
+          ) : (
+            <View
+              style={[
+                styles.insightCard,
+                {
+                  backgroundColor: theme.cardBackground,
+                  borderColor: theme.border,
+                },
+                Shadows.card,
+              ]}
+            >
+              <View style={styles.insightContent}>
+                <ThemedText style={[styles.insightText, { color: theme.textSecondary }]}>
+                  Keep exercising to unlock dynamic insights and coach recommendations.
+                </ThemedText>
+              </View>
+            </View>
+          )}
 
+          {/* Placeholder for secondary insight or coach tip */}
           <View
             style={[
               styles.insightCard,
@@ -134,13 +237,13 @@ export default function MotionAnalyticsScreen() {
             </View>
             <View style={styles.insightContent}>
               <ThemedText type="bodyBold" style={{ marginBottom: 4 }}>
-                Coach Recommendation
+                Recovery Tip
               </ThemedText>
               <ThemedText
                 style={[styles.insightText, { color: theme.textSecondary }]}
               >
-                Consider adding 2 more sets of Quad Sets to your daily routine
-                to stabilize the joint.
+                Ensure you are performing your heel slides slowly to maximize 
+                tendon gliding and joint lubrication.
               </ThemedText>
             </View>
           </View>
