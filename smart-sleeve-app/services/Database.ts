@@ -241,6 +241,50 @@ export async function insertSession(
   console.log(`[Database] Session row inserted successfully`);
 }
 
+/**
+ * Used by SyncService to safely insert downloaded sessions from the cloud.
+ * Will ignore if the session ID already exists locally.
+ */
+export async function upsertSession(
+  session: Session,
+  dbOverride?: SQLite.SQLiteDatabase,
+): Promise<void> {
+  const db = dbOverride ?? (await getDatabase());
+  const { analytics: a } = session;
+  console.log(`[Database] Upserting session row: ${session.id}`);
+  await db.runAsync(
+    `INSERT OR IGNORE INTO sessions (
+      id, user_id, exercise_type, side, timestamp, duration, avg_flexion,
+      completed_reps, target_reps,
+      exercise_ids, avg_activation, max_activation, deficit_percentage,
+      fatigue_score, rom_degrees, exercise_quality, completion_rate,
+      intensity_score, normalized_channel_means, synced
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      session.id,
+      session.userId,
+      session.exerciseType,
+      session.side,
+      session.timestamp,
+      session.duration,
+      session.avgFlexion,
+      session.completedReps ?? 0,
+      session.targetReps ?? 0,
+      JSON.stringify(session.exerciseIds),
+      a.avgActivation,
+      a.maxActivation,
+      a.deficitPercentage,
+      a.fatigueScore,
+      a.romDegrees,
+      a.exerciseQuality,
+      a.completionRate ?? 0,
+      a.intensityScore ?? 0,
+      JSON.stringify(a.normalizedChannelMeans ?? []),
+      session.synced ? 1 : 0,
+    ],
+  );
+}
+
 export async function fetchSessionsByUser(userId: string): Promise<Session[]> {
   return fetchSessionsByFilters({ userId });
 }
@@ -449,6 +493,10 @@ async function ensureSessionColumns(db: SQLite.SQLiteDatabase): Promise<void> {
     {
       name: "normalized_channel_means",
       sql: `ALTER TABLE sessions ADD COLUMN normalized_channel_means TEXT NOT NULL DEFAULT '[]'`,
+    },
+    {
+      name: "synced",
+      sql: `ALTER TABLE sessions ADD COLUMN synced INTEGER NOT NULL DEFAULT 0`,
     },
   ];
 

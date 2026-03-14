@@ -16,6 +16,7 @@ import { useEffect } from "react";
 import { initDatabase } from "@/services/Database";
 import type { RootState } from "@/store/store";
 import { auth } from "@/firebaseConfig";
+import { downloadSessionsForUser, syncNow } from "@/services/SyncService";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -86,6 +87,10 @@ export default function RootLayout() {
         store.dispatch(
           login({ email: user.email, isAuthenticated: user.emailVerified }),
         );
+        // Trigger a download/sync on login to recover any sessions from the cloud
+        if (user.emailVerified) {
+          syncNow(user.email).catch(console.error);
+        }
       } else {
         store.dispatch(logout());
       }

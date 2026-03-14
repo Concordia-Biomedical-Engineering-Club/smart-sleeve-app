@@ -15,6 +15,7 @@ import {
   insertUser,
   insertSession,
   getDatabase,
+  initDatabase,
   Session,
   EMGSample,
 } from "@/services/Database";
@@ -25,7 +26,9 @@ import {
   computeIntensityScore,
 } from "@/services/ProgressAnalysis";
 import { normalize } from "@/services/NormalizationService";
+import { syncNow } from "@/services/SyncService";
 import type { CalibrationCoefficients } from "@/store/userSlice";
+import { Platform } from "react-native";
 
 export interface SaveSessionParams {
   userId: string;
@@ -111,6 +114,17 @@ export async function saveSession(
 
   const sessionId = `session_${startTime}_${Math.random().toString(36).slice(2, 7)}`;
   const duration = Math.round((endTime - startTime) / 1000);
+
+  // expo-sqlite cannot open OPFS files on the Expo dev server web preview.
+  // The web build exists for UI demos only — skip the write and succeed silently.
+  if (Platform.OS === "web") {
+    console.warn(
+      "[SessionService] Web platform detected — skipping SQLite write. " +
+      "Session data is not persisted on web. Use iOS/Android for real data.",
+    );
+    return { sessionId, sampleCount: emgBuffer.length, durationMs: 0 };
+  }
+
   const exercise = EXERCISE_LIBRARY.find((item) => item.id === exerciseId);
   const recordedAngles = kneeAngleBuffer.map((frame) => frame.roll);
   const alignedKneeAngles = alignKneeAnglesToEMGFrames(
@@ -199,6 +213,10 @@ export async function saveSession(
   console.log(
     `[SessionService] Preparing to save session ${sessionId} for user ${userId}...`,
   );
+  
+  // Guarantee schema is fully initialized/migrated before trying to write.
+  // This is especially important for Web/HMR.
+  await initDatabase();
   const db = await getDatabase();
 
   try {
@@ -232,6 +250,10 @@ export async function saveSession(
 
     const durationMs = Date.now() - t0;
     console.log(`[SessionService] ✅ Save complete! Time: ${durationMs}ms`);
+
+    // Fire-and-forget background sync
+    syncNow(userId).catch(e => console.error("[SessionService] Background sync failed:", e));
+
     return { sessionId, sampleCount: samples.length, durationMs };
   } catch (err) {
     console.error(`[SessionService] ❌ Save FAILED:`, err);

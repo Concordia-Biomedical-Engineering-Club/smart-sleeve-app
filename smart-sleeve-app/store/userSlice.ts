@@ -19,6 +19,8 @@ interface AuthPayload {
   isAuthenticated: boolean;
 }
 
+export type SyncStatus = "idle" | "syncing" | "synced" | "error";
+
 export interface UserState {
   isLoggedIn: boolean;
   email: string | null;
@@ -31,6 +33,8 @@ export interface UserState {
   injuryDetails: string | null;
   therapyGoal: string | null;
   profileOwnerEmail: string | null;
+  syncStatus: SyncStatus;
+  lastSyncedAt: number | null;
 }
 
 const CHANNELS = 4;
@@ -102,6 +106,8 @@ const initialState: UserState = {
   injuryDetails: null,
   therapyGoal: null,
   profileOwnerEmail: null,
+  syncStatus: "idle",
+  lastSyncedAt: null,
 };
 
 const userSlice = createSlice({
@@ -163,6 +169,12 @@ const userSlice = createSlice({
       state.hasCompletedOnboarding = true;
       state.profileOwnerEmail = state.email;
     },
+    setSyncStatus: (state, action: PayloadAction<SyncStatus>) => {
+      state.syncStatus = action.payload;
+    },
+    setLastSyncedAt: (state, action: PayloadAction<number>) => {
+      state.lastSyncedAt = action.payload;
+    },
   },
 });
 
@@ -178,6 +190,8 @@ export const {
   setInjuryDetails,
   setTherapyGoal,
   completeOnboarding,
+  setSyncStatus,
+  setLastSyncedAt,
 } = userSlice.actions;
 
 export const selectMeasurementSide = (state: RootState) =>
@@ -200,5 +214,7 @@ export const selectHasCompletedOnboarding = (state: RootState) =>
 export const selectInjuryDetails = (state: RootState) =>
   state.user.injuryDetails;
 export const selectTherapyGoal = (state: RootState) => state.user.therapyGoal;
+export const selectSyncStatus = (state: RootState) => state.user.syncStatus;
+export const selectLastSyncedAt = (state: RootState) => state.user.lastSyncedAt;
 
 export default userSlice.reducer;

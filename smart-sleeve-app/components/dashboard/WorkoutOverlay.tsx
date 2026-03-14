@@ -5,6 +5,7 @@ import {
   Alert,
   ActivityIndicator,
   View,
+  Platform,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -269,8 +270,13 @@ export function WorkoutOverlay() {
       // 2. Clear UI state
       dispatch(completeWorkout());
 
-      // 3. Navigate to Summary
-      if (sessionId) {
+      // 3. Navigate to Summary or show Web Alert
+      if (Platform.OS === "web") {
+        Alert.alert(
+          "Session Completed",
+          "Web Demo: Your session finished, but data is only saved/synced when using the real iOS or Android app.",
+        );
+      } else if (sessionId) {
         router.push(`/session-summary/${sessionId}`);
       } else {
         Alert.alert("Session Saved", `Your workout was stored locally.`);
