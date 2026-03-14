@@ -30,7 +30,17 @@ export default function SettingsScreen() {
   };
 
   const handleNavigate = (path: string) => {
-    router.push(path as Href);
+    // Always dismiss the modal first to prevent "stacking" overlays
+    // when moving to main app screens or debug tools.
+    if (router.canGoBack()) {
+      router.back();
+    }
+    
+    // Delay slightly to ensure the modal dismissal animation starts
+    // before we trigger the next navigation.
+    setTimeout(() => {
+      router.push(path as Href);
+    }, 150);
   };
 
   const SettingItem = ({ 
