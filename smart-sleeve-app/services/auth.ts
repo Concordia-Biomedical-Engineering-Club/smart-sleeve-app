@@ -1,4 +1,5 @@
 import { auth } from "../firebaseConfig";
+import { firebaseConfigError } from "../firebaseConfig";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -25,6 +26,14 @@ const mapFirebaseError = (error: any): string => {
     return "Password should be at least 6 characters.";
   } else if (errorCode.includes("too-many-requests")) {
     return "Too many attempts. Please try again later.";
+  } else if (errorCode.includes("api-key-not-valid") || errorCode.includes("missing-api-key")) {
+    return "System Configuration Error: API Key is invalid or missing.";
+  } else if (errorCode.includes("network-request-failed")) {
+    return "Network Error: Please check your internet connection.";
+  }
+
+  if (firebaseConfigError) {
+    return "Configuration Error: Check your .env file setup.";
   }
 
   return "Authentication failed. Please try again.";

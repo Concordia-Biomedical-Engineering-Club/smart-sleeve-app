@@ -24,6 +24,7 @@ import {
   sendResetPasswordEmail,
   mapFirebaseError,
 } from "../../services/auth";
+import { firebaseConfigError } from "../../firebaseConfig";
 import { StatusBar } from "expo-status-bar";
 import { AppModal } from "@/components/ui/AppModal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -333,7 +334,14 @@ export default function AuthScreen() {
             )}
           </View>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {firebaseConfigError ? (
+            <View style={[styles.errorBox, { backgroundColor: theme.warning + '15', borderColor: theme.warning }]}>
+              <IconSymbol name="exclamationmark.triangle.fill" size={16} color={theme.warning} />
+              <Text style={[styles.errorText, { color: theme.warning }]}>{firebaseConfigError}</Text>
+            </View>
+          ) : error ? (
+            <Text style={styles.error}>{error}</Text>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.button, { backgroundColor: theme.primary }]}
@@ -533,7 +541,22 @@ const styles = StyleSheet.create({
     right: 14,
     height: "100%",
     justifyContent: "center",
-    alignItems: "center",
+     alignItems: "center",
     width: 40,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 16,
+  },
+  errorText: {
+    ...Typography.caption,
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
   },
 });
