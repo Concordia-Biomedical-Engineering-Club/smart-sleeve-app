@@ -17,12 +17,16 @@ import {
   findPreviousSession,
   TimeframeOption,
 } from "@/services/ProgressAnalysis";
+import { computeHistoricalSymmetryTrends } from "@/services/SymmetryService";
 
 export default function MotionAnalyticsScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
   const user = useSelector((state: RootState) => state.user);
-  const [timeframe, setTimeframe] = useState<"Weekly" | "Monthly" | "Quarterly">("Weekly");
+  const injuredSide = user.injuredSide;
+  const [timeframe, setTimeframe] = useState<
+    "Weekly" | "Monthly" | "Quarterly"
+  >("Weekly");
   const [sessions, setSessions] = useState<Session[]>([]);
 
   useEffect(() => {
@@ -49,10 +53,25 @@ export default function MotionAnalyticsScreen() {
       timeframe === "Weekly" ? "7D" : timeframe === "Monthly" ? "30D" : "90D";
 
     const romTrend = buildMetricTrend(sessions, tfOption, "romDegrees");
-    const qualityTrend = buildMetricTrend(sessions, tfOption, "exerciseQuality");
+    const qualityTrend = buildMetricTrend(
+      sessions,
+      tfOption,
+      "exerciseQuality",
+    );
     const balanceTrend = buildMetricTrend(sessions, tfOption, "muscleBalance");
 
-    const hasData = romTrend.values.some((v) => v > 0);
+    const tfDays = tfOption === "7D" ? 7 : tfOption === "30D" ? 30 : 90;
+    const tfStart = Date.now() - tfDays * 24 * 60 * 60 * 1000;
+    const allSymmetryPoints = computeHistoricalSymmetryTrends(
+      sessions,
+      injuredSide || "LEFT",
+    );
+    const symmetryPoints = allSymmetryPoints.filter(
+      (p) => p.timestamp >= tfStart,
+    );
+
+    const hasData = romTrend.values.some((v: number) => v > 0);
+    const hasSymmetryData = symmetryPoints.length > 0;
 
     return {
       motion: {
@@ -77,15 +96,37 @@ export default function MotionAnalyticsScreen() {
         labels: balanceTrend.labels,
         datasets: [
           {
-            data: hasData ? balanceTrend.values : balanceTrend.values.map(() => 0),
-            color: () => "#8338EC", // Purple for Balance
+            data: hasData
+              ? balanceTrend.values
+              : balanceTrend.values.map(() => 0),
+            color: () => "#8338EC",
             strokeWidth: 3,
           } as any,
         ],
         legend: ["VMO Activation Ratio (%)"],
       },
+      symmetry: {
+        labels: hasSymmetryData
+          ? symmetryPoints.map((p) =>
+              new Date(p.timestamp).toLocaleDateString([], {
+                month: "short",
+                day: "numeric",
+              }),
+            )
+          : ["No data"],
+        datasets: [
+          {
+            data: hasSymmetryData
+              ? symmetryPoints.map((p) => p.symmetryScore)
+              : [0],
+            color: () => theme.primary,
+            strokeWidth: 3,
+          } as any,
+        ],
+        legend: ["Bilateral Symmetry Score"],
+      },
     };
-  }, [sessions, timeframe, theme]);
+  }, [sessions, timeframe, theme, injuredSide]);
 
   const insight = useMemo(() => {
     if (sessions.length === 0) return null;
@@ -138,6 +179,17 @@ export default function MotionAnalyticsScreen() {
           />
         </View>
 
+        {injuredSide && (
+          <View style={styles.chartContainer}>
+            <TrendChart
+              data={chartData.symmetry}
+              title="Bilateral Recovery"
+              subtitle={`Injured vs Healthy leg symmetry trend`}
+              height={220}
+            />
+          </View>
+        )}
+
         <View style={styles.insightsSection}>
           <ThemedText
             type="label"
@@ -160,25 +212,31 @@ export default function MotionAnalyticsScreen() {
               <View
                 style={[
                   styles.iconBox,
-                  { 
-                    backgroundColor: 
-                      insight.tone === "positive" ? theme.success + "15" :
-                      insight.tone === "warning" ? theme.warning + "15" :
-                      theme.primary + "15"
+                  {
+                    backgroundColor:
+                      insight.tone === "positive"
+                        ? theme.success + "15"
+                        : insight.tone === "warning"
+                          ? theme.warning + "15"
+                          : theme.primary + "15",
                   },
                 ]}
               >
                 <IconSymbol
                   name={
-                    insight.tone === "positive" ? "checkmark.seal.fill" :
-                    insight.tone === "warning" ? "exclamationmark.triangle.fill" :
-                    "info.circle.fill"
+                    insight.tone === "positive"
+                      ? "checkmark.seal.fill"
+                      : insight.tone === "warning"
+                        ? "exclamationmark.triangle.fill"
+                        : "info.circle.fill"
                   }
                   size={20}
                   color={
-                    insight.tone === "positive" ? theme.success :
-                    insight.tone === "warning" ? theme.warning :
-                    theme.primary
+                    insight.tone === "positive"
+                      ? theme.success
+                      : insight.tone === "warning"
+                        ? theme.warning
+                        : theme.primary
                   }
                 />
               </View>
@@ -205,8 +263,11 @@ export default function MotionAnalyticsScreen() {
               ]}
             >
               <View style={styles.insightContent}>
-                <ThemedText style={[styles.insightText, { color: theme.textSecondary }]}>
-                  Keep exercising to unlock dynamic insights and coach recommendations.
+                <ThemedText
+                  style={[styles.insightText, { color: theme.textSecondary }]}
+                >
+                  Keep exercising to unlock dynamic insights and coach
+                  recommendations.
                 </ThemedText>
               </View>
             </View>
@@ -242,7 +303,7 @@ export default function MotionAnalyticsScreen() {
               <ThemedText
                 style={[styles.insightText, { color: theme.textSecondary }]}
               >
-                Ensure you are performing your heel slides slowly to maximize 
+                Ensure you are performing your heel slides slowly to maximize
                 tendon gliding and joint lubrication.
               </ThemedText>
             </View>

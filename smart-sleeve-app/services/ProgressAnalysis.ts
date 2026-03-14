@@ -158,7 +158,7 @@ export function buildMetricTrend(
   metric: "romDegrees" | "exerciseQuality" | "muscleBalance",
 ): { labels: string[]; values: number[] } {
   const days = timeframe === "7D" ? 7 : timeframe === "30D" ? 30 : 90;
-  
+
   // 1. Generate all dates in the period
   const dates = Array.from({ length: days }, (_, index) => {
     const date = new Date();
@@ -167,57 +167,59 @@ export function buildMetricTrend(
     return date;
   });
 
-  // 2. Map every date to a value (or 0 if no session)
-  const points = dates.map((date) => {
+  // 2. Map every date to a value — skip days with no sessions
+  const points: { date: Date; value: number; label: string }[] = [];
+
+  dates.forEach((date, index) => {
     const matchingSessions = sessions.filter(
       (session) =>
         new Date(session.timestamp).toDateString() === date.toDateString(),
     );
 
-    if (matchingSessions.length === 0) {
-      return { date, value: 0 };
-    }
+    if (matchingSessions.length === 0) return;
 
     const value =
       metric === "romDegrees"
         ? Math.max(
-            ...matchingSessions.map(
-              (session) => session.analytics.romDegrees,
-            ),
+            ...matchingSessions.map((session) => session.analytics.romDegrees),
           )
         : metric === "exerciseQuality"
-        ? roundToOneDecimal(
-            (matchingSessions.reduce(
-              (sum, session) => sum + session.analytics.exerciseQuality,
-              0,
-            ) /
-              matchingSessions.length) *
-              100,
-          )
-        : roundToOneDecimal(
-            matchingSessions.reduce((sum, session) => {
-              const channels = session.analytics.normalizedChannelMeans || [0, 0, 0, 0];
-              const vmo = channels[0] || 0;
-              const vl = channels[1] || 1; // Avoid div by zero
-              const ratio = (vmo / (vmo + vl)) * 100;
-              return sum + (isNaN(ratio) ? 0 : ratio);
-            }, 0) / matchingSessions.length
-          );
+          ? roundToOneDecimal(
+              (matchingSessions.reduce(
+                (sum, session) => sum + session.analytics.exerciseQuality,
+                0,
+              ) /
+                matchingSessions.length) *
+                100,
+            )
+          : roundToOneDecimal(
+              matchingSessions.reduce((sum, session) => {
+                const channels = session.analytics.normalizedChannelMeans || [
+                  0, 0, 0, 0,
+                ];
+                const vmo = channels[0] || 0;
+                const vl = channels[1] || 1; // Avoid div by zero
+                const ratio = (vmo / (vmo + vl)) * 100;
+                return sum + (isNaN(ratio) ? 0 : ratio);
+              }, 0) / matchingSessions.length,
+            );
 
-    return { date, value };
+    let label: string;
+    if (days <= 7) {
+      label = date.toLocaleDateString([], { weekday: "short" });
+    } else {
+      const labelStep = days === 30 ? 5 : 14;
+      label =
+        index % labelStep === 0 || index === days - 1
+          ? date.toLocaleDateString([], { month: "short", day: "numeric" })
+          : "";
+    }
+
+    points.push({ date, value, label });
   });
 
   return {
-    labels: points.map(({ date }, index) => {
-      if (days <= 7) {
-        return date.toLocaleDateString([], { weekday: "short" });
-      }
-
-      const labelStep = days === 30 ? 5 : 14;
-      return index % labelStep === 0 || index === points.length - 1
-        ? date.toLocaleDateString([], { month: "short", day: "numeric" })
-        : "";
-    }),
+    labels: points.map(({ label }) => label),
     values: points.map(({ value }) => value),
   };
 }

@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { router } from "expo-router";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useWorkoutSession } from "@/hooks/useWorkoutSession";
 import {
   insertSession,
@@ -86,7 +88,7 @@ export default function DebugDB() {
             setLoading(true);
             try {
               addLog(`🛠 Generating 45 days of data for ${userId}...`);
-              const count = await generateDemoData(userId);
+              const count = await generateDemoData(userId, user.injuredSide || "LEFT");
               addLog(`✅ Generated ${count} sessions successfully.`);
               
               // Trigger a sync so they go to cloud
@@ -180,10 +182,20 @@ export default function DebugDB() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🗄️ SQLite Debug Screen</Text>
-      <Text style={styles.subtitle}>
-        Issues #54 & #7 — expo-sqlite verification
-      </Text>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>🗄️ SQLite Debug Screen</Text>
+          <Text style={styles.subtitle}>
+            Issues #54 & #7 — expo-sqlite verification
+          </Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.closeBtn} 
+          onPress={() => router.back()}
+        >
+          <IconSymbol name="xmark.circle.fill" size={28} color="#666" />
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.btnRow}>
         <TouchableOpacity
@@ -301,11 +313,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    paddingTop: 60,
     backgroundColor: "#F8F9FA",
   },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+    marginTop: 10,
+  },
+  closeBtn: { padding: 4 },
   title: { fontSize: 22, fontWeight: "700", color: "#1A1A1A" },
-  subtitle: { fontSize: 13, color: "#666", marginBottom: 16 },
+  subtitle: { fontSize: 13, color: "#666", marginBottom: 0 },
   btnRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
   btn: { flex: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   btnCreate: { backgroundColor: "#0B74E6" },
