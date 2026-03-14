@@ -31,6 +31,7 @@ export function usePatients() {
             riskStatus: calculateRiskStatus(data),
             recentSymmetry: data.recentSymmetry || null,
             recentROM: data.recentROM || null,
+            complianceScore: data.complianceScore || null,
           } as Patient;
         });
 

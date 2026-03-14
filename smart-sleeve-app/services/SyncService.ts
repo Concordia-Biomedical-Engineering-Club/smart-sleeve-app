@@ -98,6 +98,74 @@ export async function uploadUnsyncedSessions(
 }
 
 /**
+ * Recalculates aggregate recovery metrics (Best ROM, Avg Symmetry) from the
+ * user's session history and updates the top-level Firestore User document.
+ * This powers the high-level triage view in the Clinician Portal.
+ *
+ * Also writes profile fields (displayName, email, injuredSide, therapyGoal) so
+ * the clinician portal can display real patient data — these fields only exist
+ * in Redux/AsyncStorage otherwise and would never appear in Firestore.
+ */
+export async function updateUserAggregates(uid: string): Promise<void> {
+  try {
+    const { fetchSessionsByUser } = await import("./Database");
+    const allSessions = await fetchSessionsByUser(uid);
+
+    // Pull profile fields from Redux store for the Firestore user document.
+    const state = store.getState();
+    const userState = state.user;
+
+    const profileFields = {
+      uid,
+      email: userState.email ?? null,
+      displayName: userState.email?.split("@")[0] ?? "Athlete",
+      injuredSide: userState.injuredSide ?? null,
+      therapyGoal: userState.therapyGoal ?? null,
+      lastSyncedAt: Date.now(),
+    };
+
+    if (allSessions.length === 0) {
+      // Still write the profile so the patient appears in the portal directory
+      // even before they have completed sessions.
+      const userRef = doc(db, "users", uid);
+      await setDoc(userRef, profileFields, { merge: true });
+      console.log(
+        `[SyncService] Wrote profile stub for UID ${uid} (no sessions yet).`,
+      );
+      return;
+    }
+
+    // Take the 5 most recent sessions for rolling averages
+    const recent = allSessions.slice(0, 5);
+    const recentROM = Math.max(...recent.map((s) => s.analytics.romDegrees));
+    const avgSymmetry = Math.round(
+      recent.reduce(
+        (sum, s) => sum + (100 - s.analytics.deficitPercentage),
+        0,
+      ) / recent.length,
+    );
+
+    const userRef = doc(db, "users", uid);
+    await setDoc(
+      userRef,
+      {
+        ...profileFields,
+        recentROM,
+        recentSymmetry: avgSymmetry,
+        complianceScore: Math.round((recent.length / 5) * 100), // Heuristic: sessions per rolling window
+      },
+      { merge: true },
+    );
+
+    console.log(
+      `[SyncService] Updated user aggregates: ROM=${recentROM}, Symmetry=${avgSymmetry}`,
+    );
+  } catch (err) {
+    console.error("[SyncService] Failed to update user aggregates:", err);
+  }
+}
+
+/**
  * Downloads all sessions belonging to the user from Firestore and attempts
  * an upsert into local SQLite.
  *
@@ -213,6 +281,9 @@ export async function syncNow(
 
     const downloaded = await downloadSessionsForUser(uid, legacyEmail);
     console.log(`[SyncService] Downloaded ${downloaded} cloud sessions.`);
+
+    // Refresh institutional summary fields for the clinician portal
+    await updateUserAggregates(uid);
 
     store.dispatch(setSyncStatus("synced"));
     store.dispatch(setLastSyncedAt(Date.now()));

@@ -37,4 +37,5 @@ export interface Patient {
   riskStatus: "low" | "medium" | "high";
   recentSymmetry: number | null;
   recentROM: number | null;
+  complianceScore: number | null;
 }

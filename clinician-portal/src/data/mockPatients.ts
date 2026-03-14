@@ -11,6 +11,7 @@ export const MOCK_PATIENTS: Patient[] = [
     riskStatus: "high",
     recentSymmetry: 72,
     recentROM: 95,
+    complianceScore: 45,
   },
   {
     uid: "p2",
@@ -22,6 +23,7 @@ export const MOCK_PATIENTS: Patient[] = [
     riskStatus: "low",
     recentSymmetry: 94,
     recentROM: 115,
+    complianceScore: 98,
   },
   {
     uid: "p3",
@@ -33,6 +35,7 @@ export const MOCK_PATIENTS: Patient[] = [
     riskStatus: "medium",
     recentSymmetry: 85,
     recentROM: 88,
+    complianceScore: 78,
   },
   {
     uid: "p4",
@@ -44,5 +47,6 @@ export const MOCK_PATIENTS: Patient[] = [
     riskStatus: "low",
     recentSymmetry: 91,
     recentROM: 110,
+    complianceScore: 88,
   },
 ];

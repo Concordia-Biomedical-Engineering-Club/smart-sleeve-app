@@ -22,11 +22,13 @@ import { usePatients } from "@/hooks/usePatients";
 import { PatientTable } from "@/components/shared/PatientTable";
 import { MOCK_PATIENTS } from "@/data/mockPatients";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AddPatientModal } from "@/components/patients/AddPatientModal";
 
 export default function PatientsPage() {
   const { patients, loading, error } = usePatients();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const isUsingMockData = !loading && !error && patients.length === 0;
   const data = isUsingMockData ? MOCK_PATIENTS : patients;
@@ -75,7 +77,10 @@ export default function PatientsPage() {
             <Download className="h-4 w-4" />
             Export Data
           </Button>
-          <Button className="gap-2 rounded-xl shadow-lg shadow-primary/20">
+          <Button
+            className="gap-2 rounded-xl shadow-lg shadow-primary/20"
+            onClick={() => setShowAddModal(true)}
+          >
             <Plus className="h-4 w-4" />
             Add Patient
           </Button>
@@ -122,6 +127,10 @@ export default function PatientsPage() {
       </div>
 
       <PatientTable patients={filteredPatients} />
+
+      {showAddModal && (
+        <AddPatientModal onClose={() => setShowAddModal(false)} />
+      )}
 
       <p className="text-center text-xs text-muted-foreground uppercase tracking-widest font-bold opacity-30 pt-4">
         Showing {filteredPatients.length} of {data.length} registered patients

@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { MOCK_PATIENTS } from "@/data/mockPatients";
 import { MOCK_SESSIONS } from "@/data/mockSessions";
+import { EXERCISE_LIBRARY } from "@/data/exercises";
 import {
   Card,
   CardContent,
@@ -162,7 +163,7 @@ export default function PatientDetailPage({
                   Compliance
                 </p>
                 <p className="text-2xl font-bold">
-                  92%{" "}
+                  {patient.complianceScore ?? "0"}%{" "}
                   <span className="text-xs font-normal text-muted-foreground">
                     Last 7 Days
                   </span>
@@ -229,8 +230,7 @@ export default function PatientDetailPage({
                           {format(new Date(session.timestamp), "EEEE, MMMM do")}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {Math.round(session.duration / 60)} min session •{" "}
-                          {session.completedReps} reps
+                          {EXERCISE_LIBRARY.find((e) => e.id === session.exerciseType)?.name || "Unknown Exercise"} • {Math.round(session.duration / 60)}m • {session.completedReps} reps
                         </div>
                       </div>
                     </div>
