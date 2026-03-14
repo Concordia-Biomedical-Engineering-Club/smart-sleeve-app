@@ -2,9 +2,9 @@ name: CI - Test and Lint
 
 on:
   push:
-    branches: [ main, dev, 'feat/**' ]
+    branches: [main, dev, "feat/**"]
   pull_request:
-    branches: [ main, dev ]
+    branches: [main, dev]
 
 jobs:
   build:
@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: ./smart-sleeve-app/package-lock.json
 
       - name: 📦 Install dependencies
@@ -32,3 +32,26 @@ jobs:
 
       - name: 💅 Lint code
         run: npm run lint
+
+  clinician-portal-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./clinician-portal
+
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: ./clinician-portal/package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗 Build clinician portal
+        run: npm run build
