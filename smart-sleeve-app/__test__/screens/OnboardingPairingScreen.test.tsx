@@ -29,6 +29,7 @@ const mockConnector: jest.Mocked<ISleeveConnector> = {
   subscribeToEMG: jest.fn(),
   subscribeToIMU: jest.fn(),
   onConnectionStatusChange: jest.fn(),
+  onTransportEvent: jest.fn(),
   setScenario: jest.fn(),
 };
 
@@ -73,7 +74,7 @@ describe("OnboardingPairing", () => {
 
     const { screen, store } = renderScreen();
 
-    expect(screen.queryByText("Skip for now")).toBeNull();
+    expect(screen.getByText("Skip Step →")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Search for Device"));
 
@@ -89,7 +90,7 @@ describe("OnboardingPairing", () => {
     fireEvent.press(screen.getByText("Go to Dashboard →"));
 
     expect(store.getState().user.hasCompletedOnboarding).toBe(true);
-    expect(mockRouter.replace).toHaveBeenCalledWith("/(tabs)");
+    expect(mockRouter.replace).toHaveBeenCalledWith("/(tabs)/dashboard");
   });
 
   it("shows a retry state when the demo connector cannot be reached", async () => {

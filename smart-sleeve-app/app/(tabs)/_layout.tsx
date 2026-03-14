@@ -123,13 +123,6 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="auth"
-        options={{
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
         name="test-ble"
         options={{
           href: null,

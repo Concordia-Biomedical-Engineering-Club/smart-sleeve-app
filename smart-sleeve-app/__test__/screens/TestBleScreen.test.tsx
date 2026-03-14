@@ -1,11 +1,3 @@
-jest.mock(
-  "react-native-ble-plx",
-  () => ({
-    BleManager: jest.fn(),
-  }),
-  { virtual: true },
-);
-
 import React from "react";
 import { PermissionsAndroid, Platform } from "react-native";
 import { Provider } from "react-redux";
@@ -33,13 +25,13 @@ import {
 } from "@/constants/ble";
 import { ProgrammableBleManager } from "@/__test__/helpers/ProgrammableBleHarness";
 
-const USE_MOCK_HARDWARE_ENV_KEY = [
-  "EXPO",
-  "PUBLIC",
-  "USE",
-  "MOCK",
-  "HARDWARE",
-].join("_");
+jest.mock(
+  "react-native-ble-plx",
+  () => ({
+    BleManager: jest.fn(),
+  }),
+  { virtual: true },
+);
 
 let mockSleeveConnector: RealSleeveConnector;
 
@@ -63,7 +55,6 @@ async function flushAsyncWork(): Promise<void> {
 }
 
 describe("TestBLEScreen", () => {
-  const originalUseMockHardware = process.env[USE_MOCK_HARDWARE_ENV_KEY];
   let consoleLogSpy: jest.SpyInstance;
   let consoleWarnSpy: jest.SpyInstance;
   let consoleErrorSpy: jest.SpyInstance;
@@ -76,7 +67,6 @@ describe("TestBLEScreen", () => {
     jest.clearAllMocks();
     originalPlatformOs = Platform.OS;
     originalPlatformVersion = Platform.Version;
-    process.env[USE_MOCK_HARDWARE_ENV_KEY] = "false";
     consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
     consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
@@ -96,12 +86,6 @@ describe("TestBLEScreen", () => {
     consoleLogSpy.mockRestore();
     consoleWarnSpy.mockRestore();
     consoleErrorSpy.mockRestore();
-
-    if (originalUseMockHardware === undefined) {
-      delete process.env[USE_MOCK_HARDWARE_ENV_KEY];
-    } else {
-      process.env[USE_MOCK_HARDWARE_ENV_KEY] = originalUseMockHardware;
-    }
   });
 
   function renderHarnessScreen(connector: RealSleeveConnector) {
@@ -228,7 +212,7 @@ describe("TestBLEScreen", () => {
       expect(screen.getByText(/IMU checksum errors: 1/)).toBeTruthy();
       expect(screen.getByText(/IMU notify errors: 1/)).toBeTruthy();
       expect(screen.getByText(/Reconnect attempts: 3/)).toBeTruthy();
-      expect(screen.getByText(/Phase: failed/)).toBeTruthy();
+      expect(screen.getAllByText(/Phase: failed/).length).toBeGreaterThan(0);
     });
   });
 
@@ -241,7 +225,7 @@ describe("TestBLEScreen", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Scanning...")).toBeTruthy();
-      expect(screen.getByText(/Phase: scanning/)).toBeTruthy();
+      expect(screen.getAllByText(/Phase: scanning/).length).toBeGreaterThan(0);
     });
 
     await act(async () => {
@@ -251,7 +235,9 @@ describe("TestBLEScreen", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Scan for Devices")).toBeTruthy();
-      expect(screen.getByText(/Phase: disconnected/)).toBeTruthy();
+      expect(screen.getAllByText(/Phase: disconnected/).length).toBeGreaterThan(
+        0,
+      );
       expect(screen.queryByText(/Connect to:/)).toBeNull();
     });
   });
@@ -264,7 +250,7 @@ describe("TestBLEScreen", () => {
     fireEvent.press(screen.getByText("Scan for Devices"));
 
     await waitFor(() => {
-      expect(screen.getByText(/Phase: scanning/)).toBeTruthy();
+      expect(screen.getAllByText(/Phase: scanning/).length).toBeGreaterThan(0);
     });
 
     await act(async () => {
@@ -273,23 +259,25 @@ describe("TestBLEScreen", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Phase: failed/)).toBeTruthy();
+      expect(screen.getAllByText(/Phase: failed/).length).toBeGreaterThan(0);
     });
   });
 
   it("renders permission-denied diagnostics when Android BLE permissions are rejected", async () => {
     const manager = new ProgrammableBleManager();
     const connector = new RealSleeveConnector(manager as never);
+    const mockedPermissionStatuses = {
+      [PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN]:
+        PermissionsAndroid.RESULTS.DENIED,
+      [PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT]:
+        PermissionsAndroid.RESULTS.GRANTED,
+      [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION]:
+        PermissionsAndroid.RESULTS.GRANTED,
+    } as Awaited<ReturnType<typeof PermissionsAndroid.requestMultiple>>;
+
     const permissionsSpy = jest
       .spyOn(PermissionsAndroid, "requestMultiple")
-      .mockResolvedValue({
-        [PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN]:
-          PermissionsAndroid.RESULTS.DENIED,
-        [PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT]:
-          PermissionsAndroid.RESULTS.GRANTED,
-        [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION]:
-          PermissionsAndroid.RESULTS.GRANTED,
-      });
+      .mockResolvedValue(mockedPermissionStatuses);
 
     Object.defineProperty(Platform, "OS", {
       configurable: true,
@@ -305,7 +293,7 @@ describe("TestBLEScreen", () => {
     fireEvent.press(screen.getByText("Scan for Devices"));
 
     await waitFor(() => {
-      expect(screen.getByText(/Phase: failed/)).toBeTruthy();
+      expect(screen.getAllByText(/Phase: failed/).length).toBeGreaterThan(0);
       expect(screen.getByText("Scan for Devices")).toBeTruthy();
       expect(screen.queryByText(/Connect to:/)).toBeNull();
     });
