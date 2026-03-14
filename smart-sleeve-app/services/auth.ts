@@ -10,15 +10,14 @@ import {
 
 // Helper function to map Firebase error codes to user-friendly messages
 const mapFirebaseError = (error: any): string => {
-  const errorString = error?.message || error?.code || "";
+  console.log("[AuthService] Mapping error:", error);
+  const errorString = error?.message || error?.code || JSON.stringify(error) || "";
   const codeMatch = errorString.match(/\(([^)]+)\)/);
   const errorCode = codeMatch ? codeMatch[1] : errorString;
 
   if (errorCode.includes("invalid-email")) {
     return "Please enter a valid email address.";
-  } else if (errorCode.includes("user-not-found")) {
-    return "Email or password is incorrect.";
-  } else if (errorCode.includes("wrong-password")) {
+  } else if (errorCode.includes("user-not-found") || errorCode.includes("wrong-password") || errorCode.includes("invalid-credential")) {
     return "Email or password is incorrect.";
   } else if (errorCode.includes("email-already-in-use")) {
     return "This email is already registered.";
@@ -26,17 +25,17 @@ const mapFirebaseError = (error: any): string => {
     return "Password should be at least 6 characters.";
   } else if (errorCode.includes("too-many-requests")) {
     return "Too many attempts. Please try again later.";
+  } else if (errorCode.includes("network-request-failed")) {
+    return "Network connection failed. Please check your internet.";
   } else if (errorCode.includes("api-key-not-valid") || errorCode.includes("missing-api-key")) {
     return "System Configuration Error: API Key is invalid or missing.";
-  } else if (errorCode.includes("network-request-failed")) {
-    return "Network Error: Please check your internet connection.";
   }
 
   if (firebaseConfigError) {
-    return "Configuration Error: Check your .env file setup.";
+    return `Config Error: ${firebaseConfigError}`;
   }
 
-  return "Authentication failed. Please try again.";
+  return `Auth Error: ${errorCode}`;
 };
 
 export { mapFirebaseError };
@@ -56,7 +55,15 @@ export const register = async (email: string, password: string) => {
 
 // Login user
 export const login = async (email: string, password: string) => {
-  return await signInWithEmailAndPassword(auth, email, password);
+  console.log(`[AuthService] Attempting login for: ${email}`);
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    console.log("[AuthService] Login successful");
+    return result;
+  } catch (error) {
+    console.error("[AuthService] Login failed:", error);
+    throw error;
+  }
 };
 
 // Logout

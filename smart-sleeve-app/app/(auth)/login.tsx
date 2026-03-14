@@ -88,6 +88,7 @@ export default function AuthScreen() {
         router.push("/email-verification");
       }
     } catch (e) {
+      console.error("[AuthScreen] Auth error:", e);
       setError(mapFirebaseError(e));
     } finally {
       clearTimeout(timeoutId);
@@ -334,14 +335,14 @@ export default function AuthScreen() {
             )}
           </View>
 
-          {firebaseConfigError ? (
+          {firebaseConfigError && (
             <View style={[styles.errorBox, { backgroundColor: theme.warning + '15', borderColor: theme.warning }]}>
               <IconSymbol name="exclamationmark.triangle.fill" size={16} color={theme.warning} />
               <Text style={[styles.errorText, { color: theme.warning }]}>{firebaseConfigError}</Text>
             </View>
-          ) : error ? (
-            <Text style={styles.error}>{error}</Text>
-          ) : null}
+          )}
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <TouchableOpacity
             style={[styles.button, { backgroundColor: theme.primary }]}

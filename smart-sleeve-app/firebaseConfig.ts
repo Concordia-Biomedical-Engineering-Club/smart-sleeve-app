@@ -24,8 +24,12 @@ const hasFirebaseEnv =
 
 if (!hasFirebaseEnv) {
   console.error(
-    "[firebaseConfig] Missing Firebase environment variables. App will start, but Firebase-backed features will not work until build env values are configured.",
+    "[firebaseConfig] ❌ Missing Firebase environment variables. App will start, but Firebase-backed features will not work until build env values are configured.",
   );
+} else {
+  console.log("[firebaseConfig] ✅ Firebase environment variables detected.");
+  console.log(`[firebaseConfig] Project: ${EXPO_PUBLIC_FIREBASE_PROJECT_ID}`);
+  console.log(`[firebaseConfig] App ID: ${EXPO_PUBLIC_FIREBASE_APP_ID.substring(0, 10)}...`);
 }
 
 const firebaseConfig = hasFirebaseEnv
