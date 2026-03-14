@@ -1,27 +1,73 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   Alert,
+  AppState,
+  Platform,
 } from "react-native";
 import { useRouter, Redirect } from "expo-router";
 import { resendVerificationEmail, logout } from "../services/auth";
 import { RootState } from "../store/store";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors, Typography, Shadows } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { auth } from "../firebaseConfig";
+import { login } from "../store/userSlice";
 
 export default function EmailVerificationScreen() {
   const [resending, setResending] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+  const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.user);
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
+  const appState = useRef(AppState.currentState);
+
+  // Function to check if the user is verified now
+  const checkVerification = async () => {
+    if (!auth.currentUser) return;
+    try {
+      setRefreshing(true);
+      await auth.currentUser.reload();
+      if (auth.currentUser.emailVerified) {
+        dispatch(
+          login({
+            email: auth.currentUser.email || "",
+            isAuthenticated: true,
+          })
+        );
+      }
+    } catch (e) {
+      console.error("Failed to reload user", e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Listen for AppState changes to auto-detect if the user came back from their email app
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        // App has come to the foreground
+        checkVerification();
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   // If user becomes verified, redirect to tabs
   if (user.isAuthenticated) {
@@ -80,19 +126,35 @@ export default function EmailVerificationScreen() {
           your account.
         </ThemedText>
 
-        <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: theme.primary }, resending && { opacity: 0.6 }]}
-          onPress={handleResendEmail}
-          disabled={resending}
-        >
-          {resending ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <ThemedText type="bodyBold" style={styles.primaryBtnText}>
-              Resend Verification Email
-            </ThemedText>
-          )}
-        </TouchableOpacity>
+        <View style={styles.buttonGroup}>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: theme.primary }, refreshing && { opacity: 0.6 }]}
+            onPress={checkVerification}
+            disabled={refreshing}
+          >
+            {refreshing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <ThemedText type="bodyBold" style={styles.primaryBtnText}>
+                I've Already Verified
+              </ThemedText>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.secondaryBtn, { borderColor: theme.border, backgroundColor: theme.secondaryCard }, resending && { opacity: 0.6 }]}
+            onPress={handleResendEmail}
+            disabled={resending || refreshing}
+          >
+            {resending ? (
+              <ActivityIndicator color={theme.text} />
+            ) : (
+              <ThemedText type="bodyBold" style={[styles.secondaryBtnText, { color: theme.text }]}>
+                Resend Email
+              </ThemedText>
+            )}
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <ThemedText style={[styles.logoutText, { color: theme.warning }]}>Use a different email / Logout</ThemedText>
@@ -113,8 +175,11 @@ const styles = StyleSheet.create({
   message: { ...Typography.body, textAlign: 'center', marginBottom: 8 },
   email: { textAlign: 'center', fontSize: 18, marginBottom: 20 },
   instructions: { ...Typography.body, textAlign: 'center', marginBottom: 32, lineHeight: 22, fontSize: 15 },
-  primaryBtn: { borderRadius: 16, paddingVertical: 18, alignItems: 'center', marginBottom: 20 },
+  buttonGroup: { gap: 12, marginBottom: 24 },
+  primaryBtn: { borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
   primaryBtnText: { color: '#fff', fontSize: 16 },
-  logoutButton: { alignItems: 'center' },
+  secondaryBtn: { borderRadius: 16, paddingVertical: 18, alignItems: 'center', borderWidth: 1 },
+  secondaryBtnText: { fontSize: 16 },
+  logoutButton: { alignItems: 'center', marginTop: 8 },
   logoutText: { ...Typography.caption, fontWeight: '600' },
 });
