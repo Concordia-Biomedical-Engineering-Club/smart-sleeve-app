@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ───────────────────────────────────────────────────
+
+    function isClinician() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/clinicians/$(request.auth.uid));
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // ─── Users collection ────────────────────────────────────────────────────
+    // Each document is the public recovery profile aggregate for a patient.
+    // Written by: the mobile app (patient) via SyncService.updateUserAggregates
+    // Read by: the patient (own doc) and any authenticated clinician.
+
+    match /users/{userId} {
+      // Patient can read / write their own document
+      allow read, write: if isOwner(userId);
+
+      // Clinician can read any user document (triage / portal view)
+      // Clinician can also write to set therapyGoal / targetROM overrides
+      allow read, write: if isClinician();
+
+      // ─── Sessions sub-collection ──────────────────────────────────────────
+      match /sessions/{sessionId} {
+        // Patient can read / write their own sessions
+        allow read, write: if isOwner(userId);
+
+        // Clinician can read any patient's sessions (longitudinal trend charts)
+        allow read: if isClinician();
+      }
+    }
+
+    // ─── Clinicians collection ────────────────────────────────────────────────
+    // Written by: the register page when a clinician creates their account.
+    // Read by: the owning clinician only (used for isClinician() check above).
+
+    match /clinicians/{clinicianId} {
+      allow read, write: if isOwner(clinicianId);
+    }
+  }
+}
