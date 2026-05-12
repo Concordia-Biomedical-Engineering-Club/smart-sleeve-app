@@ -8,6 +8,8 @@ Project duration: October 2025 - March 2026.
 
 > Educational and competition prototype. Not a certified medical device.
 
+![Smart Rehabilitation Knee Sleeve preview](docs/social-preview.png)
+
 ## Screenshots
 
 ### Mobile App
