@@ -1,299 +1,191 @@
-# Smart Rehabilitation Knee Sleeve App
+# Smart Rehabilitation Knee Sleeve
 
-A professional, data-driven rehabilitation platform developed by the **Concordia Biomedical Engineering Club (BEC)** for the **True North Biomedical Competition 2025-2026**.
+A full-stack rehabilitation monitoring platform built by the Concordia Biomedical Engineering Club for the True North Biomedical Competition 2025-2026.
 
----
+Smart Sleeve combines a patient-facing mobile app, a clinician web portal, Firebase-backed sync, and a BLE-ready sensor pipeline for objective knee rehabilitation tracking. The project turns EMG and motion data into usable recovery signals: live muscle activation, knee angle trends, exercise sessions, bilateral comparison, milestones, and clinician triage.
 
-## 🌟 Vision Statement
+Project duration: October 2025 - March 2026.
 
-To create an intelligent, data-driven rehabilitation platform that transforms subjective recovery assessment into objective, measurable progress tracking through advanced EMG signal processing and machine learning algorithms.
+> Educational and competition prototype. Not a certified medical device.
 
----
+## Screenshots
 
-## 🏗️ Technical Architecture
+### Mobile App
 
-The system operates across four integrated layers to ensure high performance and sub-50ms latency:
+<p>
+  <img src="docs/screenshots/mobile-dashboard.png" alt="Mobile patient dashboard" width="220">
+  <img src="docs/screenshots/mobile-exercises.png" alt="Mobile guided rehab library" width="220">
+  <img src="docs/screenshots/mobile-motion-analytics.png" alt="Mobile motion analytics chart" width="220">
+  <img src="docs/screenshots/mobile-session-summary.png" alt="Mobile session summary" width="220">
+</p>
 
-1.  **Hardware Layer**: ESP32-S3 microcontroller interfacing with 8-channel EMG and 9-DOF IMU sensors via BLE 5.0.
-2.  **Edge Computing Layer**: Real-time signal filtering (Butterworth 20-500Hz) and feature extraction (RMS, MAV, WL, ZC) performed at the sensor level.
-3.  **Mobile Application**: Cross-platform React Native app for real-time visualization, local data storage (SQLite/Redux), and on-device ML inference (TensorFlow Lite).
-4.  **Cloud Backend**: Firebase infrastructure for secure authentication, clinical data sharing, and HIPAA-compliant storage.
+### Clinician Portal
 
----
+<p>
+  <img src="docs/screenshots/portal-dashboard.png" alt="Clinician patient triage dashboard" width="460">
+  <img src="docs/screenshots/portal-patient-detail.png" alt="Clinician patient detail and recovery chart" width="460">
+</p>
 
-## 🛠️ Tech Stack
+<p>
+  <img src="docs/screenshots/portal-patient-directory.png" alt="Clinician patient directory" width="460">
+</p>
 
-- **Mobile**: React Native 0.73+ (Expo SDK 54), TypeScript, Redux Toolkit, React Navigation 6.
-- **DSP**: Custom Biquad IIR filtering pipeline (Notch + Bandpass).
-- **ML Engine**: TensorFlow Lite for on-device repetition counting and fatigue detection.
-- **Backend**: Firebase (Auth, Firestore, Cloud Functions).
-- **UI/UX**: Custom Design System with Dark Mode support and `react-native-chart-kit`.
+## What It Does
 
----
+- Captures 8-channel EMG and IMU telemetry from a smart knee sleeve over BLE.
+- Simulates the hardware stream with a mock BLE connector for development without the sleeve.
+- Filters noisy EMG data with a DSP pipeline including notch and bandpass stages.
+- Tracks recovery sessions, knee angle, muscle activation, calibration, and symmetry.
+- Supports patient onboarding, Firebase authentication, local SQLite storage, and cloud sync.
+- Gives clinicians a web dashboard for patient triage, risk flags, telemetry review, and goal prescription.
 
-## 🚧 Development Status & Roadmap
+## Product Surfaces
 
-### ✅ Phase 1: Foundation (Completed)
+| Surface | Path | Purpose |
+| --- | --- | --- |
+| Mobile app | `smart-sleeve-app/` | React Native / Expo app for patients and hardware testing |
+| Clinician portal | `clinician-portal/` | Next.js dashboard for clinical monitoring |
+| Backend rules | `firestore.rules` | Firestore access model for patient and clinician data |
+| Hardware docs | `docs/hardware_setup_guide.md` | Sleeve wiring, firmware, BLE, and troubleshooting workflow |
+| ML workspace | `ml/` | Machine learning notes and experimentation workspace |
 
-- [x] Initial React Native & Expo setup.
-- [x] Core state management (Redux) and Navigation architecture.
-- [x] Static UI layouts for Dashboard and Milestones.
-- [x] Authentication flow (Firebase).
+## Tech Stack
 
-### 🔄 Phase 2: Signal Processing & Integration (Current)
+- Mobile: Expo SDK 54, React Native, TypeScript, Expo Router, Redux Toolkit, Redux Persist
+- Web portal: Next.js, React, TypeScript, Tailwind CSS, shadcn-style UI, Recharts
+- Data: Firebase Authentication, Firestore, local SQLite, offline-aware sync
+- Hardware: ESP32 BLE workflow, EMG channels, IMU telemetry, mock hardware service
+- Signal processing: custom IIR filters, feature extraction, calibration, normalized display modes
+- Quality: Jest tests, Expo linting, Next.js linting, GitHub Actions
 
-- [x] **Mock BLE Service**: Full hardware simulation for development.
-- [x] **DSP Pipeline**: 60Hz Notch and 20-500Hz Bandpass filters active.
-- [x] **Real-time Visualization**: High-frequency graphing in the Test BLE diagnostics.
-- [ ] **Real BLE Integration**: Connecting to physical ESP32-S3 hardware.
-- [ ] **Bilateral Comparison**: Implementing side-by-side leg activation analytics.
+## Quick Start
 
-### 📅 Phase 3: ML Intelligence (Upcoming)
-
-- [ ] On-device rep counting via 1D-CNN.
-- [ ] Exercise recognition (LSTM-based).
-- [ ] Real-time fatigue detection algorithms.
-
-### 🚀 Phase 4: Refinement (Future)
-
-- [ ] Automatic cloud backup & Clinical portal.
-- [ ] PDF report generation for physiotherapists.
-- [ ] HIPAA/Health Canada compliance hardening.
-
----
-
-## 🚀 Getting Started
-
-1.  **Clone & Install**:
-    ```bash
-    git clone https://github.com/Concordia-Biomedical-Engineering-Club/smart-sleeve-app.git
-    cd smart-sleeve-app/smart-sleeve-app
-    npm install
-    ```
-2.  **Environment**: Create a `.env` file based on `.env.example` with your Firebase credentials.
-3.  **Run**:
-    ```bash
-    npm start
-    ```
-    Scan the QR code with **Expo Go** to test on your device.
-
-### Team Setup Matrix
-
-Use the app folder for all commands:
+Clone the repository:
 
 ```bash
-cd smart-sleeve-app/smart-sleeve-app
+git clone https://github.com/Concordia-Biomedical-Engineering-Club/smart-sleeve-app.git
+cd smart-sleeve-app
 ```
 
-| Computer         | Phone                    | Supported local workflow     | Notes                                                                                                   |
-| ---------------- | ------------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
-| macOS            | Android                  | `npx expo run:android`       | Full native workflow supported.                                                                         |
-| macOS            | iPhone                   | `npx expo run:ios --device`  | Requires Xcode, Apple signing, trust pairing, and iPhone Developer Mode.                                |
-| Windows          | Android                  | `npx expo run:android`       | Full native Android workflow supported after Android SDK setup.                                         |
-| Windows          | iPhone                   | No local native iOS build    | iOS builds require macOS + Xcode. Use a Mac teammate or a cloud iOS build pipeline for iPhone installs. |
-| macOS or Windows | No phone / quick UI work | `npm start` or `npm run web` | Good for layout and non-native work. Not sufficient for full BLE testing.                               |
+### Mobile App
 
-### Dev Build vs Expo Go
+```bash
+cd smart-sleeve-app
+npm install
+cp .env.example .env
+npm start
+```
 
-- `npm start` launches the Expo development server.
-- `npx expo run:android` and `npx expo run:ios` create a native development build on the device.
-- This project uses `react-native-ble-plx`, so full BLE testing should use a native dev build, not Expo Go.
-- If the installed app opens with `No script URL provided`, the native dev client is installed but Metro is not serving the JavaScript bundle yet.
+Use Expo to open the app on web, simulator, or a native development build. Full BLE testing requires a native build because the app uses `react-native-ble-plx`.
 
-To fix `No script URL provided`, start Metro from the app folder and keep it running:
+```bash
+npx expo run:android
+npx expo run:ios
+```
+
+For dev-client builds, keep Metro running:
 
 ```bash
 npx expo start --dev-client
 ```
 
-If the phone still cannot reach Metro, use tunnel mode:
+### Clinician Portal
 
 ```bash
-npx expo start --dev-client --tunnel
+cd clinician-portal
+npm install
+cp .env.example .env.local
+npm run dev
 ```
 
-### Running On Android Over USB
+Open [http://localhost:3000](http://localhost:3000). The portal uses Firebase auth and shows demo patient data when no real patient profiles are available.
 
-The Expo app lives in the nested `smart-sleeve-app/` folder. Run Android commands from there, not from the repository root.
+## Environment
 
-1.  **Open the app directory**:
-    ```bash
-    cd smart-sleeve-app/smart-sleeve-app
-    npm install
-    ```
-2.  **Verify your phone is detected over USB**:
-    ```bash
-    adb devices -l
-    ```
-    Look for your device in the output. Example:
-    ```text
-    R3CXB02V58B  device  usb:1-1 product:e1qcsx model:SM_S921W device:e1q
-    ```
-3.  **Run the app on a specific connected phone**:
-    ```bash
-    npx expo run:android --device "SM_S921W"
-    ```
-    If you have multiple devices connected, you can use the model name shown by `adb devices -l`.
-4.  **If you just want the default Android target**:
-    ```bash
-    npx expo run:android
-    ```
+Do not commit real Firebase credentials or private keys. Use local `.env` files and keep only placeholder templates in source control.
 
-### Android Device Preparation
-
-Before trying a physical Android build:
-
-1.  On the phone, enable **Developer options**.
-2.  Enable **USB debugging**.
-3.  Connect the phone by USB.
-4.  Accept the **Allow USB debugging** prompt on the phone.
-5.  Verify detection:
-    ```bash
-    adb devices -l
-    ```
-
-If Metro is running locally and the Android dev build cannot load JavaScript, forward the Metro port over USB:
+Mobile app variables are loaded from `smart-sleeve-app/.env`:
 
 ```bash
-adb reverse tcp:8081 tcp:8081
+EXPO_PUBLIC_FIREBASE_API_KEY=
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+EXPO_PUBLIC_FIREBASE_APP_ID=
+EXPO_PUBLIC_USE_MOCK_HARDWARE=true
 ```
 
-### Android Troubleshooting
+The clinician portal uses equivalent Firebase values in `clinician-portal/.env.local`.
 
-- If `npx expo run:android` fails from the repository root with a missing `package.json` error, run it from `smart-sleeve-app/smart-sleeve-app`.
-- If Gradle reports that the NDK path `27.1.12297006` is incomplete or `does not contain 'platforms'`, reinstall that NDK version:
-  ```bash
-  yes | "$HOME/Library/Android/sdk/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$HOME/Library/Android/sdk" "ndk;27.1.12297006"
-  ```
-- After repairing the NDK, clean and rebuild:
-  ```bash
-  cd smart-sleeve-app/smart-sleeve-app
-  rm -rf android/.cxx android/app/.cxx android/build android/app/build
-  npx expo run:android --device "SM_S921W"
-  ```
-- If the installed Android app opens but does not load the bundle, start Metro with `npx expo start --dev-client`.
+## Development Commands
 
-### Running On iOS
-
-The same nested app directory rule applies on iOS. Run iOS commands from `smart-sleeve-app/smart-sleeve-app`.
-
-1.  **Open the app directory**:
-    ```bash
-    cd smart-sleeve-app/smart-sleeve-app
-    npm install
-    ```
-2.  **Make sure Xcode is installed** and open it once to finish first-run setup.
-3.  **List available iOS targets**:
-    ```bash
-    xcrun devicectl list devices
-    ```
-    If your Xcode version does not provide `devicectl`, use:
-    ```bash
-    xcrun xctrace list devices
-    ```
-4.  **Run on the iOS Simulator**:
-    ```bash
-    npx expo run:ios
-    ```
-5.  **Run on a connected iPhone**:
-    ```bash
-    npx expo run:ios --device
-    ```
-    For a physical iPhone, you also need a valid Apple signing setup in Xcode and Developer Mode enabled on the device.
-
-### iPhone Preparation
-
-Before trying a physical iPhone build:
-
-1.  Connect the iPhone by USB.
-2.  Tap **Trust This Computer** on the iPhone if prompted.
-3.  Pair the device with Xcode if needed:
-    ```bash
-    xcrun devicectl manage pair --device "<DEVICE_NAME>"
-    ```
-4.  Enable **Developer Mode** on the iPhone:
-    - Open `Settings > Privacy & Security > Developer Mode`.
-    - Turn it on.
-    - Let the phone reboot.
-    - Unlock the phone and tap **Turn On** on the post-reboot confirmation prompt.
-5.  Make sure Xcode signing is configured for your Apple Developer team.
-6.  Verify the device is seen by Xcode:
-    ```bash
-    xcrun devicectl list devices
-    ```
-
-If you want to confirm Developer Mode from the Mac:
+From `smart-sleeve-app/`:
 
 ```bash
-xcrun devicectl device info ddiServices --device "<DEVICE_NAME>"
+npm test
+npm run lint
+npm run web
+npx expo run:android
+npx expo run:ios
 ```
 
-If that command reports that Developer Mode is disabled, the iPhone-side enable flow is not finished yet.
+From `clinician-portal/`:
 
-### iOS Notes
+```bash
+npm run dev
+npm run build
+npm run lint
+```
 
-- The app already includes the iOS Bluetooth usage descriptions required for BLE access.
-- Because this app uses native BLE libraries, prefer a native Expo dev build with `npx expo run:ios` instead of relying on Expo Go for full device testing.
-- If the installed iPhone app opens with `No script URL provided`, start Metro with `npx expo start --dev-client` from the app folder.
-- If the phone cannot reach Metro reliably, use `npx expo start --dev-client --tunnel`.
-- iOS device builds require macOS and Xcode. A Windows machine cannot build directly for iPhone.
+## Hardware Workflow
 
-### Recommended Team Workflows
+For physical sleeve testing:
 
-- **Windows + Android**: Use Android Studio / Android SDK, then `npx expo run:android`.
-- **macOS + Android**: Use the same Android workflow as Windows, plus `adb devices -l` for USB targeting.
-- **macOS + iPhone**: Use Xcode signing, iPhone Developer Mode, `npx expo run:ios --device`, and `npx expo start --dev-client`.
-- **Windows + iPhone**: Do not plan on local native iPhone builds. Use a Mac teammate or a cloud iOS build workflow for installable iPhone binaries.
+1. Flash `firmware/esp32_ble_sleeve.ino` to the ESP32 target.
+2. Set `EXPO_PUBLIC_USE_MOCK_HARDWARE=false`.
+3. Start Metro with `npx expo start --dev-client`.
+4. Install a native app build with `npx expo run:android` or `npx expo run:ios`.
+5. Open the BLE diagnostics screen and confirm packet counters are increasing.
 
----
+See [docs/hardware_setup_guide.md](docs/hardware_setup_guide.md) for wiring, BLE characteristics, firmware notes, and troubleshooting.
 
-## 🧪 Testing & Quality
+## Repository Structure
 
-- **Unit Tests**: `npm test` runs 50+ cases covering signal accuracy and hardware logic.
-- **Diagnostics**: Use the **Test BLE** tab to manually verify the signal processor's effect on simulated noise and motion artifacts.
+```text
+.
+|-- smart-sleeve-app/       # Expo patient app
+|-- clinician-portal/       # Next.js clinician dashboard
+|-- docs/                   # Hardware, calibration, screenshots, and reference docs
+|-- ml/                     # ML experiments and documentation
+|-- backend/                # Backend placeholder/workspace
+|-- firestore.rules         # Firestore security rules
+`-- .github/workflows/      # CI workflows
+```
 
----
+## Status
 
-**Concordia University - Biomedical Engineering Club**
-_Transforming ACL recovery through engineering excellence._
+The competition prototype is feature-complete for demo and presentation use:
 
----
+- Patient app auth, onboarding, dashboard, exercises, progress, calibration, and BLE diagnostics
+- Mock hardware stream for repeatable demos
+- Signal processing and normalization services
+- Clinician portal with demo triage data, patient list, analytics, and settings
+- Firebase auth and Firestore integration points
+- Firestore rules and CI configuration
 
-## 🤝 Contributing
+## Disclaimer
 
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+This project is for educational, competition, and portfolio purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment, and it is not a certified medical device. Always consult a qualified healthcare professional for medical concerns.
 
-Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests to us.
+## License
 
----
+This project is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE) for details.
 
-## ⚠️ Disclaimer
+## Contact
 
-This project is for educational and portfolio purposes only. The application and data provided by the Smart Rehabilitation Knee Sleeve App are **not a substitute for professional medical advice, diagnosis, or treatment.**
+Project lead: Youssef Jedidi  
+Email: `youssefjedidi2022 [at] gmail [dot] com`  
+LinkedIn: [Youssef Jedidi](https://www.linkedin.com/in/youssef-jedidi/)
 
-This tool is designed to be an informational aid and a **supplementary tool for qualified healthcare professionals.** It is **not a certified medical device** and should not be used for primary diagnosis or treatment decisions.
-
-**Always consult a qualified healthcare professional for any health concerns.**
-
----
-
-## ⚖️ License & Commercial Use
-
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**. See the `LICENSE` file for the full text.
-
-In simple terms, this means you are free to use, modify, and distribute this software, provided that any derivative work you make available over a network is also licensed under the AGPLv3 and you share its source code.
-
-**For inquiries about alternative commercial licensing** for use in proprietary, closed-source applications, please contact the project lead.
-
----
-
-## 📞 Contact
-
-**Youssef Jedidi** - Project Lead
-
-- **Email:** `youssefjedidi2022 [at] gmail [dot] com`
-- **LinkedIn:** [Youssef Jedidi's Profile](https://www.linkedin.com/in/youssef-jedidi/)
-
-**Concordia Biomedical Engineering Club**
-
-Project Link: [https://github.com/Concordia-Biomedical-Engineering-Club/smart-sleeve-app](https://github.com/Concordia-Biomedical-Engineering-Club/smart-sleeve-app)
+Project: [Concordia-Biomedical-Engineering-Club/smart-sleeve-app](https://github.com/Concordia-Biomedical-Engineering-Club/smart-sleeve-app)

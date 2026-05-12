@@ -8,3 +8,10 @@ ml/venv/
 models/
 requirements.txt
 skills-lock.json
+
+# Raw local screenshot captures; keep curated README assets with clean names.
+docs/screenshots/Screenshot*
+docs/screenshots/Simulator Screenshot*
+docs/screenshots/clinician-portal-login.png
+docs/screenshots/mobile-app-login.png
+docs/screenshots/mobile-login.png
